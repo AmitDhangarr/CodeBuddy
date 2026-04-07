@@ -1,3 +1,4 @@
+'use client'
 import "./globals.css";
 import ThemesProvider from "@/components/themeprovider";
 export default function RootLayout({
