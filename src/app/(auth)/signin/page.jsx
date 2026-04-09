@@ -1,13 +1,27 @@
 'use client'
 import { useState } from "react";
+import { supabase } from "../../../lib/supabaseClient";
 
 function Signin() {
+   
+// OAuth Authentication
+ 
+const HandleOAuthGoogle=async()=>{
+ await supabase.auth.signInWithOAuth({provider:"google"});
+} 
+
+const HandleOAuthGithub=async()=>{
+await supabase.auth.signInWithOAuth({provider:"github"});
+}
+
+
   const [authTab, setAuthTab] = useState("signin");
   const [formData, setFormData] = useState({ email: "", password: "", confirm: "", name: "", handle: "", bio: "", role: "", lookingFor: "Collaborator", skillsHave: [], skillsNeed: [] });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [view, setView] = useState("");
   const [dashPage, setDashPage] = useState("");
+  const [onboardStep, setOnboardStep] = useState(0);
   const DARK = {
     bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
     border: "rgba(255,255,255,0.07)", border2: "rgba(255,255,255,0.12)",
@@ -221,8 +235,8 @@ function Signin() {
 
             {/* Social */}
             <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-              <button className="social-btn"><span>🐙</span> GitHub</button>
-              <button className="social-btn"><span>🔵</span> Google</button>
+              <button className="social-btn" onClick={()=> HandleOAuthGithub()}><span>🐙</span> GitHub</button>
+              <button className="social-btn" onClick={()=> HandleOAuthGoogle()}><span>🔵</span> Google</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
               <div className="divider" style={{ flex: 1, margin: 0 }} />

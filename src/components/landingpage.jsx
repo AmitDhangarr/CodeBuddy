@@ -1,8 +1,41 @@
 'use client'
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Footer from "./footer";
+import getSession from "../utils/getsession";
 function LandingPage() {
+
+  useEffect(() => {
+    const handleToken = async () => {
+      const data = await getSession();
+
+      if (!data) return;
+
+      const token = data.access_token;
+
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+    };
+    handleToken();
+  }, []);
+
+
+  useEffect(() => {
+    const getUser = async () => {
+      const data = await fetch('api/user');
+      const res = data.json();
+      console.log(res.user);
+    };
+
+    getUser();
+  }, []);
+
+
   const [authTab, setAuthTab] = useState("");
   const [view, setView] = useState("");
   const [dashPage, setDashPage] = useState("");
@@ -287,7 +320,7 @@ function LandingPage() {
             </div>
           </div>
         </section>
-        <Footer/>
+        <Footer />
       </div>
     </div>
   )
