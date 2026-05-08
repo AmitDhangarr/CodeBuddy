@@ -5,22 +5,6 @@ import { supabase } from "../lib/supabaseClient";
 import { useSignupStore } from "../../store/UsesignupStore";
 function LandingPage() {
  const formData = useSignupStore((state) => state.formData);
- console.log(formData);
- 
-const [user, setUser] = useState(null);
-useEffect(() => {
-  const fetchUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    console.log(user?.user_metadata);
-
-    setUser(user?.user_metadata);
-  };
-
-  fetchUser();
-}, []);
 
   const [dark, setDark] = useState(true);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -511,7 +495,7 @@ useEffect(() => {
                     </div>
                   ))}
                 </div>
-                <Link href="/signup">
+                <Link href="/pricing">
                   <button className={p.featured ? "btn-primary" : "btn-ghost"} style={{ width: "100%", display: "block", textAlign: "center" }}>{p.cta}</button>
                 </Link>
               </div>

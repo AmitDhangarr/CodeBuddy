@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react";
-import { useSignupStore } from "../../../store/UsesignupStore";
 import { useRouter } from "next/navigation";
+import { useSignupStore } from "../../../../store/UsesignupStore";
 
 function OnBoarding() {
   const [onboardStep, setOnboardStep] = useState(0);
