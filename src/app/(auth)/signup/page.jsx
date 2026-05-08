@@ -1,6 +1,14 @@
 'use client'
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState} from "react";
+import { useSignupStore } from "../../../../store/UsesignupStore";
+import { supabase } from "../../../lib/supabaseClient";
 function SignUp() {
+
+  // supabase authentication
+  
+  const router = useRouter();
   const [authTab, setAuthTab] = useState("signup");
   const [formData, setFormData] = useState({ email: "", password: "", confirm: "", name: "", handle: "", bio: "", role: "", lookingFor: "Collaborator", skillsHave: [], skillsNeed: [] });
   const [errors, setErrors] = useState({});
@@ -132,10 +140,18 @@ function SignUp() {
       {hint && !error && <div style={{ fontSize: 11, color: T.text3, marginTop: 4 }}>{hint}</div>}
     </div>
   );
+   const updateForm = useSignupStore((state)=> state.updateForm);
 
   const handleAuth = () => {
     if (!validateAuth()) return;
     setSubmitting(true);
+    updateForm({
+      email:formData.email,
+      password:formData.password
+    });
+
+    router.push("/onboarding");
+
     setTimeout(() => {
       setSubmitting(false);
       if (authTab === "signup") { handleOnboarding(); setOnboardStep(0); }
@@ -173,14 +189,14 @@ function SignUp() {
 
       <nav style={{ padding: "0 clamp(16px, 5vw, 28px)", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, background: T.navBg, backdropFilter: "blur(20px)" }}>
         <button onClick={() => setView("landing")} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
-            <Logo />
-          </div>
+          <Link href={"/"}><div style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
+           <Logo />
+          </div></Link>
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(14px, 4vw, 16px)", color: T.text }}>CodeBuddy</span>
         </button>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 34, height: 34 }}>{dark ? "☀️" : "🌙"}</button>
-          <button className="auth-back-btn" onClick={() => setView("landing")} style={{ background: "none", border: "none", cursor: "pointer", color: T.text3, fontSize: 13, fontFamily: "inherit" }}>← Back</button>
+          <button className="auth-back-btn" onClick={() => router.back("/")} style={{ background: "none", border: "none", cursor: "pointer", color: T.text3, fontSize: 13, fontFamily: "inherit" }}>← Back</button>
         </div>
       </nav>
 
@@ -205,8 +221,8 @@ function SignUp() {
 
             {/* Social */}
             <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-              <button className="social-btn"><span>🐙</span> GitHub</button>
-              <button className="social-btn"><span>🔵</span> Google</button>
+              <button className="social-btn"><span><i class="fa-brands fa-github"></i></span> GitHub</button>
+              <button className="social-btn"><span><i class="fa-brands fa-google"></i></span> Google</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
               <div className="divider" style={{ flex: 1, margin: 0 }} />

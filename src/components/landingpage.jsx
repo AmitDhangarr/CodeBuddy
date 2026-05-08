@@ -2,29 +2,25 @@
 import Link from "next/link";
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useSignupStore } from "../../store/UsesignupStore";
 function LandingPage() {
+ const formData = useSignupStore((state) => state.formData);
+ console.log(formData);
+ 
+const [user, setUser] = useState(null);
+useEffect(() => {
+  const fetchUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const [user, setuser] = useState();
-  useEffect(() => {
-    const fetchUser = async () => {
-      const data = await fetch("/api/user", {
-        method: "GET",
-        credentials: "include",
-      });
-      const rawuser = data.json();
-      console.log(rawuser);
+    console.log(user?.user_metadata);
 
-    }
-    fetchUser();
-  }, [])
-  useEffect(() => {
-    const handleToken = async () => {
-      try {
-        await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: null }) });
-      } catch { }
-    };
-    handleToken();
-  }, []);
+    setUser(user?.user_metadata);
+  };
+
+  fetchUser();
+}, []);
 
   const [dark, setDark] = useState(true);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -258,8 +254,8 @@ function LandingPage() {
           <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }} title="Toggle theme">
             {dark ? "☀️" : "🌙"}
           </button>
-          {!user && <Link href="/signin"><button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13 }}>Sign in</button></Link>}
-          {!user ? <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link> : <Link href="/dashboard"><button className="btn-primary" style={{ padding: "8px 18px" }}>Dashboard →</button></Link>}
+          <Link href="/signin"><button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13 }}>Sign in</button></Link>
+          <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link>
         </div>
       </nav>
 
@@ -285,7 +281,7 @@ function LandingPage() {
               </p>
               <div style={{ display: "flex", gap: 10, marginBottom: 32, flexWrap: "wrap" }}>
                 <Link href="/signup"><button className="btn-primary" style={{ padding: "12px 26px", fontSize: 14 }}>Start matching free →</button></Link>
-                <Link href="/dashboard"><button className="btn-ghost">Preview dashboard</button></Link>
+                <Link href="/preview"><button className="btn-ghost">Preview dashboard</button></Link>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "flex" }}>
@@ -557,7 +553,7 @@ function LandingPage() {
               </p>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
                 <Link href="/signup"><button className="btn-primary" style={{ padding: "13px 30px", fontSize: 14 }}>Create your profile →</button></Link>
-                <Link href="/dashboard"><button className="btn-ghost">Preview app</button></Link>
+                <Link href="/preview"><button className="btn-ghost">Preview app</button></Link>
               </div>
               <p style={{ marginTop: 20, fontSize: 11, color: T.text3 }}>✓ Free forever &nbsp;·&nbsp; ✓ No credit card &nbsp;·&nbsp; ✓ Setup in 2 min</p>
             </div>

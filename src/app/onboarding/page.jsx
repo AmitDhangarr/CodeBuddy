@@ -1,5 +1,7 @@
 "use client"
 import { useState } from "react";
+import { useSignupStore } from "../../../store/UsesignupStore";
+import { useRouter } from "next/navigation";
 
 function OnBoarding() {
   const [onboardStep, setOnboardStep] = useState(0);
@@ -163,6 +165,9 @@ function OnBoarding() {
     </div>
   );
 
+  const profileData = useSignupStore((state)=> state.formData);
+  const updateForm = useSignupStore((state)=> state.updateForm);
+  const router = useRouter();
   const handleOnboardNext = () => {
     const e = {};
     if (onboardStep === 0 && !formData.name.trim()) e.name = "Name required";
@@ -174,7 +179,19 @@ function OnBoarding() {
     if (Object.keys(e).length > 0) return;
     if (onboardStep < 4) { setOnboardStep(p => p + 1); return; }
     setSubmitting(true);
-    setTimeout(() => { setSubmitting(false); }, 1000);
+    updateForm({
+    name:formData.name,
+    handle:formData.handle,
+    bio:formData.bio,
+    role:formData.role,
+    lookingFor:formData.lookingFor,
+    skillsHave: formData.skillsHave,
+    skillsNeed:formData.skillsNeed,
+    });
+    
+    router.push("/");
+        
+    setTimeout(() => { setSubmitting(false); }, 2000);
   };
 
   const upd = (k, v) => setFormData(p => ({ ...p, [k]: v }));

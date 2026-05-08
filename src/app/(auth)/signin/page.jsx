@@ -1,11 +1,11 @@
 'use client'
 import { useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 function Signin() {
    
 // OAuth Authentication
- 
 const HandleOAuthGoogle=async()=>{
  await supabase.auth.signInWithOAuth({provider:"google"});
 } 
@@ -14,7 +14,7 @@ const HandleOAuthGithub=async()=>{
 await supabase.auth.signInWithOAuth({provider:"github"});
 }
 
-
+  const router = useRouter();
   const [authTab, setAuthTab] = useState("signin");
   const [formData, setFormData] = useState({ email: "", password: "", confirm: "", name: "", handle: "", bio: "", role: "", lookingFor: "Collaborator", skillsHave: [], skillsNeed: [] });
   const [errors, setErrors] = useState({});
@@ -204,13 +204,13 @@ await supabase.auth.signInWithOAuth({provider:"github"});
       <nav style={{ padding: "0 clamp(16px, 5vw, 28px)", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, background: T.navBg, backdropFilter: "blur(20px)" }}>
         <button onClick={() => setView("landing")} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}>
           <div style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
-            <Logo />
+          <Link href={"/"}><Logo /></Link>
           </div>
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(14px, 4vw, 16px)", color: T.text }}>CodeBuddy</span>
         </button>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 34, height: 34 }}>{dark ? "☀️" : "🌙"}</button>
-          <button className="auth-back-btn" onClick={() => setView("landing")} style={{ background: "none", border: "none", cursor: "pointer", color: T.text3, fontSize: 13, fontFamily: "inherit" }}>← Back</button>
+          <button className="auth-back-btn" onClick={() => router.back("/")} style={{ background: "none", border: "none", cursor: "pointer", color: T.text3, fontSize: 13, fontFamily: "inherit" }}>← Back</button>
         </div>
       </nav>
 
@@ -235,8 +235,8 @@ await supabase.auth.signInWithOAuth({provider:"github"});
 
             {/* Social */}
             <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-              <button className="social-btn" onClick={()=> HandleOAuthGithub()}><span>🐙</span> GitHub</button>
-              <button className="social-btn" onClick={()=> HandleOAuthGoogle()}><span>🔵</span> Google</button>
+              <button className="social-btn" onClick={()=> HandleOAuthGithub()}><span><i class="fa-brands fa-github"></i></span> GitHub</button>
+              <button className="social-btn" onClick={()=> HandleOAuthGoogle()}><span><i class="fa-brands fa-google"></i></span> Google</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
               <div className="divider" style={{ flex: 1, margin: 0 }} />

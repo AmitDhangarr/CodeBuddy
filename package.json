@@ -19,7 +19,8 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.2",
     "resend": "^6.10.0",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
