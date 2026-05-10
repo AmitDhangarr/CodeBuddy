@@ -1,7 +1,7 @@
 'use client'
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSignupStore } from "../../../../store/UsesignupStore";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -99,6 +99,28 @@ const Field = ({ label, id, type = "text", placeholder, value, onChange, error, 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 function SignUp() {
+
+
+  // Oauth
+  const handleOAuthGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/password_setup`,
+      },
+    });
+  };
+
+  const handleOAuthGithub = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: `${window.location.origin}/password_setup`,
+      },
+    });
+  };
+
+
   const router = useRouter();
   const updateForm = useSignupStore(state => state.updateForm);
 
@@ -127,19 +149,11 @@ function SignUp() {
   const handleAuth = () => {
     if (!validateAuth()) return;
     setSubmitting(true);
-    updateForm({ email: formData.email, password: formData.password });
-    // Navigate immediately; reset submitting after navigation
+    updateForm({ email: formData.email, password: formData.password, confirm: formData.confirm });
     router.push("/onboarding");
     setTimeout(() => setSubmitting(false), 1000);
   };
 
-  const handleOAuthGithub = async () => {
-    await supabase.auth.signInWithOAuth({ provider: "github" });
-  };
-
-  const handleOAuthGoogle = async () => {
-    await supabase.auth.signInWithOAuth({ provider: "google" });
-  };
 
   const HandleTabChange = () => {
     if (authTab === "signup") {
@@ -149,6 +163,8 @@ function SignUp() {
       router.push("/signin");
     }
   }
+
+
   return (
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <style>{STATIC_CSS}</style>

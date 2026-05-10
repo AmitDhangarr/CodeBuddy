@@ -141,11 +141,21 @@ function Signin() {
   };
 
   const handleOAuthGoogle = async () => {
-    await supabase.auth.signInWithOAuth({ provider: "google" });
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/password_verification`,
+      },
+    });
   };
 
   const handleOAuthGithub = async () => {
-    await supabase.auth.signInWithOAuth({ provider: "github" });
+    await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: `${window.location.origin}/password_verification`,
+      },
+    });
   };
 
 
@@ -202,7 +212,7 @@ function Signin() {
             {["signin", "signup"].map(t => (
               <button
                 key={t}
-                onClick={() => { setAuthTab(t);setErrors({}); }}
+                onClick={() => { setAuthTab(t); setErrors({}); }}
                 onMouseLeave={HandleTabChange}
                 style={{ flex: 1, padding: "9px", borderRadius: 10, border: "none", fontFamily: "inherit", fontSize: "clamp(12px,3vw,13px)", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", background: authTab === t ? (dark ? "rgba(255,255,255,0.07)" : T.bg2) : "transparent", color: authTab === t ? T.text : T.text3 }}
               >
