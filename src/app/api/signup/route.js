@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabaseClient";
+import bcrypt from "bcryptjs";
+
 export async function POST(request) {
   const body = await request.json();
+
   try {
     const {
       email,
+      password,
       name,
       handle,
       bio,
@@ -13,11 +17,14 @@ export async function POST(request) {
       skillsHave,
       skillsNeed,
     } = body;
-    
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const { data, error } = await supabase
       .from("profiles")
       .insert({
         email,
+        password: hashedPassword,
         name,
         handle,
         bio,
@@ -27,18 +34,20 @@ export async function POST(request) {
         skills_need: skillsNeed,
       })
       .select();
+
     if (error) {
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     return NextResponse.json({ success: true, data }, { status: 200 });
+
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

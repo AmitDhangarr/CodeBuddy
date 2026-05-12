@@ -1,4 +1,3 @@
-'use client'
 import "./globals.css";
 import ThemesProvider from "@/components/themeprovider";
 export default function RootLayout({
@@ -7,8 +6,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="light" style={{colorScheme:"light"}}>
-        <head>
+    <html lang="en" className="light" style={{ colorScheme: "light" }}>
+      <head>
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
@@ -27,7 +26,6 @@ export default function RootLayout({
           {children}
         </ThemesProvider>
       </body>
-      
     </html>
   );
 }

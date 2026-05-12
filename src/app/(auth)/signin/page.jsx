@@ -1,4 +1,4 @@
-'use client'
+"use client"
 import { useState, useCallback } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
@@ -141,6 +141,7 @@ function Signin() {
   };
 
   const handleOAuthGoogle = async () => {
+    localStorage.setItem("Oauth","Google")
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -150,6 +151,7 @@ function Signin() {
   };
 
   const handleOAuthGithub = async () => {
+    localStorage.setItem("Oauth","Github")
     await supabase.auth.signInWithOAuth({
       provider: "github",
       options: {

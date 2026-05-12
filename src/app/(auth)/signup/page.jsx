@@ -1,4 +1,4 @@
-'use client'
+"use client"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useCallback, useEffect } from "react";
@@ -100,9 +100,9 @@ const Field = ({ label, id, type = "text", placeholder, value, onChange, error, 
 // ─── Main component ───────────────────────────────────────────────────────────
 function SignUp() {
 
-
   // Oauth
   const handleOAuthGoogle = async () => {
+    localStorage.setItem("Oauth", "Google")
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -112,6 +112,8 @@ function SignUp() {
   };
 
   const handleOAuthGithub = async () => {
+
+    localStorage.setItem("Oauth", "Github")
     await supabase.auth.signInWithOAuth({
       provider: "github",
       options: {

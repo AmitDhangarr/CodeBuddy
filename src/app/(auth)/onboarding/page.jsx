@@ -246,7 +246,7 @@
     };
 
     // ── Submit ───────────────────────────────────────────────────────────────
-
+    
     const handleSubmission = async (formData) => {
       try {
         const res = await fetch("/api/signup", {

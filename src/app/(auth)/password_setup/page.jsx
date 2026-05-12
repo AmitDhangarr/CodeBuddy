@@ -1,8 +1,9 @@
-  'use client'
-import { useState, useCallback,useEffect } from "react";
+"use client"
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
+import { useSignupStore } from "../../../../store/UsesignupStore";
 // ─── Theme constants ─────────────────────────────────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
@@ -55,26 +56,26 @@ const STATIC_CSS = `
 
 const Logo = ({ fill }) => (
   <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill={fill}/>
-    <path fillRule="evenodd" clipRule="evenodd" d="M28.0441 7.60927C28.8868 6.80331 30.2152 6.79965 31.0622 7.58229L31.1425 7.66005L31.4164 7.94729C34.1911 10.9318 35.2251 14.4098 34.9599 17.8065C34.6908 21.2511 33.1012 24.4994 30.8836 27.0664C28.6673 29.6316 25.7084 31.6519 22.51 32.5287C19.2714 33.4164 15.7294 33.1334 12.6547 30.9629C10.0469 29.1218 9.05406 26.1465 8.98661 23.2561C7.52323 22.5384 5.98346 21.6463 4.36789 20.5615L3.941 20.2716L3.85006 20.206C2.93285 19.5053 2.72313 18.2084 3.39161 17.2564C4.06029 16.3043 5.36233 16.046 6.34665 16.6512L6.44134 16.7126L6.83024 16.9771C7.79805 17.6269 8.72153 18.1903 9.59966 18.6767C10.1661 16.6889 11.1047 14.7802 12.3413 13.207C14.1938 10.8501 16.9713 8.96525 20.374 9.24647C23.439 9.49995 25.7036 11.081 26.8725 13.3122C28.0044 15.4728 28.0211 18.0719 27.0319 20.307C26.0234 22.5857 23.976 24.484 21.0309 25.2662C18.9114 25.8291 16.4284 25.7905 13.6267 25.0367V25.0377C12.5115 24.7375 11.3427 24.323 10.1212 23.7846C9.8472 23.6638 9.60873 23.8483 10.1212 24.1686C11.5636 25.1924 13.5956 26.0505 14.1836 26.3385C14.4615 26.788 14.8061 27.1568 15.2011 27.4356C17.0188 28.7188 19.1451 28.9539 21.3396 28.3523C23.5743 27.7397 25.8141 26.2625 27.5514 24.2516C29.2873 22.2423 30.4065 19.8348 30.5909 17.4727C30.765 15.2439 30.1218 12.9543 28.1842 10.8736L27.9927 10.6731L27.9162 10.5906C27.1538 9.72748 27.2018 8.41516 28.0441 7.60927ZM20.0092 13.5651C18.6033 13.4489 17.1196 14.189 15.8013 15.8662C14.7973 17.1436 14.0376 18.8033 13.6503 20.5112C16.4093 21.4544 18.4655 21.4608 19.8942 21.0814C21.5481 20.6422 22.5399 19.6477 23.0172 18.5693C23.5137 17.4472 23.4628 16.2245 22.9813 15.3055C22.5369 14.4571 21.6422 13.7002 20.0092 13.5651Z" fill="#ffffff"/>
+    <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill={fill} />
+    <path fillRule="evenodd" clipRule="evenodd" d="M28.0441 7.60927C28.8868 6.80331 30.2152 6.79965 31.0622 7.58229L31.1425 7.66005L31.4164 7.94729C34.1911 10.9318 35.2251 14.4098 34.9599 17.8065C34.6908 21.2511 33.1012 24.4994 30.8836 27.0664C28.6673 29.6316 25.7084 31.6519 22.51 32.5287C19.2714 33.4164 15.7294 33.1334 12.6547 30.9629C10.0469 29.1218 9.05406 26.1465 8.98661 23.2561C7.52323 22.5384 5.98346 21.6463 4.36789 20.5615L3.941 20.2716L3.85006 20.206C2.93285 19.5053 2.72313 18.2084 3.39161 17.2564C4.06029 16.3043 5.36233 16.046 6.34665 16.6512L6.44134 16.7126L6.83024 16.9771C7.79805 17.6269 8.72153 18.1903 9.59966 18.6767C10.1661 16.6889 11.1047 14.7802 12.3413 13.207C14.1938 10.8501 16.9713 8.96525 20.374 9.24647C23.439 9.49995 25.7036 11.081 26.8725 13.3122C28.0044 15.4728 28.0211 18.0719 27.0319 20.307C26.0234 22.5857 23.976 24.484 21.0309 25.2662C18.9114 25.8291 16.4284 25.7905 13.6267 25.0367V25.0377C12.5115 24.7375 11.3427 24.323 10.1212 23.7846C9.8472 23.6638 9.60873 23.8483 10.1212 24.1686C11.5636 25.1924 13.5956 26.0505 14.1836 26.3385C14.4615 26.788 14.8061 27.1568 15.2011 27.4356C17.0188 28.7188 19.1451 28.9539 21.3396 28.3523C23.5743 27.7397 25.8141 26.2625 27.5514 24.2516C29.2873 22.2423 30.4065 19.8348 30.5909 17.4727C30.765 15.2439 30.1218 12.9543 28.1842 10.8736L27.9927 10.6731L27.9162 10.5906C27.1538 9.72748 27.2018 8.41516 28.0441 7.60927ZM20.0092 13.5651C18.6033 13.4489 17.1196 14.189 15.8013 15.8662C14.7973 17.1436 14.0376 18.8033 13.6503 20.5112C16.4093 21.4544 18.4655 21.4608 19.8942 21.0814C21.5481 20.6422 22.5399 19.6477 23.0172 18.5693C23.5137 17.4472 23.4628 16.2245 22.9813 15.3055C22.5369 14.4571 21.6422 13.7002 20.0092 13.5651Z" fill="#ffffff" />
   </svg>
 );
 
 // ─── Password strength engine ─────────────────────────────────────────────────
 const checks = [
-  { id: "len",    label: "At least 8 characters",         test: p => p.length >= 8 },
-  { id: "upper",  label: "Uppercase letter",               test: p => /[A-Z]/.test(p) },
-  { id: "lower",  label: "Lowercase letter",               test: p => /[a-z]/.test(p) },
-  { id: "digit",  label: "Number",                         test: p => /\d/.test(p) },
-  { id: "symbol", label: "Special character (!@#$…)",      test: p => /[^A-Za-z0-9]/.test(p) },
+  { id: "len", label: "At least 8 characters", test: p => p.length >= 8 },
+  { id: "upper", label: "Uppercase letter", test: p => /[A-Z]/.test(p) },
+  { id: "lower", label: "Lowercase letter", test: p => /[a-z]/.test(p) },
+  { id: "digit", label: "Number", test: p => /\d/.test(p) },
+  { id: "symbol", label: "Special character (!@#$…)", test: p => /[^A-Za-z0-9]/.test(p) },
 ];
 
 const strengthMeta = [
-  { label: "Too weak",  color: "#ef4444" },
-  { label: "Weak",      color: "#f97316" },
-  { label: "Fair",      color: "#eab308" },
-  { label: "Good",      color: "#22c55e" },
-  { label: "Strong",    color: "#a855f7" },
+  { label: "Too weak", color: "#ef4444" },
+  { label: "Weak", color: "#f97316" },
+  { label: "Fair", color: "#eab308" },
+  { label: "Good", color: "#22c55e" },
+  { label: "Strong", color: "#a855f7" },
 ];
 
 function getStrength(p) {
@@ -107,46 +108,47 @@ function suggestPassword() {
 // ─── EyeIcon toggle ───────────────────────────────────────────────────────────
 const EyeIcon = ({ open, color }) => open ? (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
   </svg>
 ) : (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" />
   </svg>
 );
 
 const CheckIcon = ({ done, color }) => done ? (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 ) : (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="9"/>
+    <circle cx="12" cy="12" r="9" />
   </svg>
 );
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PasswordSetup() {
 
-   const [email, setemail] = useState();
-   // getuser
-   const handleUser = async () => {
-    const { data, error } = await supabase.auth.getUser();
-  
-    if (error) {
-     console.error(error);
-     return;
+  const [email, setemail] = useState();
+  const updateForm = useSignupStore((state) => state.updateForm);
+
+  const GetUser = async () => {
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      setemail(data.user.email);
+      if (error) {
+        console.error(error);
+      }
+    } catch (error) {
+      console.log(error);
     }
-  
-    console.log(data.user);
-   };
-  
-   useEffect(() => {
-    handleUser();
-   }, [])
-  
-   console.log(email);
-   
+
+  }
+
+  useEffect(() => {
+    GetUser();
+  }, [email])
+
   const router = useRouter();
   const [dark, setDark] = useState(true);
   const [password, setPassword] = useState("");
@@ -172,7 +174,7 @@ export default function PasswordSetup() {
 
   const handleCopy = useCallback(async () => {
     if (!password) return;
-    await navigator.clipboard.writeText(password).catch(() => {});
+    await navigator.clipboard.writeText(password).catch(() => { });
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   }, [password]);
@@ -185,15 +187,25 @@ export default function PasswordSetup() {
     setErrors(e);
     if (Object.keys(e).length) return;
     setSubmitting(true);
+    updateForm({
+      email:email,
+      password:password,
+    });
+  
     setTimeout(() => {
       setSubmitting(false);
       setSaved(true);
-      setTimeout(() => router.push("/dashboard"), 1200);
+      setTimeout(() => router.push("/onboarding"), 1200);
     }, 1100);
   };
 
-  // ── OAuth provider badge (mocked from session/query) ──────────────────────
-  const provider = "Google"; // in real app: read from useSearchParams or session
+const [provider, setProvider] = useState(null);
+
+useEffect(() => {
+  const p = localStorage.getItem("Oauth");
+  localStorage.removeItem("Oauth");
+  setProvider(p);
+}, []);
 
   return (
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -222,7 +234,7 @@ export default function PasswordSetup() {
           {/* Provider context chip */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: 22 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${T.border}`, borderRadius: 99, padding: "5px 13px 5px 8px", fontSize: 12, color: T.text2 }}>
-              <span style={{ fontSize: 15 }}>{provider === "Google" ? "🔵" : "⚫"}</span>
+              <span style={{ fontSize: 15 }}>{provider === "Google" ? <i class="fa-brands fa-google"></i> : <i class="fa-brands fa-github"></i>}</span>
               <span>Signed in via <strong style={{ color: T.text }}>{provider}</strong></span>
             </div>
           </div>
@@ -255,15 +267,15 @@ export default function PasswordSetup() {
                   type={showPass ? "text" : "password"}
                   placeholder="Choose a password…"
                   value={password}
-                  onChange={e => { setPassword(e.target.value); setErrors(p => { const n={...p}; delete n.password; return n; }); }}
+                  onChange={e => { setPassword(e.target.value); setErrors(p => { const n = { ...p }; delete n.password; return n; }); }}
                   style={{ paddingRight: 80, background: T.input, borderColor: errors.password ? "rgba(248,113,113,0.5)" : T.inputBorder, color: T.text, letterSpacing: showPass ? "normal" : password ? "0.08em" : "normal" }}
                 />
                 <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 4 }}>
                   {password && (
                     <button className="copy-btn" onClick={handleCopy} title={copied ? "Copied!" : "Copy password"}>
                       {copied
-                        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                       }
                     </button>
                   )}
@@ -279,7 +291,7 @@ export default function PasswordSetup() {
               {password && (
                 <div className="slide-in" style={{ marginTop: 10 }}>
                   <div style={{ display: "flex", gap: 4, marginBottom: 5 }}>
-                    {[1,2,3,4,5].map(i => (
+                    {[1, 2, 3, 4, 5].map(i => (
                       <div key={i} className="strength-bar" style={{ flex: 1, background: i <= strength ? meta.color : (dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)") }} />
                     ))}
                   </div>
@@ -312,7 +324,7 @@ export default function PasswordSetup() {
                   type={showConfirm ? "text" : "password"}
                   placeholder="Repeat your password…"
                   value={confirm}
-                  onChange={e => { setConfirm(e.target.value); setErrors(p => { const n={...p}; delete n.confirm; return n; }); }}
+                  onChange={e => { setConfirm(e.target.value); setErrors(p => { const n = { ...p }; delete n.confirm; return n; }); }}
                   style={{ paddingRight: 44, background: T.input, borderColor: errors.confirm ? "rgba(248,113,113,0.5)" : (confirm && confirm === password) ? "rgba(34,197,94,0.45)" : T.inputBorder, color: T.text, letterSpacing: showConfirm ? "normal" : confirm ? "0.08em" : "normal" }}
                 />
                 <button className="copy-btn" onClick={() => setShowConfirm(p => !p)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)" }}>
@@ -321,8 +333,8 @@ export default function PasswordSetup() {
               </div>
               {errors.confirm && <div style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>⚠ {errors.confirm}</div>}
               {confirm && confirm === password && !errors.confirm && (
-                <div style={{ fontSize: 11, color: "#22c55e", marginTop: 4, display:"flex", alignItems:"center", gap:5 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <div style={{ fontSize: 11, color: "#22c55e", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                   Passwords match
                 </div>
               )}
@@ -344,7 +356,7 @@ export default function PasswordSetup() {
               disabled={submitting || saved}
             >
               {saved
-                ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Saved! Redirecting…</>
+                ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg> Saved! Redirecting…</>
                 : submitting
                   ? <><span className="spin">⌛</span> Saving…</>
                   : "Save password →"
