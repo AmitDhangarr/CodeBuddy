@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useSignupStore } from "../../../../store/UsesignupStore";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -25,7 +25,6 @@ const LIGHT = {
   logoFill: "#7c3aed",
 };
 
-// ─── Static CSS (no theme values — those go inline via style prop) ────────────
 const STATIC_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -34,20 +33,39 @@ const STATIC_CSS = `
   ::-webkit-scrollbar-thumb{border-radius:99px}
   input,textarea,select{font-family:'Instrument Sans',sans-serif}
   textarea{resize:none}
+
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Slide transitions for tab content */
+  @keyframes slideInFromRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes slideInFromLeft{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+
+  .slide-in-right{animation:slideInFromRight 0.28s cubic-bezier(0.16,1,0.3,1) both}
+  .slide-in-left{animation:slideInFromLeft 0.28s cubic-bezier(0.16,1,0.3,1) both}
+
   .fade-up{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
   .spin{animation:spin 0.9s linear infinite;display:inline-block}
+
   .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:11px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:-0.1px;box-shadow:0 6px 24px rgba(124,58,237,0.3)}
   .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.45)}
   .btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
   .btn-icon{background:transparent;border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
   .social-btn{padding:10px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:9px;flex:1}
   .card-flat{border-radius:18px}
+
   .auth-input{border-radius:11px;font-size:14px;outline:none;transition:border-color 0.2s,background 0.2s;width:100%;font-family:'Instrument Sans',sans-serif;padding:10px 14px;border-width:1px;border-style:solid}
   .auth-input:focus{border-color:rgba(124,58,237,0.6) !important}
   .auth-input::placeholder{opacity:0.5}
+
+  /* Eye toggle button */
+  .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:opacity 0.15s;opacity:0.45}
+  .eye-btn:hover{opacity:0.9}
+
+  /* Tab indicator slide */
+  .tab-indicator{position:absolute;top:4px;bottom:4px;border-radius:10px;transition:left 0.25s cubic-bezier(0.16,1,0.3,1),width 0.25s cubic-bezier(0.16,1,0.3,1)}
+
   @media (max-width:768px){
     .social-btn{font-size:12px;padding:9px}
     .btn-primary{font-size:12px;padding:9px 16px}
@@ -58,7 +76,20 @@ const STATIC_CSS = `
   }
 `;
 
-// ─── Static sub-components ────────────────────────────────────────────────────
+// ─── Eye icon SVG ─────────────────────────────────────────────────────────────
+const EyeIcon = ({ open, color }) => open ? (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+) : (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+);
+
+// ─── Logo ─────────────────────────────────────────────────────────────────────
 const Logo = ({ fill }) => (
   <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill={fill} />
@@ -69,7 +100,8 @@ const Logo = ({ fill }) => (
 const ErrMsg = ({ msg }) =>
   msg ? <div style={{ fontSize: 11, color: "#f87171", marginTop: 5 }}>⚠ {msg}</div> : null;
 
-const Field = ({ label, id, type = "text", placeholder, value, onChange, error, hint, prefix, T }) => (
+// ─── Field with optional eye toggle ──────────────────────────────────────────
+const Field = ({ label, id, type = "text", placeholder, value, onChange, error, hint, prefix, T, showToggle, showPassword, onTogglePassword }) => (
   <div style={{ marginBottom: 18 }}>
     <label htmlFor={id} style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>{label}</label>
     <div style={{ position: "relative" }}>
@@ -79,18 +111,30 @@ const Field = ({ label, id, type = "text", placeholder, value, onChange, error, 
       <input
         className="auth-input"
         id={id}
-        type={type}
+        type={showToggle ? (showPassword ? "text" : "password") : type}
         placeholder={placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}
         autoComplete={type === "password" ? "new-password" : type === "email" ? "email" : "off"}
         style={{
           paddingLeft: prefix ? "28px" : "14px",
+          paddingRight: showToggle ? "38px" : "14px",
           background: T.input,
           borderColor: error ? "rgba(248,113,113,0.5)" : T.inputBorder,
           color: T.text,
         }}
       />
+      {showToggle && (
+        <button
+          type="button"
+          className="eye-btn"
+          onClick={onTogglePassword}
+          tabIndex={-1}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+        >
+          <EyeIcon open={showPassword} color={T.text} />
+        </button>
+      )}
     </div>
     <ErrMsg msg={error} />
     {hint && !error && <div style={{ fontSize: 11, color: T.text3, marginTop: 4 }}>{hint}</div>}
@@ -99,38 +143,17 @@ const Field = ({ label, id, type = "text", placeholder, value, onChange, error, 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 function SignUp() {
-
-  // Oauth
-  const handleOAuthGoogle = async () => {
-    localStorage.setItem("Oauth", "Google")
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/password_setup`,
-      },
-    });
-  };
-
-  const handleOAuthGithub = async () => {
-
-    localStorage.setItem("Oauth", "Github")
-    await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        redirectTo: `${window.location.origin}/password_setup`,
-      },
-    });
-  };
-
-
   const router = useRouter();
   const updateForm = useSignupStore(state => state.updateForm);
 
   const [dark, setDark] = useState(true);
   const [authTab, setAuthTab] = useState("signup");
+  const [slideDir, setSlideDir] = useState(null);
   const [formData, setFormData] = useState({ email: "", password: "", confirm: "" });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const T = dark ? DARK : LIGHT;
 
@@ -156,16 +179,46 @@ function SignUp() {
     setTimeout(() => setSubmitting(false), 1000);
   };
 
+  // ── Tab switch with smooth slide ──────────────────────────────────────────
+  const switchTab = (t) => {
+    if (t === authTab) return;
+    setSlideDir(t === "signin" ? "left" : "right");
+    setAuthTab(t);
+    setErrors({});
+    setShowPassword(false);
+    setShowConfirm(false);
+    setTimeout(() => setSlideDir(null), 300);
+  };
 
-  const HandleTabChange = () => {
-    if (authTab === "signup") {
-      router.push("/signup");
-    }
-    if (authTab === "signin") {
-      router.push("/signin");
-    }
-  }
+  const handleTabMouseLeave = (t) => {
+    if (t === "signup") router.push("/signup");
+    if (t === "signin") router.push("/signin");
+  };
 
+  const handleOAuthGoogle = async () => {
+    localStorage.setItem("Oauth", "Google");
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/password_setup` },
+    });
+  };
+
+  const handleOAuthGithub = async () => {
+    localStorage.setItem("Oauth", "Github");
+    await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: { redirectTo: `${window.location.origin}/password_setup` },
+    });
+  };
+
+  const tabIndicatorStyle = {
+    left: authTab === "signin" ? "4px" : "calc(50% + 2px)",
+    width: "calc(50% - 6px)",
+    background: dark ? "rgba(255,255,255,0.07)" : "#ffffff",
+    boxShadow: dark ? "none" : "0 1px 4px rgba(0,0,0,0.08)",
+  };
+
+  const slideClass = slideDir === "right" ? "slide-in-right" : slideDir === "left" ? "slide-in-left" : "";
 
   return (
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -205,14 +258,22 @@ function SignUp() {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "clamp(20px,5vw,40px) 20px", position: "relative", zIndex: 1 }}>
         <div className="fade-up" style={{ width: "100%", maxWidth: 420 }}>
 
-          {/* Tabs */}
-          <div style={{ display: "flex", background: T.bg3, borderRadius: 13, padding: 4, marginBottom: 28, border: `1px solid ${T.border}` }}>
+          {/* Tabs — with sliding indicator */}
+          <div style={{ position: "relative", display: "flex", background: T.bg3, borderRadius: 13, padding: 4, marginBottom: 28, border: `1px solid ${T.border}` }}>
+            <div className="tab-indicator" style={tabIndicatorStyle} />
             {["signin", "signup"].map(t => (
               <button
                 key={t}
-                onClick={() => { setAuthTab(t); setErrors({}); }}
-                onMouseLeave={HandleTabChange}
-                style={{ flex: 1, padding: "9px", borderRadius: 10, border: "none", fontFamily: "inherit", fontSize: "clamp(12px,3vw,13px)", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", background: authTab === t ? (dark ? "rgba(255,255,255,0.07)" : T.bg2) : "transparent", color: authTab === t ? T.text : T.text3 }}
+                onClick={() => switchTab(t)}
+                onMouseLeave={() => handleTabMouseLeave(t)}
+                style={{
+                  flex: 1, padding: "9px", borderRadius: 10, border: "none",
+                  fontFamily: "inherit", fontSize: "clamp(12px,3vw,13px)", fontWeight: 600,
+                  cursor: "pointer", transition: "color 0.2s",
+                  background: "transparent",
+                  color: authTab === t ? T.text : T.text3,
+                  position: "relative", zIndex: 1,
+                }}
               >
                 {t === "signin" ? "Sign In" : "Sign Up"}
               </button>
@@ -220,64 +281,86 @@ function SignUp() {
           </div>
 
           {/* Card */}
-          <div className="card-flat" style={{ padding: 28, background: T.card, border: `1px solid ${T.border}` }}>
-            <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,24px)", color: T.text, marginBottom: 6 }}>
-              {authTab === "signin" ? "Welcome back" : "Create your account"}
-            </h2>
-            <p style={{ fontSize: "clamp(11px,3vw,12px)", color: T.text3, marginBottom: 22 }}>
-              {authTab === "signin" ? "Sign in to continue to CodeBuddy" : "Join 3,200+ builders on CodeBuddy — free forever"}
-            </p>
+          <div className="card-flat" style={{ padding: 28, background: T.card, border: `1px solid ${T.border}`, overflow: "hidden" }}>
+            <div key={authTab} className={slideClass}>
+              <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,24px)", color: T.text, marginBottom: 6 }}>
+                {authTab === "signin" ? "Welcome back" : "Create your account"}
+              </h2>
+              <p style={{ fontSize: "clamp(11px,3vw,12px)", color: T.text3, marginBottom: 22 }}>
+                {authTab === "signin" ? "Sign in to continue to CodeBuddy" : "Join 3,200+ builders on CodeBuddy — free forever"}
+              </p>
 
-            {/* Social buttons */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-              <button className="social-btn" onClick={handleOAuthGithub} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
-                <span><i class="fa-brands fa-github"></i></span>
-                <span>GitHub</span>
-              </button>
-              <button className="social-btn" onClick={handleOAuthGoogle} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
-                <span><i class="fa-brands fa-google"></i></span>
-                <span>Google</span>
+              {/* Social buttons */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                <button className="social-btn" onClick={handleOAuthGithub} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
+                  <span><i className="fa-brands fa-github"></i></span>
+                  <span>GitHub</span>
+                </button>
+                <button className="social-btn" onClick={handleOAuthGoogle} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
+                  <span><i className="fa-brands fa-google"></i></span>
+                  <span>Google</span>
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
+                <div style={{ flex: 1, height: 1, background: T.border }} />
+                <span style={{ fontSize: 11, color: T.text3, whiteSpace: "nowrap" }}>or with email</span>
+                <div style={{ flex: 1, height: 1, background: T.border }} />
+              </div>
+
+              <Field
+                label="Email" id="email" type="email" placeholder="you@example.com"
+                value={formData.email} onChange={v => upd("email", v)} error={errors.email} T={T}
+              />
+              <Field
+                label="Password" id="password" type="password" placeholder="••••••••"
+                value={formData.password} onChange={v => upd("password", v)}
+                error={errors.password} hint={authTab === "signup" ? "Min 8 characters" : undefined}
+                T={T}
+                showToggle={true}
+                showPassword={showPassword}
+                onTogglePassword={() => setShowPassword(p => !p)}
+              />
+              {authTab === "signup" && (
+                <Field
+                  label="Confirm Password" id="confirm" type="password" placeholder="Repeat password"
+                  value={formData.confirm} onChange={v => upd("confirm", v)} error={errors.confirm}
+                  T={T}
+                  showToggle={true}
+                  showPassword={showConfirm}
+                  onTogglePassword={() => setShowConfirm(p => !p)}
+                />
+              )}
+
+              {authTab === "signin" && (
+                <div style={{ textAlign: "right", marginTop: -10, marginBottom: 16 }}>
+                  <button style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 12, fontFamily: "inherit" }}>
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              {authTab === "signup" && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: "clamp(11px,3vw,12px)", color: T.text2 }}>
+                    <input type="checkbox" style={{ marginTop: 2, accentColor: "#7c3aed" }} />
+                    <span>I agree to the <span style={{ color: "#a78bfa" }}>Terms</span> and <span style={{ color: "#a78bfa" }}>Privacy Policy</span></span>
+                  </label>
+                </div>
+              )}
+
+              <button className="btn-primary" style={{ width: "100%", padding: 12 }} onClick={handleAuth} disabled={submitting}>
+                {submitting ? <span className="spin">⌛</span> : authTab === "signin" ? "Sign in →" : "Create account →"}
               </button>
             </div>
-
-            {/* Divider */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
-              <div style={{ flex: 1, height: 1, background: T.border }} />
-              <span style={{ fontSize: 11, color: T.text3, whiteSpace: "nowrap" }}>or with email</span>
-              <div style={{ flex: 1, height: 1, background: T.border }} />
-            </div>
-
-            <Field label="Email" id="email" type="email" placeholder="you@example.com" value={formData.email} onChange={v => upd("email", v)} error={errors.email} T={T} />
-            <Field label="Password" id="password" type="password" placeholder="••••••••" value={formData.password} onChange={v => upd("password", v)} error={errors.password} hint={authTab === "signup" ? "Min 8 characters" : undefined} T={T} />
-            {authTab === "signup" && (
-              <Field label="Confirm Password" id="confirm" type="password" placeholder="Repeat password" value={formData.confirm} onChange={v => upd("confirm", v)} error={errors.confirm} T={T} />
-            )}
-
-            {authTab === "signin" && (
-              <div style={{ textAlign: "right", marginTop: -10, marginBottom: 16 }}>
-                <button style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 12, fontFamily: "inherit" }}>Forgot password?</button>
-              </div>
-            )}
-
-            {authTab === "signup" && (
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: "clamp(11px,3vw,12px)", color: T.text2 }}>
-                  <input type="checkbox" style={{ marginTop: 2, accentColor: "#7c3aed" }} />
-                  <span>I agree to the <span style={{ color: "#a78bfa" }}>Terms</span> and <span style={{ color: "#a78bfa" }}>Privacy Policy</span></span>
-                </label>
-              </div>
-            )}
-
-            <button className="btn-primary" style={{ width: "100%", padding: 12 }} onClick={handleAuth} disabled={submitting}>
-              {submitting ? <span className="spin">⌛</span> : authTab === "signin" ? "Sign in →" : "Create account →"}
-            </button>
           </div>
 
           <div style={{ textAlign: "center", marginTop: 16, fontSize: "clamp(11px,3vw,12px)", color: T.text3 }}>
             {authTab === "signin" ? "Don't have an account?" : "Already have one?"}
             {" "}
             <button
-              onClick={() => { setAuthTab(authTab === "signin" ? "signup" : "signin"); setErrors({}); }}
+              onClick={() => switchTab(authTab === "signin" ? "signup" : "signin")}
               style={{ background: "none", border: "none", color: "#a78bfa", cursor: "pointer", fontFamily: "inherit", fontSize: "clamp(11px,3vw,12px)", fontWeight: 600 }}
             >
               {authTab === "signin" ? "Sign up free" : "Sign in"}

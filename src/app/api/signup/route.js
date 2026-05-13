@@ -18,6 +18,31 @@ export async function POST(request) {
       skillsNeed,
     } = body;
 
+    // Check if user already exists by email or handle
+    const { data: existingUser, error: fetchError } = await supabase
+      .from("profiles")
+      .select("id, email, handle")
+      .or(`email.eq.${email},handle.eq.${handle}`)
+      .maybeSingle();
+
+    if (fetchError) {
+      return NextResponse.json(
+        { success: false, error: fetchError.message },
+        { status: 400 }
+      );
+    }
+
+    if (existingUser) {
+      const conflictField = existingUser.email === email ? "email" : "handle";
+      return NextResponse.json(
+        {
+          success: false,
+          error: `User already exists with this ${conflictField}.`,
+        },
+        { status: 409 }
+      );
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const { data, error } = await supabase
@@ -36,6 +61,14 @@ export async function POST(request) {
       .select();
 
     if (error) {
+      // Fallback: catch DB-level unique constraint violations
+      if (error.code === "23505") {
+        return NextResponse.json(
+          { success: false, error: "User already exists." },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 400 }

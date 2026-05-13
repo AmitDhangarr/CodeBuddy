@@ -1,11 +1,9 @@
 "use client"
-import { useState, useCallback, useRef, useEffect, use } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
-import { useSignupStore } from "../../../../store/UsesignupStore";
-import { useSiginStore } from "../../../../store/usesigninstore";
-// ─── Theme constants ─────────────────────────────────────────────────────────
+// ─── Theme constants ───────────────────────────────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
   border: "rgba(255,255,255,0.07)", border2: "rgba(255,255,255,0.12)",
@@ -16,6 +14,9 @@ const DARK = {
   logoFill: "#00DC33",
   otpBg: "rgba(255,255,255,0.05)",
 };
+
+
+
 const LIGHT = {
   bg: "#f5f5f9", bg2: "#ffffff", bg3: "#eeeef5",
   border: "rgba(0,0,0,0.08)", border2: "rgba(0,0,0,0.15)",
@@ -38,7 +39,6 @@ const STATIC_CSS = `
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
   @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes countdown{from{stroke-dashoffset:0}to{stroke-dashoffset:100}}
   .fade-up{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
   .fade-in{animation:fadeIn 0.3s ease both}
   .slide-down{animation:slideDown 0.3s cubic-bezier(0.16,1,0.3,1) both}
@@ -56,8 +56,9 @@ const STATIC_CSS = `
   .auth-input::placeholder{opacity:0.5}
   .otp-box{border-radius:11px;font-size:22px;font-weight:700;text-align:center;outline:none;width:48px;height:54px;border-width:1.5px;border-style:solid;transition:border-color 0.2s,transform 0.15s;font-family:'Instrument Sans',sans-serif;caret-color:#a855f7}
   .otp-box:focus{border-color:rgba(124,58,237,0.7) !important;transform:scale(1.06)}
-  .tab-pill{border:none;border-radius:9px;padding:8px 16px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s}
   @media(max-width:480px){.otp-box{width:40px;height:48px;font-size:18px}}
+  .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:opacity 0.15s;opacity:0.45}
+  .eye-btn:hover{opacity:0.9}
 `;
 
 const Logo = ({ fill }) => (
@@ -73,11 +74,13 @@ const EyeIcon = ({ open, color }) => open ? (
   </svg>
 ) : (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" />
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+    <line x1="1" y1="1" x2="23" y2="23" />
   </svg>
 );
 
-// ─── OTP Box array ────────────────────────────────────────────────────────────
+// ─── OTP ─────────────────────────────────────────────────────────────────────
 const OTP_LEN = 6;
 
 function OtpInput({ otp, setOtp, inputRefs, T }) {
@@ -88,21 +91,14 @@ function OtpInput({ otp, setOtp, inputRefs, T }) {
     setOtp(next);
     if (d && i < OTP_LEN - 1) inputRefs.current[i + 1]?.focus();
   };
-
   const handleKeyDown = (i, e) => {
     if (e.key === "Backspace") {
-      if (otp[i]) {
-        const next = [...otp];
-        next[i] = "";
-        setOtp(next);
-      } else if (i > 0) {
-        inputRefs.current[i - 1]?.focus();
-      }
+      if (otp[i]) { const next = [...otp]; next[i] = ""; setOtp(next); }
+      else if (i > 0) inputRefs.current[i - 1]?.focus();
     }
     if (e.key === "ArrowLeft" && i > 0) inputRefs.current[i - 1]?.focus();
     if (e.key === "ArrowRight" && i < OTP_LEN - 1) inputRefs.current[i + 1]?.focus();
   };
-
   const handlePaste = (e) => {
     e.preventDefault();
     const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LEN);
@@ -110,83 +106,62 @@ function OtpInput({ otp, setOtp, inputRefs, T }) {
     const next = [...otp];
     text.split("").forEach((ch, i) => { next[i] = ch; });
     setOtp(next);
-    const focusIdx = Math.min(text.length, OTP_LEN - 1);
-    inputRefs.current[focusIdx]?.focus();
+    inputRefs.current[Math.min(text.length, OTP_LEN - 1)]?.focus();
   };
-
   return (
     <div style={{ display: "flex", gap: "clamp(6px,2vw,10px)", justifyContent: "center" }}>
       {otp.map((digit, i) => (
-        <input
-          key={i}
-          ref={el => inputRefs.current[i] = el}
-          className="otp-box"
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={digit}
+        <input key={i} ref={el => inputRefs.current[i] = el} className="otp-box" type="text"
+          inputMode="numeric" maxLength={1} value={digit}
           onChange={e => handleChange(i, e.target.value)}
           onKeyDown={e => handleKeyDown(i, e)}
           onPaste={i === 0 ? handlePaste : undefined}
-          style={{
-            background: T.otpBg,
-            borderColor: digit ? "rgba(124,58,237,0.55)" : T.inputBorder,
-            color: T.text,
-          }}
+          style={{ background: T.otpBg, borderColor: digit ? "rgba(124,58,237,0.55)" : T.inputBorder, color: T.text }}
         />
       ))}
     </div>
   );
 }
 
-// ─── Countdown ring ───────────────────────────────────────────────────────────
 function CountdownRing({ seconds, total, color }) {
-  const r = 14;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - seconds / total);
+  const r = 14, circ = 2 * Math.PI * r;
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" style={{ transform: "rotate(-90deg)" }}>
       <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(124,58,237,0.12)" strokeWidth="2.5" />
       <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="2.5"
-        strokeDasharray={circ} strokeDashoffset={offset}
+        strokeDasharray={circ} strokeDashoffset={circ * (1 - seconds / total)}
         strokeLinecap="round" style={{ transition: "stroke-dashoffset 1s linear" }} />
       <text x="18" y="18" textAnchor="middle" dominantBaseline="central"
         fill={color} fontSize="10" fontWeight="700" fontFamily="'Instrument Sans',sans-serif"
-        style={{ transform: "rotate(90deg)", transformOrigin: "18px 18px" }}>
-        {seconds}
-      </text>
+        style={{ transform: "rotate(90deg)", transformOrigin: "18px 18px" }}>{seconds}</text>
     </svg>
   );
 }
 
-
-
-const VIEWS = ["verify", "forgot", "otp", "reset", "success"];
-
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PasswordVerify() {
-
-  const [email, setemail] = useState();
-
-  // getuser
-  const handleUser = async () => {
-    const { data, error } = await supabase.auth.getUser();
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-    setemail(data.user.email);
-  };
-
-  useEffect(() => {
-    handleUser();
-  }, [])
-
-
-
   const router = useRouter();
   const [dark, setDark] = useState(true);
   const [view, setView] = useState("verify");
+
+  // User email from Supabase session
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (!error && data?.user?.email) setEmail(data.user.email);
+    });
+  }, []);
+
+  // Provider
+  const [provider, setProvider] = useState(null);
+  useEffect(() => {
+    const p = localStorage.getItem("Oauth");
+    localStorage.removeItem("Oauth");
+    setProvider(p);
+  }, []);
+
+  // Verify view state
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
@@ -194,7 +169,7 @@ export default function PasswordVerify() {
   const [shaking, setShaking] = useState(false);
 
   // Forgot flow
-  const [forgotMethod, setForgotMethod] = useState(null); // "email" | "otp"
+  const [forgotMethod, setForgotMethod] = useState(null);
   const [resetEmail, setResetEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
 
@@ -214,28 +189,20 @@ export default function PasswordVerify() {
   const [resetError, setResetError] = useState({});
 
   const T = dark ? DARK : LIGHT;
+  const maskedEmail = email ? email.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + "*".repeat(b.length) + c) : "u*****@gmail.com";
 
-  // Provider (mock — in real app from session)
-const [provider, setProvider] = useState(null);
-
-useEffect(() => {
-  const p = localStorage.getItem("Oauth");
-  localStorage.removeItem("Oauth");
-  setProvider(p);
-}, []);
-  const maskedEmail = "u*****@gmail.com";
+  const triggerShake = () => {
+    setShaking(true);
+    setTimeout(() => setShaking(false), 450);
+  };
 
   // OTP countdown
   useEffect(() => {
     if (view !== "otp") return;
-    setCountdown(59);
-    setCanResend(false);
+    setCountdown(59); setCanResend(false);
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      setCountdown(p => {
-        if (p <= 1) { clearInterval(timerRef.current); setCanResend(true); return 0; }
-        return p - 1;
-      });
+      setCountdown(p => { if (p <= 1) { clearInterval(timerRef.current); setCanResend(true); return 0; } return p - 1; });
     }, 1000);
     return () => clearInterval(timerRef.current);
   }, [view]);
@@ -244,59 +211,76 @@ useEffect(() => {
     if (view === "otp") setTimeout(() => otpRefs.current[0]?.focus(), 200);
   }, [view]);
 
-  const triggerShake = () => {
-    setShaking(true);
-    setTimeout(() => setShaking(false), 450);
+  // ── API call — returns { success, message? } from response body ────────────
+  const callAuthApi = async (payload) => {
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      return data; // { success: true } or { success: false, message: "..." }
+    } catch (err) {
+      console.error("Auth error:", err);
+      return { success: false, message: "Network error. Please check your connection." };
+    }
   };
 
-  // ── Verify password ───────────────────────────────────────────────────────
-  const handleVerify = () => {
+  // ── Verify password — fully bound to API response ─────────────────────────
+  const handleVerify = async () => {
     if (!password) { setError("Please enter your password"); triggerShake(); return; }
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      // mock: wrong if < 6 chars
-      if (password.length < 6) { setError("Incorrect password. Try again."); triggerShake(); return; }
+    setError("");
+
+    const result = await callAuthApi({ email, password });
+
+    setSubmitting(false);
+
+    if (result?.success === true) {
+      // ✅ API said success → go to dashboard
       router.push("/dashboard");
-    }, 900);
+    } else {
+      // ❌ API said failure → show inline error, stay on page
+      const msg = result?.message || "Incorrect password. Try again.";
+      if (/invalid.*(login|credentials|password)/i.test(msg) || /wrong/i.test(msg)) {
+        setError("Incorrect password. Try again.");
+      } else {
+        setError(msg);
+      }
+      triggerShake();
+    }
   };
 
   // ── Send reset email ──────────────────────────────────────────────────────
   const handleSendEmail = () => {
-    if (!resetEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { return; }
+    if (!resetEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return;
     setSubmitting(true);
     setTimeout(() => { setSubmitting(false); setEmailSent(true); }, 900);
   };
 
-  // ── Send OTP ──────────────────────────────────────────────────────────────
+  // ── OTP ───────────────────────────────────────────────────────────────────
   const handleSendOtp = () => {
     setSubmitting(true);
     setTimeout(() => { setSubmitting(false); setView("otp"); }, 800);
   };
 
   const handleResendOtp = () => {
-    setOtp(Array(OTP_LEN).fill(""));
-    setOtpError("");
-    setCountdown(59);
-    setCanResend(false);
+    setOtp(Array(OTP_LEN).fill("")); setOtpError("");
+    setCountdown(59); setCanResend(false);
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      setCountdown(p => {
-        if (p <= 1) { clearInterval(timerRef.current); setCanResend(true); return 0; }
-        return p - 1;
-      });
+      setCountdown(p => { if (p <= 1) { clearInterval(timerRef.current); setCanResend(true); return 0; } return p - 1; });
     }, 1000);
     setTimeout(() => otpRefs.current[0]?.focus(), 100);
   };
 
-  // ── Verify OTP ────────────────────────────────────────────────────────────
   const handleVerifyOtp = () => {
     const code = otp.join("");
     if (code.length < OTP_LEN) { setOtpError("Enter all 6 digits"); return; }
     setSubmitting(true);
     setTimeout(() => {
       setSubmitting(false);
-      // mock: 123456 = valid
       if (code !== "123456") { setOtpError("Incorrect code. Try again."); triggerShake(); return; }
       setView("reset");
     }, 900);
@@ -313,7 +297,7 @@ useEffect(() => {
     setTimeout(() => { setSubmitting(false); setView("success"); }, 1000);
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─── Helpers ──────────────────────────────────────────────────────────────
   const card = (children) => (
     <div style={{ borderRadius: 18, padding: "28px 28px 24px", background: T.card, border: `1px solid ${T.border}` }}>
       {children}
@@ -330,18 +314,21 @@ useEffect(() => {
   const errMsg = (msg) => msg ? <div style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>⚠ {msg}</div> : null;
 
   const backBtn = (to, label = "← Back") => (
-    <button className="btn-ghost" onClick={() => { setView(to); setError(""); setOtpError(""); setForgotMethod(null); setEmailSent(false); }}
+    <button className="btn-ghost"
+      onClick={() => { setView(to); setError(""); setOtpError(""); setForgotMethod(null); setEmailSent(false); }}
       style={{ color: T.text3, fontSize: 12, marginTop: 14, display: "block", margin: "14px auto 0" }}>
       {label}
     </button>
   );
 
-  // ─── VIEWS ────────────────────────────────────────────────────────────────
+
+
+  // ─── Views ────────────────────────────────────────────────────────────────
   const renderVerify = () => card(
+    
     <>
-      {/* Provider chip */}
       <div style={{ display: "flex", alignItems: "center", gap: 7, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${T.border}`, borderRadius: 99, padding: "5px 13px 5px 8px", fontSize: 12, color: T.text2, width: "fit-content", marginBottom: 18 }}>
-        <span style={{ fontSize: 15 }}>{provider === "Google" ? <i class="fa-brands fa-google"></i> : <i class="fa-brands fa-github"></i>}</span>
+        <span style={{ fontSize: 15 }}>{provider === "Google" ? "G" : "⌥"}</span>
         <span>Signed in via <strong style={{ color: T.text }}>{provider}</strong></span>
       </div>
 
@@ -360,9 +347,8 @@ useEffect(() => {
             style={{ paddingRight: 44, background: T.input, borderColor: error ? "rgba(248,113,113,0.5)" : T.inputBorder, color: T.text }}
             autoFocus
           />
-          <button className="btn-icon" onClick={() => setShowPass(p => !p)}
-            style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 28, height: 28 }}>
-            <EyeIcon open={showPass} color={T.text3} />
+          <button className="eye-btn" onClick={() => setShowPass(p => !p)} tabIndex={-1} aria-label={showPass ? "Hide" : "Show"}>
+            <EyeIcon open={showPass} color={T.text} />
           </button>
         </div>
         {errMsg(error)}
@@ -373,12 +359,10 @@ useEffect(() => {
       </button>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, flexWrap: "wrap", gap: 8 }}>
-        <button className="btn-ghost" onClick={() => setView("forgot")} style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>
+        <button className="btn-ghost" onClick={() => router.push("/forgot_password")} style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>
           Forgot password?
         </button>
-        <button className="btn-ghost" onClick={() => { setForgotMethod("otp"); setView("forgot"); }} style={{ color: T.text3, fontSize: 12 }}>
-          Use OTP instead
-        </button>
+      
       </div>
     </>
   );
@@ -386,10 +370,8 @@ useEffect(() => {
   const renderForgot = () => card(
     <>
       {heading("Recover your account", "How would you like to verify your identity?")}
-
       {!forgotMethod ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* Method: email link */}
           <button className="method-btn" onClick={() => setForgotMethod("email")}
             style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", border: `1px solid ${T.border}`, color: T.text }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>📧</div>
@@ -399,9 +381,7 @@ useEffect(() => {
             </div>
             <svg style={{ marginLeft: "auto", flexShrink: 0 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
-
-          {/* Method: OTP */}
-          <button className="method-btn" onClick={() => { setForgotMethod("otp"); }}
+          <button className="method-btn" onClick={() => setForgotMethod("otp")}
             style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", border: `1px solid ${T.border}`, color: T.text }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🔢</div>
             <div>
@@ -426,15 +406,9 @@ useEffect(() => {
             <>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>Your email address</label>
-                <input
-                  className="auth-input"
-                  type="email"
-                  placeholder={maskedEmail}
-                  value={resetEmail}
+                <input className="auth-input" type="email" placeholder={maskedEmail} value={resetEmail}
                   onChange={e => setResetEmail(e.target.value)}
-                  style={{ background: T.input, borderColor: T.inputBorder, color: T.text }}
-                  autoFocus
-                />
+                  style={{ background: T.input, borderColor: T.inputBorder, color: T.text }} autoFocus />
               </div>
               <button className="btn-primary" style={{ width: "100%", padding: 13 }} onClick={handleSendEmail} disabled={submitting}>
                 {submitting ? <span className="spin">⌛</span> : "Send reset link →"}
@@ -446,7 +420,6 @@ useEffect(() => {
           </button>
         </div>
       ) : (
-        /* OTP option */
         <div className="slide-down">
           <div style={{ background: dark ? "rgba(124,58,237,0.07)" : "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.18)", borderRadius: 11, padding: "12px 14px", marginBottom: 18, fontSize: 12, color: T.text2, lineHeight: 1.6 }}>
             We'll send a 6-digit code to <strong style={{ color: T.text }}>{maskedEmail}</strong>
@@ -459,7 +432,6 @@ useEffect(() => {
           </button>
         </div>
       )}
-
       {backBtn("verify")}
     </>
   );
@@ -467,24 +439,18 @@ useEffect(() => {
   const renderOtp = () => card(
     <>
       {heading("Enter your code", `We sent a 6-digit code to ${maskedEmail}. It expires in 10 minutes.`)}
-
       <div style={{ marginBottom: 20 }}>
         <div className={shaking ? "shake" : ""}>
           <OtpInput otp={otp} setOtp={v => { setOtp(v); setOtpError(""); }} inputRefs={otpRefs} T={T} />
         </div>
         {otpError && <div style={{ textAlign: "center", fontSize: 11, color: "#f87171", marginTop: 10 }}>⚠ {otpError}</div>}
       </div>
-
       <button className="btn-primary" style={{ width: "100%", padding: 13 }} onClick={handleVerifyOtp} disabled={submitting || otp.join("").length < OTP_LEN}>
         {submitting ? <span className="spin">⌛</span> : "Verify code →"}
       </button>
-
-      {/* Resend */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 18 }}>
         {canResend ? (
-          <button className="btn-ghost" onClick={handleResendOtp} style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>
-            Resend code
-          </button>
+          <button className="btn-ghost" onClick={handleResendOtp} style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>Resend code</button>
         ) : (
           <>
             <CountdownRing seconds={countdown} total={59} color="#a855f7" />
@@ -492,11 +458,6 @@ useEffect(() => {
           </>
         )}
       </div>
-
-      <div style={{ textAlign: "center", marginTop: 4, fontSize: 11, color: T.text3 }}>
-        Hint: use <code style={{ color: "#a78bfa", background: "rgba(124,58,237,0.1)", padding: "1px 5px", borderRadius: 4 }}>123456</code> to demo
-      </div>
-
       {backBtn("forgot")}
     </>
   );
@@ -504,29 +465,23 @@ useEffect(() => {
   const renderReset = () => card(
     <>
       {heading("Set a new password", "Choose something strong — you won't be asked for it immediately after.")}
-
       <div style={{ marginBottom: 14 }}>
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>New password</label>
         <div style={{ position: "relative" }}>
           <input className="auth-input" type={showNew ? "text" : "password"} placeholder="New password…" value={newPass}
             onChange={e => { setNewPass(e.target.value); setResetError(p => { const n = { ...p }; delete n.pass; return n; }); }}
             style={{ paddingRight: 44, background: T.input, borderColor: resetError.pass ? "rgba(248,113,113,0.5)" : T.inputBorder, color: T.text }} autoFocus />
-          <button className="btn-icon" onClick={() => setShowNew(p => !p)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 28, height: 28 }}>
-            <EyeIcon open={showNew} color={T.text3} />
-          </button>
+          <button className="eye-btn" onClick={() => setShowNew(p => !p)} tabIndex={-1}><EyeIcon open={showNew} color={T.text} /></button>
         </div>
         {errMsg(resetError.pass)}
       </div>
-
       <div style={{ marginBottom: 20 }}>
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>Confirm new password</label>
         <div style={{ position: "relative" }}>
           <input className="auth-input" type={showNewC ? "text" : "password"} placeholder="Repeat…" value={newConfirm}
             onChange={e => { setNewConfirm(e.target.value); setResetError(p => { const n = { ...p }; delete n.confirm; return n; }); }}
             style={{ paddingRight: 44, background: T.input, borderColor: resetError.confirm ? "rgba(248,113,113,0.5)" : (newConfirm && newConfirm === newPass ? "rgba(34,197,94,0.45)" : T.inputBorder), color: T.text }} />
-          <button className="btn-icon" onClick={() => setShowNewC(p => !p)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 28, height: 28 }}>
-            <EyeIcon open={showNewC} color={T.text3} />
-          </button>
+          <button className="eye-btn" onClick={() => setShowNewC(p => !p)} tabIndex={-1}><EyeIcon open={showNewC} color={T.text} /></button>
         </div>
         {errMsg(resetError.confirm)}
         {newConfirm && newConfirm === newPass && !resetError.confirm && (
@@ -536,7 +491,6 @@ useEffect(() => {
           </div>
         )}
       </div>
-
       <button className="btn-primary" style={{ width: "100%", padding: 13 }} onClick={handleReset} disabled={submitting}>
         {submitting ? <span className="spin">⌛</span> : "Update password →"}
       </button>
@@ -555,10 +509,6 @@ useEffect(() => {
   );
 
   const viewMap = { verify: renderVerify, forgot: renderForgot, otp: renderOtp, reset: renderReset, success: renderSuccess };
-
-  // Progress dots
-  const steps = ["verify", "forgot", "otp", "reset", "success"];
-  const stepIdx = steps.indexOf(view);
 
   return (
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>

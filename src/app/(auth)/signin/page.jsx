@@ -1,5 +1,5 @@
 "use client"
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -30,7 +30,6 @@ const LIGHT = {
   logoFill: "#7c3aed",
 };
 
-// ─── Static CSS (no theme-dependent values — those go on elements via style prop) ─
 const STATIC_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -39,12 +38,24 @@ const STATIC_CSS = `
   ::-webkit-scrollbar-thumb{border-radius:99px}
   input,textarea,select{font-family:'Instrument Sans',sans-serif}
   textarea{resize:none}
+
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Slide transitions for tab content */
+  @keyframes slideInFromRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes slideInFromLeft{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes slideOutToRight{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(24px)}}
+  @keyframes slideOutToLeft{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(-24px)}}
+
+  .slide-in-right{animation:slideInFromRight 0.28s cubic-bezier(0.16,1,0.3,1) both}
+  .slide-in-left{animation:slideInFromLeft 0.28s cubic-bezier(0.16,1,0.3,1) both}
+
   .fade-up{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
   .fade-in{animation:fadeIn 0.3s ease both}
   .spin{animation:spin 0.9s linear infinite;display:inline-block}
+
   .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:11px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:-0.1px;box-shadow:0 6px 24px rgba(124,58,237,0.3)}
   .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.45)}
   .btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
@@ -52,9 +63,26 @@ const STATIC_CSS = `
   .social-btn{padding:10px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:9px;flex:1}
   .divider{height:1px;margin:18px 0}
   .card-flat{border-radius:18px}
+
   .auth-input{border-radius:11px;font-size:14px;outline:none;transition:border-color 0.2s,background 0.2s;width:100%;font-family:'Instrument Sans',sans-serif;padding:10px 14px;border-width:1px;border-style:solid}
   .auth-input:focus{border-color:rgba(124,58,237,0.6) !important}
   .auth-input::placeholder{opacity:0.5}
+
+  /* Eye toggle button */
+  .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:opacity 0.15s;opacity:0.45}
+  .eye-btn:hover{opacity:0.9}
+
+  /* Shake animation for wrong password */
+  @keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-6px)}30%{transform:translateX(6px)}45%{transform:translateX(-5px)}60%{transform:translateX(5px)}75%{transform:translateX(-3px)}90%{transform:translateX(3px)}}
+  .shake{animation:shake 0.45s cubic-bezier(0.36,0.07,0.19,0.97) both}
+
+  /* Global auth error banner */
+  @keyframes errBannerIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+  .auth-err-banner{animation:errBannerIn 0.2s ease both;border-radius:10px;padding:10px 14px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;margin-bottom:14px;border-width:1px;border-style:solid}
+
+  /* Tab indicator slide */
+  .tab-indicator{position:absolute;top:4px;bottom:4px;border-radius:10px;transition:left 0.25s cubic-bezier(0.16,1,0.3,1),width 0.25s cubic-bezier(0.16,1,0.3,1)}
+
   @media (max-width:768px){
     .social-btn{font-size:12px;padding:9px}
     .btn-primary{font-size:12px;padding:9px 16px}
@@ -65,7 +93,20 @@ const STATIC_CSS = `
   }
 `;
 
-// ─── Static sub-components (defined outside — never re-created) ───────────────
+// ─── Eye icon SVG ─────────────────────────────────────────────────────────────
+const EyeIcon = ({ open, color }) => open ? (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+) : (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+);
+
+// ─── Logo ─────────────────────────────────────────────────────────────────────
 const Logo = ({ fill }) => (
   <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill={fill} />
@@ -76,8 +117,8 @@ const Logo = ({ fill }) => (
 const ErrMsg = ({ msg }) =>
   msg ? <div style={{ fontSize: 11, color: "#f87171", marginTop: 5 }}>⚠ {msg}</div> : null;
 
-// Field is stable because it receives T as a prop — not closed over inside render
-const Field = ({ label, id, type = "text", placeholder, value, onChange, error, hint, prefix, T }) => (
+// ─── Field with password eye toggle ──────────────────────────────────────────
+const Field = ({ label, id, type = "text", placeholder, value, onChange, error, hint, prefix, T, showToggle, showPassword, onTogglePassword }) => (
   <div style={{ marginBottom: 18 }}>
     <label htmlFor={id} style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>{label}</label>
     <div style={{ position: "relative" }}>
@@ -87,18 +128,30 @@ const Field = ({ label, id, type = "text", placeholder, value, onChange, error, 
       <input
         className="auth-input"
         id={id}
-        type={type}
+        type={showToggle ? (showPassword ? "text" : "password") : type}
         placeholder={placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}
         autoComplete={type === "password" ? "current-password" : type === "email" ? "email" : "off"}
         style={{
           paddingLeft: prefix ? "28px" : "14px",
+          paddingRight: showToggle ? "38px" : "14px",
           background: T.input,
           borderColor: error ? "rgba(248,113,113,0.5)" : T.inputBorder,
           color: T.text,
         }}
       />
+      {showToggle && (
+        <button
+          type="button"
+          className="eye-btn"
+          onClick={onTogglePassword}
+          tabIndex={-1}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+        >
+          <EyeIcon open={showPassword} color={T.text} />
+        </button>
+      )}
     </div>
     <ErrMsg msg={error} />
     {hint && !error && <div style={{ fontSize: 11, color: T.text3, marginTop: 4 }}>{hint}</div>}
@@ -110,17 +163,69 @@ function Signin() {
   const router = useRouter();
   const [dark, setDark] = useState(true);
   const [authTab, setAuthTab] = useState("signin");
+  const [slideDir, setSlideDir] = useState(null); // "left" | "right" | null
   const [formData, setFormData] = useState({ email: "", password: "", confirm: "" });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [authError, setAuthError] = useState(null); // global auth error (wrong password, etc.)
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [cardShake, setCardShake] = useState(false);
 
+  const cardRef = useRef(null);
   const T = dark ? DARK : LIGHT;
 
   const upd = useCallback((k, v) => {
     setFormData(p => ({ ...p, [k]: v }));
-    // Clear error for this field on change
     setErrors(p => { const n = { ...p }; delete n[k]; return n; });
+    // Clear global auth error when user starts typing
+    setAuthError(null);
   }, []);
+
+  const triggerShake = () => {
+    setCardShake(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setCardShake(true));
+    });
+    setTimeout(() => setCardShake(false), 500);
+  };
+
+  // ── Tab switch with smooth slide ──────────────────────────────────────────
+  const switchTab = (t) => {
+    if (t === authTab) return;
+    // Switching to signup → content slides left (new content comes from right)
+    // Switching to signin → content slides right (new content comes from left)
+    setSlideDir(t === "signup" ? "right" : "left");
+    setAuthTab(t);
+    setErrors({});
+    setAuthError(null);
+    setShowPassword(false);
+    setShowConfirm(false);
+    setTimeout(() => setSlideDir(null), 300);
+  };
+
+  const handleTabMouseLeave = (t) => {
+    // Route change on tab hover-leave (original behaviour)
+    if (t === "signup") router.push("/signup");
+    if (t === "signin") router.push("/signin");
+  };
+
+  // ── Auth submission ───────────────────────────────────────────────────────
+  const handleSubmission = async (formData) => {
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      // Drive everything from the response body, not res.ok
+      return data; // expects { success: true } or { success: false, message: "..." }
+    } catch (err) {
+      console.error("Auth error:", err);
+      return { success: false, message: "Network error. Please check your connection." };
+    }
+  };
 
   const validateAuth = () => {
     const e = {};
@@ -131,48 +236,67 @@ function Signin() {
     return Object.keys(e).length === 0;
   };
 
-  const handleAuth = () => {
+  const handleAuth = async () => {
     if (!validateAuth()) return;
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      router.push("/dashboard");
-    }, 1000);
+    setAuthError(null);
+
+    const result = await handleSubmission(formData);
+
+    // ✅ response body says success: true → redirect to dashboard
+    if (result?.success === true) {
+      setTimeout(() => {
+        setSubmitting(false);
+        router.push("/dashboard");
+      }, 800);
+      return;
+    }
+
+    // ❌ response body says success: false → show error, stay on page
+    setSubmitting(false);
+    const msg = result?.message || "Something went wrong. Please try again.";
+
+    if (/invalid.*(login|credentials|password|email)/i.test(msg) || /wrong.*password/i.test(msg)) {
+      setErrors(p => ({ ...p, password: "Incorrect password" }));
+    } else if (/user.*not.*found|no.*account|email.*not.*exist/i.test(msg)) {
+      setErrors(p => ({ ...p, email: "No account found with this email" }));
+    } else if (/email.*not.*confirmed/i.test(msg)) {
+      setAuthError("Please confirm your email before signing in.");
+    } else {
+      setAuthError(msg);
+    }
+
+    triggerShake();
   };
 
   const handleOAuthGoogle = async () => {
-    localStorage.setItem("Oauth","Google")
+    localStorage.setItem("Oauth", "Google");
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/password_verification`,
-      },
+      options: { redirectTo: `${window.location.origin}/password_verification` },
     });
   };
 
   const handleOAuthGithub = async () => {
-    localStorage.setItem("Oauth","Github")
+    localStorage.setItem("Oauth", "Github");
     await supabase.auth.signInWithOAuth({
       provider: "github",
-      options: {
-        redirectTo: `${window.location.origin}/password_verification`,
-      },
+      options: { redirectTo: `${window.location.origin}/password_verification` },
     });
   };
 
+  // Tab indicator position: signin=left half, signup=right half
+  const tabIndicatorStyle = {
+    left: authTab === "signin" ? "4px" : "calc(50% + 2px)",
+    width: "calc(50% - 6px)",
+    background: dark ? "rgba(255,255,255,0.07)" : "#ffffff",
+    boxShadow: dark ? "none" : "0 1px 4px rgba(0,0,0,0.08)",
+  };
 
-  // route change on tab change
-  const HandleTabChange = () => {
-    if (authTab === "signup") {
-      router.push("/signup");
-    }
-    if (authTab === "signin") {
-      router.push("/signin");
-    }
-  }
+  const slideClass = slideDir === "right" ? "slide-in-right" : slideDir === "left" ? "slide-in-left" : "";
+
   return (
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Static CSS injected once — never changes */}
       <style>{STATIC_CSS}</style>
 
       {/* Background glow */}
@@ -209,14 +333,23 @@ function Signin() {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "clamp(20px,5vw,40px) 20px", position: "relative", zIndex: 1 }}>
         <div className="fade-up" style={{ width: "100%", maxWidth: 420 }}>
 
-          {/* Tabs */}
-          <div style={{ display: "flex", background: T.bg3, borderRadius: 13, padding: 4, marginBottom: 28, border: `1px solid ${T.border}` }}>
+          {/* Tabs — with sliding indicator */}
+          <div style={{ position: "relative", display: "flex", background: T.bg3, borderRadius: 13, padding: 4, marginBottom: 28, border: `1px solid ${T.border}` }}>
+            {/* Animated indicator */}
+            <div className="tab-indicator" style={tabIndicatorStyle} />
             {["signin", "signup"].map(t => (
               <button
                 key={t}
-                onClick={() => { setAuthTab(t); setErrors({}); }}
-                onMouseLeave={HandleTabChange}
-                style={{ flex: 1, padding: "9px", borderRadius: 10, border: "none", fontFamily: "inherit", fontSize: "clamp(12px,3vw,13px)", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", background: authTab === t ? (dark ? "rgba(255,255,255,0.07)" : T.bg2) : "transparent", color: authTab === t ? T.text : T.text3 }}
+                onClick={() => switchTab(t)}
+                onMouseLeave={() => handleTabMouseLeave(t)}
+                style={{
+                  flex: 1, padding: "9px", borderRadius: 10, border: "none",
+                  fontFamily: "inherit", fontSize: "clamp(12px,3vw,13px)", fontWeight: 600,
+                  cursor: "pointer", transition: "color 0.2s",
+                  background: "transparent",
+                  color: authTab === t ? T.text : T.text3,
+                  position: "relative", zIndex: 1,
+                }}
               >
                 {t === "signin" ? "Sign In" : "Sign Up"}
               </button>
@@ -224,65 +357,110 @@ function Signin() {
           </div>
 
           {/* Card */}
-          <div className="card-flat" style={{ padding: 28, background: T.card, border: `1px solid ${T.border}` }}>
-            <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,24px)", color: T.text, marginBottom: 6 }}>
-              {authTab === "signin" ? "Welcome back" : "Create your account"}
-            </h2>
-            <p style={{ fontSize: "clamp(11px,3vw,12px)", color: T.text3, marginBottom: 22 }}>
-              {authTab === "signin" ? "Sign in to continue to CodeBuddy" : "Join 3,200+ builders on CodeBuddy — free forever"}
-            </p>
+          <div
+            ref={cardRef}
+            className={`card-flat ${cardShake ? "shake" : ""}`}
+            style={{ padding: 28, background: T.card, border: `1px solid ${T.border}`, overflow: "hidden" }}
+          >
+            {/* Sliding content wrapper */}
+            <div key={authTab} className={slideClass} style={{ overflow: "hidden" }}>
+              <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,24px)", color: T.text, marginBottom: 6 }}>
+                {authTab === "signin" ? "Welcome back" : "Create your account"}
+              </h2>
+              <p style={{ fontSize: "clamp(11px,3vw,12px)", color: T.text3, marginBottom: 22 }}>
+                {authTab === "signin" ? "Sign in to continue to CodeBuddy" : "Join 3,200+ builders on CodeBuddy — free forever"}
+              </p>
 
-            {/* Social buttons */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-              <button className="social-btn" onClick={handleOAuthGithub} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
-                <span><i class="fa-brands fa-github"></i></span>
-                <span>GitHub</span>
-              </button>
-              <button className="social-btn" onClick={handleOAuthGoogle} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
-                <span><i class="fa-brands fa-google"></i></span>
-                <span>Google</span>
+              {/* Social buttons */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                <button className="social-btn" onClick={handleOAuthGithub} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
+                  <span><i className="fa-brands fa-github"></i></span>
+                  <span>GitHub</span>
+                </button>
+                <button className="social-btn" onClick={handleOAuthGoogle} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
+                  <span><i className="fa-brands fa-google"></i></span>
+                  <span>Google</span>
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
+                <div style={{ flex: 1, height: 1, background: T.border }} />
+                <span style={{ fontSize: 11, color: T.text3, whiteSpace: "nowrap" }}>or with email</span>
+                <div style={{ flex: 1, height: 1, background: T.border }} />
+              </div>
+
+              {/* Global auth error banner */}
+              {authError && (
+                <div
+                  className="auth-err-banner"
+                  style={{
+                    background: "rgba(248,113,113,0.08)",
+                    borderColor: "rgba(248,113,113,0.25)",
+                    color: "#f87171",
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  {authError}
+                </div>
+              )}
+
+              {/* Fields */}
+              <Field
+                label="Email" id="email" type="email" placeholder="you@example.com"
+                value={formData.email} onChange={v => upd("email", v)} error={errors.email} T={T}
+              />
+              <Field
+                label="Password" id="password" type="password" placeholder="••••••••"
+                value={formData.password} onChange={v => upd("password", v)}
+                error={errors.password && errors.password.trim() ? errors.password : undefined}
+                hint={authTab === "signup" ? "Min 8 characters" : undefined}
+                T={T}
+                showToggle={true}
+                showPassword={showPassword}
+                onTogglePassword={() => setShowPassword(p => !p)}
+              />
+              {authTab === "signup" && (
+                <Field
+                  label="Confirm Password" id="confirm" type="password" placeholder="Repeat password"
+                  value={formData.confirm} onChange={v => upd("confirm", v)} error={errors.confirm}
+                  T={T}
+                  showToggle={true}
+                  showPassword={showConfirm}
+                  onTogglePassword={() => setShowConfirm(p => !p)}
+                />
+              )}
+
+              {authTab === "signin" && (
+                <div style={{ textAlign: "right", marginTop: -10, marginBottom: 16 }}>
+                  <button onClick={()=> router.push("/forgot_password")} style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 12, fontFamily: "inherit" }}>
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              {authTab === "signup" && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: "clamp(11px,3vw,12px)", color: T.text2 }}>
+                    <input type="checkbox" style={{ marginTop: 2, accentColor: "#7c3aed" }} />
+                    <span>I agree to the <span style={{ color: "#a78bfa" }}>Terms</span> and <span style={{ color: "#a78bfa" }}>Privacy Policy</span></span>
+                  </label>
+                </div>
+              )}
+
+              <button className="btn-primary" style={{ width: "100%", padding: 12 }} onClick={handleAuth} disabled={submitting}>
+                {submitting ? <span className="spin">⌛</span> : authTab === "signin" ? "Sign in →" : "Create account →"}
               </button>
             </div>
-
-            {/* Divider */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0" }}>
-              <div style={{ flex: 1, height: 1, background: T.border }} />
-              <span style={{ fontSize: 11, color: T.text3, whiteSpace: "nowrap" }}>or with email</span>
-              <div style={{ flex: 1, height: 1, background: T.border }} />
-            </div>
-
-            {/* Fields — pass T as prop so Field stays stable */}
-            <Field label="Email" id="email" type="email" placeholder="you@example.com" value={formData.email} onChange={v => upd("email", v)} error={errors.email} T={T} />
-            <Field label="Password" id="password" type="password" placeholder="••••••••" value={formData.password} onChange={v => upd("password", v)} error={errors.password} hint={authTab === "signup" ? "Min 8 characters" : undefined} T={T} />
-            {authTab === "signup" && (
-              <Field label="Confirm Password" id="confirm" type="password" placeholder="Repeat password" value={formData.confirm} onChange={v => upd("confirm", v)} error={errors.confirm} T={T} />
-            )}
-
-            {authTab === "signin" && (
-              <div style={{ textAlign: "right", marginTop: -10, marginBottom: 16 }}>
-                <button style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 12, fontFamily: "inherit" }}>Forgot password?</button>
-              </div>
-            )}
-
-            {authTab === "signup" && (
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: "clamp(11px,3vw,12px)", color: T.text2 }}>
-                  <input type="checkbox" style={{ marginTop: 2, accentColor: "#7c3aed" }} />
-                  <span>I agree to the <span style={{ color: "#a78bfa" }}>Terms</span> and <span style={{ color: "#a78bfa" }}>Privacy Policy</span></span>
-                </label>
-              </div>
-            )}
-
-            <button className="btn-primary" style={{ width: "100%", padding: 12 }} onClick={handleAuth} disabled={submitting}>
-              {submitting ? <span className="spin">⌛</span> : authTab === "signin" ? "Sign in →" : "Create account →"}
-            </button>
           </div>
 
           <div style={{ textAlign: "center", marginTop: 16, fontSize: "clamp(11px,3vw,12px)", color: T.text3 }}>
             {authTab === "signin" ? "Don't have an account?" : "Already have one?"}
             {" "}
             <button
-              onClick={() => { setAuthTab(authTab === "signin" ? "signup" : "signin"); setErrors({}); }}
+              onClick={() => switchTab(authTab === "signin" ? "signup" : "signin")}
               style={{ background: "none", border: "none", color: "#a78bfa", cursor: "pointer", fontFamily: "inherit", fontSize: "clamp(11px,3vw,12px)", fontWeight: 600 }}
             >
               {authTab === "signin" ? "Sign up free" : "Sign in"}
