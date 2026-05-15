@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "../../../lib/supabaseClient.js";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const DARK = {
@@ -30,7 +31,6 @@ const CSS = `
   @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
   .fade-up{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
   .slide-down{animation:slideDown 0.3s cubic-bezier(0.16,1,0.3,1) both}
   .shake{animation:shake 0.4s ease}
@@ -48,13 +48,11 @@ const CSS = `
   .otp-box:focus{border-color:rgba(124,58,237,0.7)!important;transform:scale(1.06);box-shadow:0 0 0 3px rgba(124,58,237,0.12)}
   .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;border-radius:6px;transition:opacity 0.15s;opacity:0.45}
   .eye-btn:hover{opacity:0.9}
-  .option-card{border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:14px;width:100%;text-align:left;font-family:inherit;border-width:1.5px;border-style:solid}
-  .option-card:hover{transform:translateY(-2px)}
   .step-dot{width:8px;height:8px;border-radius:50%;transition:all 0.3s}
   @media(max-width:480px){.otp-box{width:40px;height:48px;font-size:18px}}
 `;
 
-const OTP_LEN = 6;
+const OTP_LEN = 8;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const EyeIcon = ({ open, color }) =>
@@ -122,9 +120,9 @@ function CountdownRing({ seconds, total }) {
 }
 
 // ─── Step indicator ───────────────────────────────────────────────────────────
-const STEPS = ["Email", "OTP", "Choose", "Done"];
+const STEPS = ["Email", "OTP", "Reset", "Done"];
 function StepBar({ current, T }) {
-  const idx = { email: 0, otp: 1, choose: 2, "new-password": 2, "reveal-password": 2, success: 3 }[current] ?? 0;
+  const idx = { email: 0, otp: 1, "new-password": 2, success: 3 }[current] ?? 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 26 }}>
       {STEPS.map((label, i) => (
@@ -146,22 +144,28 @@ function StepBar({ current, T }) {
   );
 }
 
+// ─── Validators ───────────────────────────────────────────────────────────────
+const validateEmail = (email) => {
+  if (!email.trim()) return "Email is required";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Enter a valid email address";
+  return "";
+};
+
+const validatePassword = (password) => {
+  if (!password) return "Password is required";
+  if (password.length < 8) return "Password must be at least 8 characters";
+  if (!/[A-Z]/.test(password)) return "Must contain at least one uppercase letter";
+  if (!/[0-9]/.test(password)) return "Must contain at least one number";
+  return "";
+};
+
 // ─── Main Component ────────────────────────────────────────────────────────────
-/**
- * ForgotPasswordFlow
- *
- * Props:
- *  - onBackToSignIn: () => void  — called when the user wants to go back to sign-in
- *  - dark: boolean               — initial theme (optional, default true)
- *  - initialEmail: string        — pre-fill email (optional)
- */
 export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = true, initialEmail = "" }) {
   const router = useRouter();
   const [dark, setDark] = useState(darkProp);
   const T = dark ? DARK : LIGHT;
 
-  // ── State machine ──────────────────────────────────────────────────────────
-  // views: "email" → "otp" → "choose" → "new-password" | "reveal-password" → "success"
+  // views: "email" → "otp" → "new-password" → "success"
   const [view, setView] = useState("email");
 
   // Email step
@@ -183,13 +187,10 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
   const [showConfirm, setShowConfirm] = useState(false);
   const [passErrors, setPassErrors] = useState({});
 
-  // Reveal old password step
-  const [revealedPassword, setRevealedPassword] = useState(null);
-  const [showRevealed, setShowRevealed] = useState(false);
-
   // Shared
   const [submitting, setSubmitting] = useState(false);
   const [shaking, setShaking] = useState(false);
+  const [apiError, setApiError] = useState(""); // global api error banner
 
   const triggerShake = () => { setShaking(true); setTimeout(() => setShaking(false), 450); };
 
@@ -213,56 +214,97 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
   }, [view]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleSendOtp = async () => {
-    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { setEmailError("Enter a valid email address"); triggerShake(); return; }
-    setEmailError(""); setSubmitting(true);
-    // TODO: call your API to send OTP to email
-    await new Promise(r => setTimeout(r, 900));
-    setSubmitting(false);
-    setView("otp");
-  };
 
-  const handleResendOtp = () => {
-    setOtp(Array(OTP_LEN).fill("")); setOtpError("");
+  // 1. Send OTP
+  async function handleSendOtp() {
+    const err = validateEmail(email);
+    if (err) { setEmailError(err); triggerShake(); return; }
+    setEmailError(""); setApiError(""); setSubmitting(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) {
+        // Supabase rate-limits OTP sends
+        setApiError(error.message || "Failed to send code. Please try again.");
+        triggerShake();
+        return;
+      }
+      setView("otp");
+    } catch (e) {
+      setApiError("Network error. Please check your connection.");
+      triggerShake();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // 2. Resend OTP
+  const handleResendOtp = async () => {
+    setOtp(Array(OTP_LEN).fill("")); setOtpError(""); setApiError("");
     setCountdown(59); setCanResend(false);
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setCountdown(p => { if (p <= 1) { clearInterval(timerRef.current); setCanResend(true); return 0; } return p - 1; });
     }, 1000);
     setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    // resend
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) setOtpError("Could not resend. Try again shortly.");
   };
 
+  // 3. Verify OTP
   const handleVerifyOtp = async () => {
     const code = otp.join("");
-    if (code.length < OTP_LEN) { setOtpError("Please enter all 6 digits"); return; }
-    setSubmitting(true);
-    // TODO: verify OTP via API
-    await new Promise(r => setTimeout(r, 900));
-    setSubmitting(false);
-    if (code !== "123456") { setOtpError("Incorrect code. Please try again."); triggerShake(); return; }
-    setView("choose");
+    if (code.length < OTP_LEN) { setOtpError("Please enter all 6 digits"); triggerShake(); return; }
+    setOtpError(""); setApiError(""); setSubmitting(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "email",
+      });
+      if (error) {
+        setOtpError(
+          error.message.includes("expired")
+            ? "Code has expired. Please request a new one."
+            : error.message.includes("invalid")
+            ? "Incorrect code. Double-check and try again."
+            : error.message || "Verification failed. Please try again."
+        );
+        triggerShake();
+        return;
+      }
+      setView("new-password");
+    } catch (e) {
+      setOtpError("Network error. Please check your connection.");
+      triggerShake();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  // 4. Update password
   const handleSetNewPassword = async () => {
-    const e = {};
-    if (newPass.length < 8) e.pass = "Password must be at least 8 characters";
-    if (newPass !== confirmPass) e.confirm = "Passwords don't match";
-    setPassErrors(e);
-    if (Object.keys(e).length) return;
-    setSubmitting(true);
-    // TODO: call your API to update password
-    await new Promise(r => setTimeout(r, 1000));
-    setSubmitting(false);
-    setView("success");
-  };
+    const passErr = validatePassword(newPass);
+    const confirmErr = newPass !== confirmPass ? "Passwords don't match" : "";
+    setPassErrors({ pass: passErr, confirm: confirmErr });
+    if (passErr || confirmErr) { triggerShake(); return; }
 
-  const handleRevealPassword = async () => {
-    setSubmitting(true);
-    // TODO: call your API to retrieve/send old password
-    await new Promise(r => setTimeout(r, 1000));
-    setSubmitting(false);
-    setRevealedPassword("YourOldP@ss123"); // replace with API response
-    setView("reveal-password");
+    setApiError(""); setSubmitting(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPass });
+      if (error) {
+        // Common: "New password should be different from the old password"
+        setApiError(error.message || "Failed to update password. Please try again.");
+        triggerShake();
+        return;
+      }
+      setView("success");
+    } catch (e) {
+      setApiError("Network error. Please check your connection.");
+      triggerShake();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleGoToSignIn = () => {
@@ -282,6 +324,14 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
     <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: T.text2, marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>{text}</label>
   );
 
+  // Global API error banner
+  const apiBanner = apiError ? (
+    <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#f87171", display: "flex", gap: 8, alignItems: "flex-start" }}>
+      <span style={{ flexShrink: 0, marginTop: 1 }}>⚠️</span>
+      <span>{apiError}</span>
+    </div>
+  ) : null;
+
   // ── View renderers ─────────────────────────────────────────────────────────
 
   // 1. Email entry
@@ -293,9 +343,11 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
           Forgot your password?
         </h1>
         <p style={{ fontSize: 13, color: T.text3, lineHeight: 1.7 }}>
-          No worries. Enter your email and we'll send a verification code to confirm it's you.
+          Enter your email and we'll send a verification code to confirm it's you.
         </p>
       </div>
+
+      {apiBanner}
 
       <div style={{ marginBottom: 18 }}>
         {label("Email address")}
@@ -305,7 +357,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={e => { setEmail(e.target.value); setEmailError(""); }}
+            onChange={e => { setEmail(e.target.value); setEmailError(""); setApiError(""); }}
             onKeyDown={e => e.key === "Enter" && handleSendOtp()}
             style={{ background: T.input, borderColor: emailError ? "rgba(248,113,113,0.5)" : T.inputBorder, color: T.text }}
             autoFocus
@@ -336,7 +388,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
           Check your inbox
         </h1>
         <p style={{ fontSize: 12, color: T.text3, lineHeight: 1.7 }}>
-          We sent a 6-digit code to <strong style={{ color: T.text }}>{maskedEmail}</strong>. It expires in 10 minutes.
+          We sent a 8 -digit code to <strong style={{ color: T.text }}>{maskedEmail}</strong>. It expires in 10 minutes.
         </p>
       </div>
 
@@ -369,7 +421,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
       </div>
 
       <div style={{ textAlign: "center", marginTop: 14 }}>
-        <button className="btn-ghost" onClick={() => { setView("email"); setOtp(Array(OTP_LEN).fill("")); setOtpError(""); }}
+        <button className="btn-ghost" onClick={() => { setView("email"); setOtp(Array(OTP_LEN).fill("")); setOtpError(""); setApiError(""); }}
           style={{ fontSize: 12, color: T.text3, display: "inline-flex", alignItems: "center", gap: 5 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           Change email
@@ -378,60 +430,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
     </div>
   );
 
-  // 3. Choose: set new password or recover old
-  const renderChoose = () => (
-    <div className="slide-down">
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 40, marginBottom: 14 }}>✅</div>
-        <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,24px)", color: T.text, marginBottom: 8 }}>
-          Identity confirmed
-        </h1>
-        <p style={{ fontSize: 12, color: T.text3, lineHeight: 1.7 }}>
-          What would you like to do with your account?
-        </p>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* Option A: Set new password */}
-        <button className="option-card" onClick={() => setView("new-password")}
-          style={{ background: dark ? "rgba(124,58,237,0.06)" : "rgba(124,58,237,0.04)", borderColor: "rgba(124,58,237,0.25)", color: T.text }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg,rgba(124,58,237,0.2),rgba(168,85,247,0.2))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-            🔑
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 3 }}>Set a new password</div>
-            <div style={{ fontSize: 11, color: T.text3, lineHeight: 1.5 }}>Choose a fresh, secure password for your account</div>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
-        </button>
-
-        {/* Option B: Recover old password */}
-        <button className="option-card" onClick={handleRevealPassword}
-          style={{ background: dark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.02)", borderColor: T.border2, color: T.text }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-            🕵️
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 3 }}>
-              Recover existing password
-              {submitting && <span className="spin" style={{ marginLeft: 8, fontSize: 12 }}>⌛</span>}
-            </div>
-            <div style={{ fontSize: 11, color: T.text3, lineHeight: 1.5 }}>We'll reveal your current password (if recoverable)</div>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
-        </button>
-      </div>
-
-      <div style={{ textAlign: "center", marginTop: 18 }}>
-        <button className="btn-ghost" onClick={handleGoToSignIn} style={{ fontSize: 12, color: T.text3, display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-          Back to sign in
-        </button>
-      </div>
-    </div>
-  );
-
-  // 4a. Set new password
+  // 3. Set new password
   const renderNewPassword = () => (
     <div className="slide-down">
       <div style={{ marginBottom: 24 }}>
@@ -440,31 +439,33 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
           Set a new password
         </h1>
         <p style={{ fontSize: 12, color: T.text3, lineHeight: 1.7 }}>
-          Choose something strong — at least 8 characters, mix of letters and numbers.
+          Choose something strong — at least 8 characters, with an uppercase letter and a number.
         </p>
       </div>
+
+      {apiBanner}
 
       <div style={{ marginBottom: 16 }}>
         {label("New password")}
         <div style={{ position: "relative" }}>
           <input className="auth-input" type={showNew ? "text" : "password"} placeholder="New password…" value={newPass}
-            onChange={e => { setNewPass(e.target.value); setPassErrors(p => { const n = { ...p }; delete n.pass; return n; }); }}
+            onChange={e => { setNewPass(e.target.value); setPassErrors(p => ({ ...p, pass: "" })); setApiError(""); }}
             style={{ paddingRight: 44, background: T.input, borderColor: passErrors.pass ? "rgba(248,113,113,0.5)" : T.inputBorder, color: T.text }} autoFocus />
           <button className="eye-btn" onClick={() => setShowNew(p => !p)} tabIndex={-1}><EyeIcon open={showNew} color={T.text} /></button>
         </div>
         {errMsg(passErrors.pass)}
-        {newPass && newPass.length >= 8 && !passErrors.pass && (
+        {newPass.length > 0 && (
           <div style={{ marginTop: 8, display: "flex", gap: 4 }}>
-            {["length", "upper", "number"].map((check, i) => {
-              const ok = check === "length" ? newPass.length >= 8 : check === "upper" ? /[A-Z]/.test(newPass) : /[0-9]/.test(newPass);
-              const labels = ["8+ chars", "Uppercase", "Number"];
-              return (
-                <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ height: 3, borderRadius: 99, background: ok ? "#22c55e" : T.border, marginBottom: 4, transition: "background 0.3s" }} />
-                  <span style={{ fontSize: 9, color: ok ? "#22c55e" : T.text3, fontWeight: 600 }}>{labels[i]}</span>
-                </div>
-              );
-            })}
+            {[
+              { check: newPass.length >= 8, label: "8+ chars" },
+              { check: /[A-Z]/.test(newPass), label: "Uppercase" },
+              { check: /[0-9]/.test(newPass), label: "Number" },
+            ].map((item, i) => (
+              <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ height: 3, borderRadius: 99, background: item.check ? "#22c55e" : T.border, marginBottom: 4, transition: "background 0.3s" }} />
+                <span style={{ fontSize: 9, color: item.check ? "#22c55e" : T.text3, fontWeight: 600 }}>{item.label}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -473,7 +474,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
         {label("Confirm new password")}
         <div style={{ position: "relative" }}>
           <input className="auth-input" type={showConfirm ? "text" : "password"} placeholder="Repeat password…" value={confirmPass}
-            onChange={e => { setConfirmPass(e.target.value); setPassErrors(p => { const n = { ...p }; delete n.confirm; return n; }); }}
+            onChange={e => { setConfirmPass(e.target.value); setPassErrors(p => ({ ...p, confirm: "" })); }}
             style={{ paddingRight: 44, background: T.input, borderColor: passErrors.confirm ? "rgba(248,113,113,0.5)" : (confirmPass && confirmPass === newPass ? "rgba(34,197,94,0.45)" : T.inputBorder), color: T.text }} />
           <button className="eye-btn" onClick={() => setShowConfirm(p => !p)} tabIndex={-1}><EyeIcon open={showConfirm} color={T.text} /></button>
         </div>
@@ -486,66 +487,13 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
         )}
       </div>
 
-      <button className="btn-primary" style={{ padding: 13, marginBottom: 10 }} onClick={handleSetNewPassword} disabled={submitting}>
+      <button className="btn-primary" style={{ padding: 13 }} onClick={handleSetNewPassword} disabled={submitting}>
         {submitting ? <span className="spin">⌛</span> : "Update password →"}
       </button>
-      <button className="btn-secondary" style={{ padding: 13 }} onClick={() => setView("choose")}>
-        ← Back to options
-      </button>
     </div>
   );
 
-  // 4b. Reveal old password
-  const renderRevealPassword = () => (
-    <div className="slide-down">
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 40, marginBottom: 14 }}>🕵️</div>
-        <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,24px)", color: T.text, marginBottom: 8 }}>
-          Your existing password
-        </h1>
-        <p style={{ fontSize: 12, color: T.text3, lineHeight: 1.7 }}>
-          Here's your recovered password. We strongly recommend changing it after signing in.
-        </p>
-      </div>
-
-      {/* Password reveal box */}
-      <div style={{ background: dark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.05)", border: "1.5px solid rgba(124,58,237,0.25)", borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 12 }}>Recovered password</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1, fontFamily: "monospace", fontSize: 18, fontWeight: 700, color: T.text, letterSpacing: "0.1em", filter: showRevealed ? "none" : "blur(6px)", transition: "filter 0.3s", userSelect: showRevealed ? "text" : "none" }}>
-            {revealedPassword}
-          </div>
-          <button className="btn-ghost" onClick={() => setShowRevealed(p => !p)}
-            style={{ color: "#a78bfa", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap", padding: "6px 10px", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 8 }}>
-            {showRevealed ? "Hide" : "Reveal"}
-          </button>
-        </div>
-        {showRevealed && (
-          <button className="btn-ghost" onClick={() => navigator.clipboard?.writeText(revealedPassword)}
-            style={{ marginTop: 10, color: T.text3, fontSize: 11, display: "flex", alignItems: "center", gap: 5 }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
-            Copy to clipboard
-          </button>
-        )}
-      </div>
-
-      <div style={{ background: dark ? "rgba(234,179,8,0.06)" : "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 22, fontSize: 11, color: "#ca8a04", lineHeight: 1.6, display: "flex", gap: 8 }}>
-        <span>⚠️</span>
-        <span>For your security, consider setting a new password after signing in. Never share your password with anyone.</span>
-      </div>
-
-      <button className="btn-primary" style={{ padding: 13, marginBottom: 10 }} onClick={handleGoToSignIn}>
-        Go to sign in →
-      </button>
-      <button className="btn-secondary" style={{ padding: 13 }} onClick={() => setView("choose")}>
-        ← Back to options
-      </button>
-    </div>
-  );
-
-  // 5. Success (new password set)
+  // 4. Success
   const renderSuccess = () => (
     <div className="slide-down" style={{ textAlign: "center" }}>
       <div style={{ fontSize: 52, marginBottom: 16 }}>🎉</div>
@@ -555,23 +503,13 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
       <p style={{ fontSize: 12, color: T.text3, lineHeight: 1.7, marginBottom: 28, maxWidth: 300, margin: "0 auto 28px" }}>
         You're all set. Sign in with your new password to access your account.
       </p>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <button className="btn-primary" style={{ padding: 13 }} onClick={handleGoToSignIn}>
-          Go to sign in →
-        </button>
-      </div>
+      <button className="btn-primary" style={{ padding: 13 }} onClick={handleGoToSignIn}>
+        Go to sign in →
+      </button>
     </div>
   );
 
-  const viewMap = {
-    email: renderEmail,
-    otp: renderOtp,
-    choose: renderChoose,
-    "new-password": renderNewPassword,
-    "reveal-password": renderRevealPassword,
-    success: renderSuccess,
-  };
+  const viewMap = { email: renderEmail, otp: renderOtp, "new-password": renderNewPassword, success: renderSuccess };
 
   return (
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -594,11 +532,8 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
       {/* Content */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "clamp(24px,5vw,48px) 20px", position: "relative", zIndex: 1 }}>
         <div className="fade-up" style={{ width: "100%", maxWidth: 420 }}>
-          {/* Card */}
           <div style={{ borderRadius: 20, padding: "28px 28px 26px", background: T.card, border: `1px solid ${T.border}`, boxShadow: dark ? "0 24px 60px rgba(0,0,0,0.4)" : "0 8px 40px rgba(0,0,0,0.08)" }}>
-            {/* Step bar */}
             <StepBar current={view} T={T} />
-            {/* Current view */}
             {viewMap[view]?.()}
           </div>
 
