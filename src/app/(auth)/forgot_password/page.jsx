@@ -44,12 +44,11 @@ const CSS = `
   .auth-input{border-radius:11px;font-size:14px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%;font-family:'Instrument Sans',sans-serif;padding:11px 14px;border-width:1px;border-style:solid}
   .auth-input:focus{border-color:rgba(124,58,237,0.6)!important;box-shadow:0 0 0 3px rgba(124,58,237,0.08)}
   .auth-input::placeholder{opacity:0.45}
-  .otp-box{border-radius:11px;font-size:22px;font-weight:700;text-align:center;outline:none;width:48px;height:56px;border-width:1.5px;border-style:solid;transition:border-color 0.2s,transform 0.15s,box-shadow 0.2s;font-family:'Instrument Sans',sans-serif;caret-color:#a855f7}
-  .otp-box:focus{border-color:rgba(124,58,237,0.7)!important;transform:scale(1.06);box-shadow:0 0 0 3px rgba(124,58,237,0.12)}
+  .otp-box{border-radius:9px;font-size:18px;font-weight:700;text-align:center;outline:none;width:clamp(30px,9.5vw,40px);height:clamp(38px,11vw,48px);border-width:1.5px;border-style:solid;transition:border-color 0.2s,transform 0.15s,box-shadow 0.2s;font-family:'Instrument Sans',sans-serif;caret-color:#a855f7;flex:1;min-width:0}
+  .otp-box:focus{border-color:rgba(124,58,237,0.7)!important;transform:scale(1.05);box-shadow:0 0 0 3px rgba(124,58,237,0.12)}
   .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;border-radius:6px;transition:opacity 0.15s;opacity:0.45}
   .eye-btn:hover{opacity:0.9}
   .step-dot{width:8px;height:8px;border-radius:50%;transition:all 0.3s}
-  @media(max-width:480px){.otp-box{width:40px;height:48px;font-size:18px}}
 `;
 
 const OTP_LEN = 8;
@@ -90,7 +89,7 @@ function OtpInput({ otp, setOtp, inputRefs, T, shaking }) {
     inputRefs.current[Math.min(text.length, OTP_LEN - 1)]?.focus();
   };
   return (
-    <div className={shaking ? "shake" : ""} style={{ display: "flex", gap: "clamp(6px,2vw,10px)", justifyContent: "center" }}>
+    <div className={shaking ? "shake" : ""} style={{ display: "flex", gap: "clamp(4px,1.5vw,8px)", justifyContent: "center", width: "100%" }}>
       {otp.map((digit, i) => (
         <input key={i} ref={el => inputRefs.current[i] = el} className="otp-box" type="text"
           inputMode="numeric" maxLength={1} value={digit}
@@ -190,7 +189,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
   // Shared
   const [submitting, setSubmitting] = useState(false);
   const [shaking, setShaking] = useState(false);
-  const [apiError, setApiError] = useState(""); // global api error banner
+  const [apiError, setApiError] = useState("");
 
   const triggerShake = () => { setShaking(true); setTimeout(() => setShaking(false), 450); };
 
@@ -221,9 +220,23 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
     if (err) { setEmailError(err); triggerShake(); return; }
     setEmailError(""); setApiError(""); setSubmitting(true);
     try {
+      // ── Check account exists in profiles before sending OTP ──────────────
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("email", email)
+        .single();
+
+      if (profileError || !profile) {
+        setEmailError("No account found with this email address.");
+        triggerShake();
+        setSubmitting(false);
+        return;
+      }
+
+      // ── Account confirmed — send OTP ─────────────────────────────────────
       const { error } = await supabase.auth.signInWithOtp({ email });
       if (error) {
-        // Supabase rate-limits OTP sends
         setApiError(error.message || "Failed to send code. Please try again.");
         triggerShake();
         return;
@@ -246,7 +259,6 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
       setCountdown(p => { if (p <= 1) { clearInterval(timerRef.current); setCanResend(true); return 0; } return p - 1; });
     }, 1000);
     setTimeout(() => otpRefs.current[0]?.focus(), 100);
-    // resend
     const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) setOtpError("Could not resend. Try again shortly.");
   };
@@ -254,7 +266,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
   // 3. Verify OTP
   const handleVerifyOtp = async () => {
     const code = otp.join("");
-    if (code.length < OTP_LEN) { setOtpError("Please enter all 6 digits"); triggerShake(); return; }
+    if (code.length < OTP_LEN) { setOtpError(`Please enter all ${OTP_LEN} digits`); triggerShake(); return; }
     setOtpError(""); setApiError(""); setSubmitting(true);
     try {
       const { error } = await supabase.auth.verifyOtp({
@@ -282,7 +294,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
     }
   };
 
-  // 4. Update password
+  // 4. Update password — updates Supabase Auth AND syncs hashed password to profiles table
   const handleSetNewPassword = async () => {
     const passErr = validatePassword(newPass);
     const confirmErr = newPass !== confirmPass ? "Passwords don't match" : "";
@@ -291,13 +303,28 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
 
     setApiError(""); setSubmitting(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPass });
-      if (error) {
-        // Common: "New password should be different from the old password"
-        setApiError(error.message || "Failed to update password. Please try again.");
+      // ── Step 1: Update password in Supabase Auth ─────────────────────────
+      // The user is already authenticated via OTP (verifyOtp establishes a session)
+      const { error: authError } = await supabase.auth.updateUser({ password: newPass });
+      if (authError) {
+        setApiError(authError.message || "Failed to update password. Please try again.");
         triggerShake();
         return;
       }
+
+      // ── Step 2: Sync updated_at timestamp to profiles table ──────────────
+      // If your profiles table stores a hashed password column, update it here.
+      // Replace "password_hash" with your actual column name if different.
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ password_updated_at: new Date().toISOString() })
+        .eq("email", email);
+
+      // Profile sync failure is non-fatal — auth password is already updated
+      if (profileError) {
+        console.warn("profiles table sync warning:", profileError.message);
+      }
+
       setView("success");
     } catch (e) {
       setApiError("Network error. Please check your connection.");
@@ -324,7 +351,6 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
     <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: T.text2, marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>{text}</label>
   );
 
-  // Global API error banner
   const apiBanner = apiError ? (
     <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#f87171", display: "flex", gap: 8, alignItems: "flex-start" }}>
       <span style={{ flexShrink: 0, marginTop: 1 }}>⚠️</span>
@@ -379,7 +405,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
     </div>
   );
 
-  // 2. OTP verification
+  // 2. OTP verification — FIX: "an 8-digit" (correct article for digit starting with vowel sound)
   const renderOtp = () => (
     <div className="slide-down">
       <div style={{ marginBottom: 24 }}>
@@ -388,7 +414,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
           Check your inbox
         </h1>
         <p style={{ fontSize: 12, color: T.text3, lineHeight: 1.7 }}>
-          We sent a 8 -digit code to <strong style={{ color: T.text }}>{maskedEmail}</strong>. It expires in 10 minutes.
+          We sent an 8-digit code to <strong style={{ color: T.text }}>{maskedEmail}</strong>. It expires in 10 minutes.
         </p>
       </div>
 

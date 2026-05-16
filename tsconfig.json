@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "src/components/ui/avatar.tsx", "src/components/ui/button.jsx"  ],
+, "src/components/ui/avatar.tsx", "src/components/ui/button.jsx", "src/proxy.js"  ],
   "exclude": ["node_modules"]
 }

@@ -42,7 +42,8 @@ export async function POST(request) {
     }
 
     // ── 4. Set cookie and return success ──────────────────────────────────
-    const token = createToken({ email });
+   // signin route — must have await now
+  const token = await createToken({ email });
     const setCookie = await cookies();
 
     setCookie.set("token", token, {
