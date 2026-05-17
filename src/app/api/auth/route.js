@@ -8,7 +8,6 @@ export async function POST(request) {
     const body = await request.json();
     const { email, password } = body;
 
-    // ── 1. Validate inputs first ──────────────────────────────────────────
     if (!email || !password) {
       return Response.json(
         { success: false, message: "Email and password are required" },

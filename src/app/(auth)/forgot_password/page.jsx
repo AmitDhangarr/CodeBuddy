@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient.js";
+import bcrypt from "bcryptjs";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const DARK = {
@@ -44,9 +45,46 @@ const CSS = `
   .auth-input{border-radius:11px;font-size:14px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%;font-family:'Instrument Sans',sans-serif;padding:11px 14px;border-width:1px;border-style:solid}
   .auth-input:focus{border-color:rgba(124,58,237,0.6)!important;box-shadow:0 0 0 3px rgba(124,58,237,0.08)}
   .auth-input::placeholder{opacity:0.45}
-  .otp-box{border-radius:9px;font-size:18px;font-weight:700;text-align:center;outline:none;width:clamp(30px,9.5vw,40px);height:clamp(38px,11vw,48px);border-width:1.5px;border-style:solid;transition:border-color 0.2s,transform 0.15s,box-shadow 0.2s;font-family:'Instrument Sans',sans-serif;caret-color:#a855f7;flex:1;min-width:0}
-  .otp-box:focus{border-color:rgba(124,58,237,0.7)!important;transform:scale(1.05);box-shadow:0 0 0 3px rgba(124,58,237,0.12)}
-  .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;border-radius:6px;transition:opacity 0.15s;opacity:0.45}
+  .otp-wrap {
+  background: rgba(124,58,237,0.06);
+  border: 1px solid rgba(124,58,237,0.2);
+  border-radius: 16px;
+  padding: 20px 16px 16px;
+  width: 100%;
+}
+.otp-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #7c3aed;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.otp-box {
+  border-radius: 9px;
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  border: 1.5px solid rgba(124,58,237,0.3);
+  background: rgba(124,58,237,0.1);
+  color: #ffffff;
+  font-family: 'Instrument Sans', monospace;
+  caret-color: #a855f7;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.otp-box:focus {
+  border-color: rgba(124,58,237,0.7) !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.15), 0 0 18px rgba(124,58,237,0.2);
+  transform: scale(1.04);
+}
+.otp-box.filled {
+  border-color: rgba(124,58,237,0.55);
+}
   .eye-btn:hover{opacity:0.9}
   .step-dot{width:8px;height:8px;border-radius:50%;transition:all 0.3s}
 `;
@@ -85,24 +123,46 @@ function OtpInput({ otp, setOtp, inputRefs, T, shaking }) {
     e.preventDefault();
     const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LEN);
     if (!text) return;
-    const next = [...otp]; text.split("").forEach((ch, i) => { next[i] = ch; }); setOtp(next);
+    const next = [...otp];
+    text.split("").forEach((ch, i) => { next[i] = ch; });
+    setOtp(next);
     inputRefs.current[Math.min(text.length, OTP_LEN - 1)]?.focus();
   };
+
   return (
-    <div className={shaking ? "shake" : ""} style={{ display: "flex", gap: "clamp(4px,1.5vw,8px)", justifyContent: "center", width: "100%" }}>
-      {otp.map((digit, i) => (
-        <input key={i} ref={el => inputRefs.current[i] = el} className="otp-box" type="text"
-          inputMode="numeric" maxLength={1} value={digit}
-          onChange={e => handleChange(i, e.target.value)}
-          onKeyDown={e => handleKeyDown(i, e)}
-          onPaste={i === 0 ? handlePaste : undefined}
-          style={{ background: T.otpBg, borderColor: digit ? "rgba(124,58,237,0.55)" : T.inputBorder, color: T.text }}
-        />
-      ))}
+    <div className="otp-wrap">
+      <div className="otp-label">Your verification code</div>
+      <div
+        className={shaking ? "shake" : ""}
+        style={{ display: "flex", gap: 5, width: "100%" }}
+      >
+        {otp.map((digit, i) => (
+          <input
+            key={i}
+            ref={el => inputRefs.current[i] = el}
+            className={`otp-box${digit ? " filled" : ""}`}
+            type="text"
+            inputMode="numeric"
+            maxLength={1}
+            value={digit}
+            onChange={e => handleChange(i, e.target.value)}
+            onKeyDown={e => handleKeyDown(i, e)}
+            onPaste={i === 0 ? handlePaste : undefined}
+          />
+        ))}
+      </div>
+      <p style={{
+        fontFamily: "'Instrument Sans', sans-serif",
+        fontSize: 11,
+        color: T.text3,
+        textAlign: "center",
+        marginTop: 12
+      }}>
+        Enter this code from your email
+      </p>
     </div>
   );
 }
-
 function CountdownRing({ seconds, total }) {
   const r = 14, circ = 2 * Math.PI * r;
   return (
@@ -279,8 +339,8 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
           error.message.includes("expired")
             ? "Code has expired. Please request a new one."
             : error.message.includes("invalid")
-            ? "Incorrect code. Double-check and try again."
-            : error.message || "Verification failed. Please try again."
+              ? "Incorrect code. Double-check and try again."
+              : error.message || "Verification failed. Please try again."
         );
         triggerShake();
         return;
@@ -303,26 +363,27 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
 
     setApiError(""); setSubmitting(true);
     try {
-      // ── Step 1: Update password in Supabase Auth ─────────────────────────
-      // The user is already authenticated via OTP (verifyOtp establishes a session)
+      // Step 1: Update Supabase Auth password
       const { error: authError } = await supabase.auth.updateUser({ password: newPass });
       if (authError) {
-        setApiError(authError.message || "Failed to update password. Please try again.");
+        setApiError(authError.message || "Failed to update password.");
         triggerShake();
         return;
       }
 
-      // ── Step 2: Sync updated_at timestamp to profiles table ──────────────
-      // If your profiles table stores a hashed password column, update it here.
-      // Replace "password_hash" with your actual column name if different.
+      // Step 2: Hash and save to profiles.password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPass, salt);
+
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ password_updated_at: new Date().toISOString() })
+        .update({ password: hashedPassword })
         .eq("email", email);
 
-      // Profile sync failure is non-fatal — auth password is already updated
       if (profileError) {
-        console.warn("profiles table sync warning:", profileError.message);
+        // Auth is updated — but flag the profile sync failure
+        setApiError("Password updated but profile sync failed: " + profileError.message);
+        return;
       }
 
       setView("success");

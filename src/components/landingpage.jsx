@@ -1,10 +1,46 @@
 "use client"
 import Link from "next/link";
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import { useSignupStore } from "../../store/UsesignupStore";
+
 function LandingPage() {
- const formData = useSignupStore((state) => state.formData);
+    const router = useRouter();
+  const [token, settoken] = useState(false);
+  const [showSignoutModal, setShowSignoutModal] = useState(false);
+
+  const formData = useSignupStore((state) => state.formData);
+
+const getToken = async () => {
+  const data = await fetch("/api/auth/me");
+  const json = await data.json();
+  
+  settoken(json.token || false);  
+};
+
+  useEffect(() => {
+    getToken();
+  }, [])
+
+  console.log(token);
+  
+
+ const handleSignout = async () => {
+  try {
+    const res = await fetch("/api/signout", { method: "POST" });
+    const data = await res.json();
+
+    if (data.success) {
+      setShowSignoutModal(false);
+      settoken(false);        
+      router.push("/");   
+    }
+  } catch (err) {
+    console.error("Sign out failed:", err);
+  }
+};
+
 
   const [dark, setDark] = useState(true);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -92,12 +128,15 @@ function LandingPage() {
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
     @keyframes tickerFade{0%{opacity:0;transform:translateY(6px)}15%,85%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-6px)}}
     @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+    @keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
     .fade-up{animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both}
     .float{animation:float 5s ease-in-out infinite}
     .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:11px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 6px 24px rgba(124,58,237,0.28)}
     .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.42)}
     .btn-ghost{background:transparent;border:1px solid ${T.border};color:${T.text2};padding:9px 18px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s}
     .btn-ghost:hover{border-color:${T.border2};color:${T.text}}
+    .btn-danger{background:linear-gradient(135deg,#dc2626,#ef4444);border:none;color:white;padding:11px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 6px 24px rgba(220,38,38,0.28)}
+    .btn-danger:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(220,38,38,0.42)}
     .btn-icon{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:8px;border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
     .btn-icon:hover{border-color:${T.border2};color:${T.text}}
     .card{background:${T.card};border:1px solid ${T.border};border-radius:18px;transition:all 0.28s}
@@ -124,6 +163,8 @@ function LandingPage() {
     .pricing-card.featured{border-color:rgba(124,58,237,0.4);background:${dark ? "rgba(124,58,237,0.07)" : "rgba(124,58,237,0.04)"}}
     .pricing-card:hover{transform:translateY(-3px);box-shadow:${T.shadow}}
     .check-item{display:flex;align-items:center;gap:10px;font-size:13px;color:${T.text2};padding:5px 0}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn 0.2s ease both;backdrop-filter:blur(4px)}
+    .modal-box{animation:modalIn 0.28s cubic-bezier(0.16,1,0.3,1) both}
     @media(max-width:768px){
       .hero-grid{grid-template-columns:1fr!important;gap:44px!important}
       .stats-grid{grid-template-columns:repeat(2,1fr)!important}
@@ -207,9 +248,53 @@ function LandingPage() {
     </div>
   );
 
+  // ── SIGN OUT CONFIRMATION MODAL ──
+  const SignoutModal = () => (
+    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowSignoutModal(false); }}>
+      <div className="modal-box" style={{ background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: 22, padding: "36px 32px", width: "min(380px, calc(100vw - 32px))", boxShadow: T.shadow, textAlign: "center" }}>
+
+        {/* Icon */}
+        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 24 }}>
+          🚪
+        </div>
+
+        {/* Title */}
+        <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 24, fontWeight: 400, color: T.text, letterSpacing: "-0.5px", marginBottom: 10 }}>
+          Sign out of CodeBuddy?
+        </h3>
+
+        {/* Subtitle */}
+        <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, marginBottom: 28, maxWidth: 280, margin: "0 auto 28px" }}>
+          You'll need to sign back in to access your matches and messages.
+        </p>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            className="btn-ghost"
+            style={{ flex: 1, padding: "11px 0", fontSize: 13 }}
+            onClick={() => setShowSignoutModal(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn-danger"
+            style={{ flex: 1, padding: "11px 0", fontSize: 13 }}
+            onClick={handleSignout}
+          >
+            Yes, sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
       <style>{css}</style>
+
+      {/* ── SIGN OUT MODAL ── */}
+      {showSignoutModal && <SignoutModal />}
 
       {/* Ambient */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
@@ -238,8 +323,18 @@ function LandingPage() {
           <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }} title="Toggle theme">
             {dark ? "☀️" : "🌙"}
           </button>
-          <Link href="/signin"><button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13 }}>Sign in</button></Link>
-          <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link>
+
+          {/* Sign in / Sign out */}
+          {!token
+            ? <Link href="/signin"><button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13 }}>Sign in</button></Link>
+            : <button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13, color: "#f87171", borderColor: "rgba(248,113,113,0.25)" }} onClick={() => setShowSignoutModal(true)}>Sign out</button>
+          }
+
+          {/* Get started / Dashboard */}
+          {!token
+            ? <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link>
+            : <Link href="/dashboard"><button className="btn-primary" style={{ padding: "8px 18px" }}>Dashboard →</button></Link>
+          }
         </div>
       </nav>
 
@@ -264,8 +359,16 @@ function LandingPage() {
                 CodeBuddy matches developers by what you have <em>and</em> what you need. Stop searching. Start building.
               </p>
               <div style={{ display: "flex", gap: 10, marginBottom: 32, flexWrap: "wrap" }}>
-                <Link href="/signup"><button className="btn-primary" style={{ padding: "12px 26px", fontSize: 14 }}>Start matching free →</button></Link>
-                <Link href="/preview"><button className="btn-ghost">Preview dashboard</button></Link>
+                <Link href={token ? "/dashboard" : "/signin"}>
+                  <button className="btn-primary" style={{ padding: "12px 26px", fontSize: 14 }}>
+                    Start matching free →
+                  </button>
+                </Link>
+                <Link href={token ? "/features" : "/preview"}>
+                  <button className="btn-ghost">
+                    {token ? "How it works ?" : "Preview dashboard"}
+                  </button>
+                </Link>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "flex" }}>
@@ -312,7 +415,7 @@ function LandingPage() {
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", marginBottom: 5 }}>✦ AI MATCH INSIGHT</div>
                   <p style={{ fontSize: 11, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.55 }}>Your React skills fill Aanya's frontend gap. Her backend depth covers your weakness. Rare two-way match.</p>
                 </div>
-                <Link href="/signup"><button className="btn-primary" style={{ width: "100%" }}>Connect →</button></Link>
+                <Link href={token ? "profile/:id" : "signin"}><button className="btn-primary" style={{ width: "100%" }}>Connect →</button></Link>
               </div>
             </div>
           </div>
@@ -524,25 +627,27 @@ function LandingPage() {
         </SectionWrap>
 
         {/* ── CTA ── */}
-        <SectionWrap>
-          <div style={{ background: dark ? "rgba(124,58,237,0.07)" : "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.18)", borderRadius: 26, padding: "clamp(36px,8vw,60px) clamp(24px,6vw,44px)", textAlign: "center", position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 300, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(259,70%,50%,0.08)" : "hsla(259,70%,60%,0.06)"} 0%,transparent 65%)`, pointerEvents: "none" }} />
-            <div style={{ position: "relative" }}>
-              <div style={{ fontSize: 36, marginBottom: 16 }}>🚀</div>
-              <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(28px,6vw,44px)", color: T.text, letterSpacing: "-1.2px", lineHeight: 1.08, marginBottom: 14 }}>
-                Ready to find your<br /><span style={{ fontStyle: "italic", color: "#a78bfa" }}>co-builder?</span>
-              </h2>
-              <p style={{ fontSize: "clamp(12px,3vw,14px)", color: T.text2, marginBottom: 32, maxWidth: 420, margin: "0 auto 32px" }}>
-                Free forever for indie builders. No credit card. No cold DMs. Just the person who completes your stack.
-              </p>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-                <Link href="/signup"><button className="btn-primary" style={{ padding: "13px 30px", fontSize: 14 }}>Create your profile →</button></Link>
-                <Link href="/preview"><button className="btn-ghost">Preview app</button></Link>
+        {!token && (
+          <SectionWrap>
+            <div style={{ background: dark ? "rgba(124,58,237,0.07)" : "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.18)", borderRadius: 26, padding: "clamp(36px,8vw,60px) clamp(24px,6vw,44px)", textAlign: "center", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 300, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(259,70%,50%,0.08)" : "hsla(259,70%,60%,0.06)"} 0%,transparent 65%)`, pointerEvents: "none" }} />
+              <div style={{ position: "relative" }}>
+                <div style={{ fontSize: 36, marginBottom: 16 }}>🚀</div>
+                <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(28px,6vw,44px)", color: T.text, letterSpacing: "-1.2px", lineHeight: 1.08, marginBottom: 14 }}>
+                  Ready to find your<br /><span style={{ fontStyle: "italic", color: "#a78bfa" }}>co-builder?</span>
+                </h2>
+                <p style={{ fontSize: "clamp(12px,3vw,14px)", color: T.text2, marginBottom: 32, maxWidth: 420, margin: "0 auto 32px" }}>
+                  Free forever for indie builders. No credit card. No cold DMs. Just the person who completes your stack.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                  <Link href="/signup"><button className="btn-primary" style={{ padding: "13px 30px", fontSize: 14 }}>Create your profile →</button></Link>
+                  <Link href="/preview"><button className="btn-ghost">Preview app</button></Link>
+                </div>
+                <p style={{ marginTop: 20, fontSize: 11, color: T.text3 }}>✓ Free forever &nbsp;·&nbsp; ✓ No credit card &nbsp;·&nbsp; ✓ Setup in 2 min</p>
               </div>
-              <p style={{ marginTop: 20, fontSize: 11, color: T.text3 }}>✓ Free forever &nbsp;·&nbsp; ✓ No credit card &nbsp;·&nbsp; ✓ Setup in 2 min</p>
             </div>
-          </div>
-        </SectionWrap>
+          </SectionWrap>
+        )}
 
         {/* ── FOOTER ── */}
         <footer style={{ borderTop: `1px solid ${T.border}`, padding: "clamp(32px,6vw,52px) clamp(16px,5vw,32px)", maxWidth: 1060, margin: "0 auto" }}>
