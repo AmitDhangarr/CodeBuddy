@@ -12,6 +12,8 @@ const AI_INSIGHTS = [
   (me, them) => `Strong goal alignment — you're both seeking ${them.lookingFor}s. Your complementary stacks mean you could start building immediately without skill overlaps.`,
 ];
 
+
+
 export default function DiscoverTab({
   T, dark,
   currentUser,
@@ -47,9 +49,12 @@ export default function DiscoverTab({
     return sk && lk && sq;
   });
 
+  // FIX: Guard against missing currentUser and use a safe AI index for non-numeric ids
   const handleAI = useCallback((user) => {
+    if (!currentUser?.skillsHave?.length || !user?.skillsHave?.length || !user?.skillsNeed?.length) return;
     setAiLoading(user.id);
-    const fn = AI_INSIGHTS[user.id % AI_INSIGHTS.length];
+    const index = Number(user.id);
+    const fn = AI_INSIGHTS[Number.isFinite(index) ? index % AI_INSIGHTS.length : 0];
     setTimeout(() => {
       setAiText(p => ({ ...p, [user.id]: fn(currentUser, user) }));
       setAiLoading(null);
@@ -99,14 +104,14 @@ export default function DiscoverTab({
             placeholder="Search name, role, skill…"
             value={searchQ}
             onChange={e => setSearchQ(e.target.value)}
-            style={{ paddingLeft: 32, background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text, borderRadius: 11, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "inherit" }}
+            style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text, borderRadius: 11, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "inherit" }}
           />
         </div>
 
         <select value={filterSkill} onChange={e => setFilterSkill(e.target.value)}
           style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
           <option value="All">All Skills</option>
-          {SKILLS_ALL.map(s => <option key={s}>{s}</option>)}
+          {SKILLS_ALL.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
 
         <select value={filterLooking} onChange={e => setFilterLooking(e.target.value)}
@@ -200,7 +205,7 @@ export default function DiscoverTab({
               ))}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setConnected(p => ({ ...p, [quickView.id]: true })); setQuickView(null); }} style={{ ...btn, flex: 1, background: "linear-gradient(135deg,#7c3aed,#a855f7)", color: "white", padding: "11px", borderRadius: 11, fontSize: 13, fontWeight: 700, boxShadow: "0 6px 20px rgba(124,58,237,0.3)" }}>
+              <button onClick={() => { setConnected(p => ({ ...p, [quickView.id]: true })); setQuickView(null); }} style={{ ...btn, flex: 1, background: connected[quickView.id] ? "transparent" : "linear-gradient(135deg,#7c3aed,#a855f7)", border: connected[quickView.id] ? "1px solid rgba(74,222,128,0.3)" : "none", color: connected[quickView.id] ? "#4ade80" : "white", padding: "11px", borderRadius: 11, fontSize: 13, fontWeight: 700, boxShadow: connected[quickView.id] ? "none" : "0 6px 20px rgba(124,58,237,0.3)" }}>
                 {connected[quickView.id] ? "✓ Connected" : "Connect →"}
               </button>
               <button onClick={() => { onMessage(quickView); setQuickView(null); }} style={{ ...btn, padding: "11px 18px", borderRadius: 11, background: "transparent", border: `1px solid ${T.border}`, color: T.text2, fontSize: 13, fontWeight: 600 }}>💬 Message</button>
@@ -275,7 +280,7 @@ function GridCard({ u, i, T, dark, connected, setConnected, liked, setLiked, aiT
       {/* Actions */}
       <div style={{ display: "flex", gap: 6 }}>
         {connected[u.id]
-          ? <button style={{ flex: 1, padding: "8px", background: "transparent", border: `1px solid rgba(74,222,128,0.3)`, color: "#4ade80", borderRadius: 11, cursor: "default", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>✓ Connected</button>
+          ? <button style={{ flex: 1, padding: "8px", background: "transparent", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", borderRadius: 11, cursor: "default", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>✓ Connected</button>
           : <button onClick={() => setConnected(p => ({ ...p, [u.id]: true }))} style={{ flex: 1, padding: "8px", background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, transition: "all 0.2s", boxShadow: "0 4px 14px rgba(124,58,237,0.28)" }}>
             Connect
           </button>

@@ -6,32 +6,97 @@ import {
   hsl, hsla,
 } from "./shared";
 
-import DiscoverTab  from "./discover/page";
-import MessagesTab  from "./messages/page";
-import ProfileTab   from "./profile/page";
-import SettingsTab  from "./settings/page";
+import DiscoverTab from "./discover/page";
+import MessagesTab from "./messages/page";
+import ProfileTab from "./profile/page";
+import SettingsTab from "./settings/page";
 
 const NAV_ITEMS = [
   { id: "discover", icon: "🧭", label: "Discover" },
   { id: "messages", icon: "💬", label: "Messages" },
-  { id: "profile",  icon: "👤", label: "Profile" },
+  { id: "profile", icon: "👤", label: "Profile" },
   { id: "settings", icon: "⚙️", label: "Settings" },
 ];
 
 export default function Dashboard() {
-  const [dark, setDark]           = useState(true);
-  const [dashPage, setDashPage]   = useState("discover");
+  const [dark, setDark] = useState(true);
+  const [dashPage, setDashPage] = useState("discover");
   const [currentUser, setCurrentUser] = useState(DEFAULT_USER);
-  const [convos, setConvos]       = useState(INITIAL_CONVERSATIONS);
+  const [convos, setConvos] = useState(INITIAL_CONVERSATIONS);
   const [activeConvo, setActiveConvo] = useState(INITIAL_CONVERSATIONS[0]);
-  const [notifs, setNotifs]       = useState(INITIAL_NOTIFS);
+  const [notifs, setNotifs] = useState(INITIAL_NOTIFS);
   const [connected, setConnected] = useState({});
-  const [liked, setLiked]         = useState({});
+  const [liked, setLiked] = useState({});
   const [notifOpen, setNotifOpen] = useState(false);
 
   const T = dark ? DARK : LIGHT;
   const unread = notifs.filter(n => !n.read).length;
+  const prompt = {
+  "user": {
+    "id": 101,
+    "name": "Aman Sharma",
+    "email": "aman.sharma@example.com",
+    "role": "Frontend Developer",
+    "experience": "3 years",
+    "location": "Meerut, India",
 
+    "skillsHave": [
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "React",
+      "Git"
+    ],
+
+    "skillsNeeded": [
+      "TypeScript",
+      "Next.js",
+      "Node.js",
+      "System Design",
+      "Testing"
+    ],
+
+    "projects": [
+      {
+        "name": "Portfolio Website",
+        "techStack": ["React", "CSS"],
+        "status": "Completed"
+      },
+      {
+        "name": "E-commerce Dashboard",
+        "techStack": ["React", "Node.js"],
+        "status": "In Progress"
+      }
+    ],
+
+    "careerGoal": "Become a Full Stack Developer",
+    "availability": "Open to opportunities"
+  }
+}
+  const GetAIInsight = async (prompt) => {
+    const res = await fetch("/api/ai_insights", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt:JSON.stringify(prompt) }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch AI insight");
+    }
+
+    const data = await res.json();
+    console.log(data);
+    
+  }
+  // GetAIInsight(prompt);
+
+  const getAllProfiles =async()=>{
+    const data = await fetch("api/discover");
+    const profiles = await data.json();
+  }
+   getAllProfiles();
   // Navigate to Messages with a specific user
   const handleMessage = useCallback((user) => {
     const existing = convos.find(c => c.user.id === user.id);

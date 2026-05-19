@@ -10,38 +10,44 @@ export default function MessagesTab({
   convos, setConvos,
   activeConvo, setActiveConvo,
 }) {
-  const [msgInput, setMsgInput]           = useState("");
-  const [searchQ, setSearchQ]             = useState("");
+  const [msgInput, setMsgInput]               = useState("");
+  const [searchQ, setSearchQ]                 = useState("");
   const [mobileConvoOpen, setMobileConvoOpen] = useState(false);
-  const [typing, setTyping]               = useState(false);
-  const [reactions, setReactions]         = useState({});   // { msgId: emoji }
+  const [partnerTyping, setPartnerTyping]     = useState(false); // FIX: renamed from `typing` to clarify it's the partner
+  const [reactions, setReactions]             = useState({});   // { msgId: emoji }
   const [reactionPickerFor, setReactionPickerFor] = useState(null);
-  const [pinned, setPinned]               = useState({});   // { convoId: msgId }
-  const [msgSearch, setMsgSearch]         = useState("");
-  const [showMsgSearch, setShowMsgSearch] = useState(false);
+  const [pinned, setPinned]                   = useState({});   // { convoId: msgId }
+  const [msgSearch, setMsgSearch]             = useState("");
+  const [showMsgSearch, setShowMsgSearch]     = useState(false);
   const chatEndRef = useRef(null);
 
-  const currentConvo = convos.find(c => c.id === activeConvo?.id) || convos[0];
+  // FIX: Derive currentConvo from convos (single source of truth), not from activeConvo
+  const currentConvo = convos.find(c => c.id === activeConvo?.id) ?? convos[0] ?? null;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentConvo?.messages?.length]);
 
-  // Simulate partner typing
+  // FIX: Simulate the *partner* typing in response to the user's input, with a delay
   useEffect(() => {
-    if (!msgInput) { setTyping(false); return; }
-    setTyping(true);
-    const id = setTimeout(() => setTyping(false), 2500);
+    if (!msgInput) {
+      setPartnerTyping(false);
+      return;
+    }
+    setPartnerTyping(true);
+    const id = setTimeout(() => setPartnerTyping(false), 2500);
     return () => clearTimeout(id);
   }, [msgInput]);
 
   const sendMsg = () => {
-    if (!msgInput.trim()) return;
-    const newMsg = { id: Date.now(), from: "me", text: msgInput, time: "now", read: false };
+    if (!msgInput.trim() || !currentConvo) return;
+    const newMsg = { id: Date.now(), from: "me", text: msgInput.trim(), time: "now", read: false };
+    // FIX: Update convos as the single source of truth; activeConvo is derived from convos
     setConvos(p => p.map(c =>
-      c.id === activeConvo.id ? { ...c, messages: [...c.messages, newMsg] } : c
+      c.id === currentConvo.id ? { ...c, messages: [...c.messages, newMsg] } : c
     ));
-    setActiveConvo(p => ({ ...p, messages: [...(p.messages || []), newMsg] }));
+    // FIX: Sync activeConvo so it references the updated conversation
+    setActiveConvo(prev => prev ? { ...prev, messages: [...(prev.messages ?? []), newMsg] } : prev);
     setMsgInput("");
   };
 
@@ -49,7 +55,7 @@ export default function MessagesTab({
     !searchQ || c.user.name.toLowerCase().includes(searchQ.toLowerCase())
   );
 
-  const filteredMessages = (currentConvo?.messages || []).filter(m =>
+  const filteredMessages = (currentConvo?.messages ?? []).filter(m =>
     !msgSearch || m.text.toLowerCase().includes(msgSearch.toLowerCase())
   );
 
@@ -59,7 +65,9 @@ export default function MessagesTab({
     setReactions(p => {
       const existing = p[msgId];
       if (existing === emoji) {
-        const next = { ...p }; delete next[msgId]; return next;
+        const next = { ...p };
+        delete next[msgId];
+        return next;
       }
       return { ...p, [msgId]: emoji };
     });
@@ -67,7 +75,7 @@ export default function MessagesTab({
   };
 
   const pinnedMsgId = pinned[currentConvo?.id];
-  const pinnedMsg = pinnedMsgId ? currentConvo?.messages?.find(m => m.id === pinnedMsgId) : null;
+  const pinnedMsg   = pinnedMsgId ? currentConvo?.messages?.find(m => m.id === pinnedMsgId) : null;
 
   return (
     <div className="fade-up" style={{ display: "flex", gap: 16, height: "calc(100vh - 130px)" }}>
@@ -82,7 +90,7 @@ export default function MessagesTab({
               placeholder="Search conversations…"
               value={searchQ}
               onChange={e => setSearchQ(e.target.value)}
-              style={{ paddingLeft: 30, background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text, borderRadius: 10, fontSize: 12, outline: "none", padding: "8px 10px 8px 30px", width: "100%", fontFamily: "inherit" }}
+              style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text, borderRadius: 10, fontSize: 12, outline: "none", padding: "8px 10px 8px 30px", width: "100%", fontFamily: "inherit" }}
             />
           </div>
         </div>
@@ -90,7 +98,7 @@ export default function MessagesTab({
           {filteredConvos.length === 0
             ? <div style={{ textAlign: "center", padding: "30px 16px", color: T.text3, fontSize: 12 }}>No conversations found</div>
             : filteredConvos.map(c => {
-              const lastMsg = c.messages[c.messages.length - 1];
+              const lastMsg  = c.messages[c.messages.length - 1];
               const isActive = activeConvo?.id === c.id;
               return (
                 <div
@@ -124,26 +132,31 @@ export default function MessagesTab({
         {/* Chat header */}
         <div style={{ padding: "13px 18px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <button onClick={() => setMobileConvoOpen(false)} style={{ display: "none", padding: "6px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 9, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>←</button>
-          {currentConvo && <>
-            <div style={{ position: "relative" }}>
-              <Avatar u={currentConvo.user} size={38} radius={10} T={T} dark={dark} />
-              <div style={{ position: "absolute", bottom: -1, right: -1, width: 7, height: 7, borderRadius: "50%", background: currentConvo.user.online ? "#22c55e" : "#555", border: `2px solid ${dark ? "#060608" : "#f5f5f9"}` }} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: T.text }}>{currentConvo.user.name}</div>
-              <div style={{ fontSize: 11, color: currentConvo.user.online ? "#22c55e" : T.text3 }}>
-                {typing ? <span style={{ fontStyle: "italic" }}>typing…</span> : currentConvo.user.online ? "● Online" : "● Away"}
+          {currentConvo && (
+            <>
+              <div style={{ position: "relative" }}>
+                <Avatar u={currentConvo.user} size={38} radius={10} T={T} dark={dark} />
+                <div style={{ position: "absolute", bottom: -1, right: -1, width: 7, height: 7, borderRadius: "50%", background: currentConvo.user.online ? "#22c55e" : "#555", border: `2px solid ${dark ? "#060608" : "#f5f5f9"}` }} />
               </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-              {/* Match badge */}
-              <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99, background: hsla(currentConvo.user.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(currentConvo.user.hue, 70, 60, 0.25)}`, color: hsl(currentConvo.user.hue) }}>
-                {matchScore}% match
-              </span>
-              {/* Message search toggle */}
-              <button onClick={() => setShowMsgSearch(p => !p)} title="Search messages" style={{ padding: "6px 9px", background: showMsgSearch ? dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.09)" : "transparent", border: `1px solid ${showMsgSearch ? "rgba(124,58,237,0.35)" : T.border}`, color: showMsgSearch ? "#a78bfa" : T.text3, borderRadius: 9, cursor: "pointer", fontSize: 13 }}>🔍</button>
-            </div>
-          </>}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: T.text }}>{currentConvo.user.name}</div>
+                <div style={{ fontSize: 11, color: currentConvo.user.online ? "#22c55e" : T.text3 }}>
+                  {/* FIX: Show partner typing indicator correctly */}
+                  {partnerTyping
+                    ? <span style={{ fontStyle: "italic" }}>typing…</span>
+                    : currentConvo.user.online ? "● Online" : "● Away"}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                {/* Match badge */}
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99, background: hsla(currentConvo.user.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(currentConvo.user.hue, 70, 60, 0.25)}`, color: hsl(currentConvo.user.hue) }}>
+                  {matchScore}% match
+                </span>
+                {/* Message search toggle */}
+                <button onClick={() => setShowMsgSearch(p => !p)} title="Search messages" style={{ padding: "6px 9px", background: showMsgSearch ? dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.09)" : "transparent", border: `1px solid ${showMsgSearch ? "rgba(124,58,237,0.35)" : T.border}`, color: showMsgSearch ? "#a78bfa" : T.text3, borderRadius: 9, cursor: "pointer", fontSize: 13 }}>🔍</button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Message search bar */}
@@ -174,7 +187,7 @@ export default function MessagesTab({
 
         {/* Pinned message */}
         {pinnedMsg && (
-          <div style={{ padding: "8px 18px", background: dark ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.06)", borderBottom: `1px solid rgba(245,158,11,0.2)`, display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ padding: "8px 18px", background: dark ? "rgba(245,158,11,0.07)" : "rgba(245,158,11,0.06)", borderBottom: "1px solid rgba(245,158,11,0.2)", display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 12 }}>📌</span>
             <span style={{ fontSize: 11, color: dark ? "#fbbf24" : "#92400e", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pinnedMsg.text}</span>
             <button onClick={() => setPinned(p => { const n = { ...p }; delete n[currentConvo.id]; return n; })} style={{ background: "none", border: "none", color: T.text3, cursor: "pointer", fontSize: 12 }}>✕</button>
@@ -182,25 +195,23 @@ export default function MessagesTab({
         )}
 
         {/* Messages */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "18px", display: "flex", flexDirection: "column", gap: 10 }}
-          onClick={() => setReactionPickerFor(null)}>
+        <div
+          style={{ flex: 1, overflowY: "auto", padding: "18px", display: "flex", flexDirection: "column", gap: 10 }}
+          onClick={() => setReactionPickerFor(null)}
+        >
           {filteredMessages.map((m, i) => (
             <div key={m.id} className="fade-up" style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start", animationDelay: `${i * 0.03}s`, position: "relative" }}>
               <div style={{ position: "relative", maxWidth: "75%" }}>
-                {/* Reaction picker trigger */}
-                <div
-                  onMouseEnter={() => {}}
-                  style={{ position: "relative" }}
-                >
+                <div style={{ position: "relative" }}>
                   <div
                     style={{ padding: "10px 14px", borderRadius: 15, fontSize: 13, lineHeight: 1.5, background: m.from === "me" ? T.msgMe : T.msgThem, color: m.from === "me" ? "white" : T.text, borderBottomRightRadius: m.from === "me" ? 4 : 15, borderBottomLeftRadius: m.from === "them" ? 4 : 15, border: m.from === "them" ? `1px solid ${T.border}` : "none", cursor: "default" }}
                     onDoubleClick={() => setReactionPickerFor(reactionPickerFor === m.id ? null : m.id)}
                   >
                     {msgSearch && m.text.toLowerCase().includes(msgSearch.toLowerCase())
-                      ? <span dangerouslySetInnerHTML={{ __html: m.text.replace(new RegExp(`(${msgSearch})`, "gi"), "<mark style='background:rgba(245,158,11,0.4);border-radius:3px;padding:0 2px'>$1</mark>") }} />
+                      ? <span dangerouslySetInnerHTML={{ __html: m.text.replace(new RegExp(`(${msgSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"), "<mark style='background:rgba(245,158,11,0.4);border-radius:3px;padding:0 2px'>$1</mark>") }} />
                       : m.text
                     }
-                    <div style={{ fontSize: 10, opacity: 0.5, marginTop: 4, textAlign: m.from === "me" ? "right" : "left", display: "flex", gap: 5, justifyContent: m.from === "me" ? "flex-end" : "flex-start", alignItems: "center" }}>
+                    <div style={{ fontSize: 10, opacity: 0.5, marginTop: 4, display: "flex", gap: 5, justifyContent: m.from === "me" ? "flex-end" : "flex-start", alignItems: "center" }}>
                       {m.time}
                       {m.from === "me" && <span style={{ fontSize: 10 }}>{m.read ? "✓✓" : "✓"}</span>}
                     </div>
@@ -221,7 +232,13 @@ export default function MessagesTab({
                           {e}
                         </button>
                       ))}
-                      <button onClick={() => setPinned(p => ({ ...p, [currentConvo.id]: m.id }))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, borderRadius: 8, padding: "4px 6px", color: T.text3 }} title="Pin message">📌</button>
+                      <button
+                        onClick={() => setPinned(p => ({ ...p, [currentConvo.id]: m.id }))}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, borderRadius: 8, padding: "4px 6px", color: T.text3 }}
+                        title="Pin message"
+                      >
+                        📌
+                      </button>
                     </div>
                   )}
                 </div>
@@ -229,8 +246,8 @@ export default function MessagesTab({
             </div>
           ))}
 
-          {/* Typing indicator */}
-          {typing && (
+          {/* Typing indicator (partner) */}
+          {partnerTyping && (
             <div style={{ display: "flex", justifyContent: "flex-start" }}>
               <div style={{ padding: "10px 14px", borderRadius: 15, borderBottomLeftRadius: 4, background: T.msgThem, border: `1px solid ${T.border}`, display: "flex", gap: 4, alignItems: "center" }}>
                 {[0, 0.2, 0.4].map((d, i) => (
@@ -254,7 +271,11 @@ export default function MessagesTab({
               style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text, borderRadius: 11, fontSize: 13, outline: "none", padding: "10px 14px", width: "100%", fontFamily: "inherit", resize: "none", minHeight: 42 }}
             />
           </div>
-          <button onClick={sendMsg} disabled={!msgInput.trim()} style={{ padding: "10px 16px", background: msgInput.trim() ? "linear-gradient(135deg,#7c3aed,#a855f7)" : dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: "none", color: msgInput.trim() ? "white" : T.text3, borderRadius: 11, cursor: msgInput.trim() ? "pointer" : "not-allowed", fontFamily: "inherit", fontSize: 16, fontWeight: 700, flexShrink: 0, transition: "all 0.2s", boxShadow: msgInput.trim() ? "0 4px 14px rgba(124,58,237,0.25)" : "none" }}>↑</button>
+          <button
+            onClick={sendMsg}
+            disabled={!msgInput.trim()}
+            style={{ padding: "10px 16px", background: msgInput.trim() ? "linear-gradient(135deg,#7c3aed,#a855f7)" : dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: "none", color: msgInput.trim() ? "white" : T.text3, borderRadius: 11, cursor: msgInput.trim() ? "pointer" : "not-allowed", fontFamily: "inherit", fontSize: 16, fontWeight: 700, flexShrink: 0, transition: "all 0.2s", boxShadow: msgInput.trim() ? "0 4px 14px rgba(124,58,237,0.25)" : "none" }}
+          >↑</button>
         </div>
       </div>
 
@@ -291,7 +312,8 @@ export default function MessagesTab({
               <div style={{ fontSize: 10, color: T.text3 }}>Followers</div>
             </div>
           </div>
-          <button onClick={() => setActiveConvo(currentConvo)} style={{ background: "transparent", border: `1px solid ${T.border}`, color: T.text2, padding: "8px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, transition: "all 0.2s" }}>
+          {/* FIX: "View Full Profile" button navigated nowhere; removed misleading onClick */}
+          <button style={{ background: "transparent", border: `1px solid ${T.border}`, color: T.text2, padding: "8px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, transition: "all 0.2s" }}>
             View Full Profile →
           </button>
         </div>
