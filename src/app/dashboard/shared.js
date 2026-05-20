@@ -9,7 +9,7 @@ export const SKILLS_ALL = [
 ];
 
 export const MOCK_USERS = [
-  { id: 1, name: "Aanya Sharma", handle: "aanya.dev", role: "Full Stack Engineer", avatar: "AS", hue: 259, bio: "I build SaaS tools that people actually want to use. Obsessed with DX, clean APIs, and shipping fast.", skillsHave: ["React", "Next.js", "Node.js", "PostgreSQL"], skillsNeed: ["UI/UX Design", "Figma", "Machine Learning"], lookingFor: "Collaborator", location: "Bangalore, IN", github: "aanya-dev", projects: 3, followers: 128, online: true, joined: "Jan 2024" },
+  { id: 1, name: "Aanya Sharma", handle: "aanya.dev", role: "Full Stack Engineer", avatar: "AS", hue: 259, bio: "I build SaaS tools that people actually want to use. Obsessed with DX, clean APIs, and shipping fast.", skills_have: ["React", "Next.js", "Node.js", "PostgreSQL"], skillsNeed: ["UI/UX Design", "Figma", "Machine Learning"], lookingFor: "Collaborator", location: "Bangalore, IN", github: "aanya-dev", projects: 3, followers: 128, online: true, joined: "Jan 2024" },
   { id: 2, name: "Rohan Mehra", handle: "rohan.ui", role: "Design Engineer", avatar: "RM", hue: 340, bio: "Designer who writes production code. Built 2 design systems used by 10k+ devs.", skillsHave: ["UI/UX Design", "Figma", "React", "Tailwind CSS"], skillsNeed: ["Node.js", "PostgreSQL", "DevOps"], lookingFor: "Collaborator", location: "Mumbai, IN", github: "rohan-designs", projects: 5, followers: 342, online: true, joined: "Mar 2024" },
   { id: 3, name: "Priya Nair", handle: "priya.ml", role: "ML Engineer", avatar: "PN", hue: 158, bio: "Turning research papers into products. My AI tools have been used in production at 3 startups.", skillsHave: ["Machine Learning", "Python", "AWS", "Docker"], skillsNeed: ["React", "TypeScript", "Next.js"], lookingFor: "Mentor", location: "Hyderabad, IN", github: "priya-ml", projects: 7, followers: 201, online: false, joined: "Feb 2024" },
   { id: 4, name: "Dev Kapoor", handle: "dev.sys", role: "Systems Engineer", avatar: "DK", hue: 38, bio: "Distributed systems, high throughput APIs, and the occasional Rust rant.", skillsHave: ["Rust", "Go", "Docker", "Redis", "AWS"], skillsNeed: ["React", "UI/UX Design", "TypeScript"], lookingFor: "Collaborator", location: "Delhi, IN", github: "dev-systems", projects: 4, followers: 97, online: false, joined: "Apr 2024" },
@@ -103,20 +103,28 @@ export const hsl  = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
 export const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
 
 export function calculateMatchScore(me, them) {
+  if (!me || !them) return 0;
+
+  const mySkillsNeed = Array.isArray(me.skills_need) ? me.skills_need : [];
+  const mySkillsHave = Array.isArray(me.skills_have) ? me.skills_have : [];
+  const theirSkillsNeed = Array.isArray(them.skills_need) ? them.skills_need : [];
+  const theirSkillsHave = Array.isArray(them.skills_have) ? them.skills_have : [];
+
   let theyHaveWhatINeed = 0;
-  for (const skill of (me.skillsNeed || [])) {
-    if ((them.skillsHave || []).includes(skill)) theyHaveWhatINeed++;
+  for (const skill of mySkillsNeed) {
+    if (theirSkillsHave.includes(skill)) theyHaveWhatINeed++;
   }
+
   let iHaveWhatTheyNeed = 0;
-  for (const skill of (them.skillsNeed || [])) {
-    if ((me.skillsHave || []).includes(skill)) iHaveWhatTheyNeed++;
+  for (const skill of theirSkillsNeed) {
+    if (mySkillsHave.includes(skill)) iHaveWhatTheyNeed++;
   }
-  const total = theyHaveWhatINeed + iHaveWhatTheyNeed;
-  const maxPossible = (me.skillsNeed?.length || 0) + (them.skillsNeed?.length || 0);
-  if (maxPossible === 0) return 0;
-  let score = (total / maxPossible) * 100;
-  if (me.lookingFor === them.lookingFor) score += 10;
-  return Math.round(Math.min(100, score));
+
+  const maxPossible = mySkillsNeed.length + theirSkillsNeed.length;
+  const skillScore = maxPossible === 0 ? 0 : ((theyHaveWhatINeed + iHaveWhatTheyNeed) / maxPossible) * 90;
+  const bonusScore = me.looking_for === them.looking_for ? 10 : 0;
+
+  return Math.round(Math.min(100, skillScore + bonusScore));
 }
 
 // Shared component primitives

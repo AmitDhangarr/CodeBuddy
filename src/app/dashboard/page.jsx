@@ -92,11 +92,14 @@ export default function Dashboard() {
   }
   // GetAIInsight(prompt);
 
-  const getAllProfiles =async()=>{
-    const data = await fetch("api/discover");
+   const getAllProfiles = async () => {
+    const data = await fetch("api/profiles");
     const profiles = await data.json();
+    console.log(profiles);
+    
   }
-   getAllProfiles();
+
+getAllProfiles();
   // Navigate to Messages with a specific user
   const handleMessage = useCallback((user) => {
     const existing = convos.find(c => c.user.id === user.id);

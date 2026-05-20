@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { calculateMatchScore } from "../dashboard/shared.js";
+import { calculateMatchScore } from "../../dashboard/shared.js";
 
 export async function POST(request) {
   try {
@@ -9,8 +9,10 @@ export async function POST(request) {
     const profileswithMatchingScore = profiles.map((profile) => ({
       ...profile,
       matchScore: calculateMatchScore(me, profile),
-    })).filter((profile)=> profile.matchScore >=  0).sort((a,b)=>
-     b.matchScore - a.matchScore)
-    }
-  } catch (error) {}
+    }));
+
+    return NextResponse.json({ profiles: profileswithMatchingScore });
+  } catch (error) {
+    return NextResponse.json({ error: error });
+  }
 }
