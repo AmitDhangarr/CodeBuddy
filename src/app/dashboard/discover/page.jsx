@@ -12,15 +12,40 @@ const AI_INSIGHTS = [
   (me, them) => `Strong goal alignment — you're both seeking ${them.lookingFor}s. Your complementary stacks mean you could start building immediately without skill overlaps.`,
 ];
 
+// ✅ Single clean normalizeProfile — no duplicates
 function normalizeProfile(profile) {
+  let location = "";
+  if (Array.isArray(profile.locations) && profile.locations.length > 0) {
+    const loc = profile.locations[0];
+    const parts = [loc.city, loc.state, loc.country].filter(Boolean);
+    location = parts.join(", ");
+  } else if (profile.locations?.city) {
+    const parts = [profile.locations.city, profile.locations.state, profile.locations.country].filter(Boolean);
+    location = parts.join(", ");
+  } else if (profile.location) {
+    location = profile.location;
+  } else if (profile.city) {
+    location = [profile.city, profile.state].filter(Boolean).join(", ");
+  }
+
+  const avatar = profile.avatar
+    ? profile.avatar
+    : (profile.name || "")
+      .split(" ")
+      .map(w => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+
   return {
     ...profile,
+    avatar,
     skillsHave: Array.isArray(profile.skills_have) ? profile.skills_have : [],
     skillsNeed: Array.isArray(profile.skills_need) ? profile.skills_need : [],
     lookingFor: profile.looking_for ?? profile.lookingFor ?? null,
-    location: profile.locations ? `${profile.locations.city}, ${profile.locations.state}` : profile.location ?? "",
-    projects: profile.projects?.length ?? profile.projects ?? 0,
-    hue: profile.hue ?? Math.floor(Math.random() * 360),
+    location,
+    projects: Array.isArray(profile.projects) ? profile.projects.length : (profile.projects ?? 0),
+    hue: profile.hue ?? ((profile.name?.charCodeAt(0) ?? 0) * 37) % 360,
     online: profile.online ?? false,
     followers: profile.followers ?? 0,
   };
@@ -29,9 +54,10 @@ function normalizeProfile(profile) {
 export default function DiscoverTab({
   T, dark,
   currentUser,
-  connected, setConnected,
+  connected, onConnect,
   liked, setLiked,
   onMessage,
+  onFavourite,
 }) {
   const [filterSkill, setFilterSkill] = useState("All");
   const [filterLooking, setFilterLooking] = useState("All");
@@ -42,7 +68,6 @@ export default function DiscoverTab({
   const [aiText, setAiText] = useState({});
   const [quickView, setQuickView] = useState(null);
   const [view, setView] = useState("grid");
-
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -81,7 +106,10 @@ export default function DiscoverTab({
     if (filterOnline && !u.online) return false;
     const sk = filterSkill === "All" || u.skillsHave.includes(filterSkill) || u.skillsNeed.includes(filterSkill);
     const lk = filterLooking === "All" || u.lookingFor === filterLooking;
-    const sq = !searchQ || u.name.toLowerCase().includes(searchQ.toLowerCase()) || u.role.toLowerCase().includes(searchQ.toLowerCase()) || u.skillsHave.some(s => s.toLowerCase().includes(searchQ.toLowerCase()));
+    const sq = !searchQ
+      || u.name.toLowerCase().includes(searchQ.toLowerCase())
+      || u.role.toLowerCase().includes(searchQ.toLowerCase())
+      || u.skillsHave.some(s => s.toLowerCase().includes(searchQ.toLowerCase()));
     return sk && lk && sq;
   });
 
@@ -104,7 +132,8 @@ export default function DiscoverTab({
   };
 
   const btn = {
-    border: "none", cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif",
+    border: "none", cursor: "pointer",
+    fontFamily: "'Instrument Sans',sans-serif",
     transition: "all 0.2s",
   };
 
@@ -191,8 +220,8 @@ export default function DiscoverTab({
         <div style={{ display: "grid", gridTemplateColumns: view === "list" ? "1fr" : "repeat(auto-fill,minmax(300px,1fr))", gap: view === "list" ? 10 : 16 }}>
           {filtered.map((u, i) => (
             view === "list"
-              ? <ListCard key={u.id} u={u} i={i} T={T} dark={dark} connected={connected} setConnected={setConnected} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} setQuickView={setQuickView} />
-              : <GridCard key={u.id} u={u} i={i} T={T} dark={dark} connected={connected} setConnected={setConnected} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} setQuickView={setQuickView} />
+              ? <ListCard key={u.id} u={u} i={i} T={T} dark={dark} connected={connected} onConnect={onConnect} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} setQuickView={setQuickView} />
+              : <GridCard key={u.id} u={u} i={i} T={T} onFavourite={onFavourite} dark={dark} connected={connected} onConnect={onConnect} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} setQuickView={setQuickView} />
           ))}
         </div>
       )}
@@ -206,6 +235,7 @@ export default function DiscoverTab({
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 18, fontWeight: 700, color: T.text, fontFamily: "'Instrument Serif',serif" }}>{quickView.name}</div>
                 <div style={{ fontSize: 12, color: T.text3, marginTop: 2 }}>@{quickView.handle} · {quickView.role}</div>
+                <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>📍 {quickView.location || "Location not set"}</div>
                 <div style={{ fontSize: 11, color: "#22c55e", marginTop: 4 }}>{quickView.online ? "● Online now" : "● Away"}</div>
               </div>
               <div style={{ textAlign: "right" }}>
@@ -217,11 +247,15 @@ export default function DiscoverTab({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
               <div style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderRadius: 12, padding: 12 }}>
                 <Lbl T={T}>Skills</Lbl>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{quickView.skillsHave.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {quickView.skillsHave.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}
+                </div>
               </div>
               <div style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderRadius: 12, padding: 12 }}>
                 <Lbl T={T}>Needs</Lbl>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{quickView.skillsNeed.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {quickView.skillsNeed.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
+                </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 18, marginBottom: 16, padding: "12px 0", borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}` }}>
@@ -233,7 +267,10 @@ export default function DiscoverTab({
               ))}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setConnected(p => ({ ...p, [quickView.id]: true })); setQuickView(null); }} style={{ ...btn, flex: 1, background: connected[quickView.id] ? "transparent" : "linear-gradient(135deg,#7c3aed,#a855f7)", border: connected[quickView.id] ? "1px solid rgba(74,222,128,0.3)" : "none", color: connected[quickView.id] ? "#4ade80" : "white", padding: "11px", borderRadius: 11, fontSize: 13, fontWeight: 700, boxShadow: connected[quickView.id] ? "none" : "0 6px 20px rgba(124,58,237,0.3)" }}>
+              <button
+                onClick={() => { onConnect(quickView); setQuickView(null); }}
+                style={{ ...btn, flex: 1, background: connected[quickView.id] ? "transparent" : "linear-gradient(135deg,#7c3aed,#a855f7)", border: connected[quickView.id] ? "1px solid rgba(74,222,128,0.3)" : "none", color: connected[quickView.id] ? "#4ade80" : "white", padding: "11px", borderRadius: 11, fontSize: 13, fontWeight: 700, boxShadow: connected[quickView.id] ? "none" : "0 6px 20px rgba(124,58,237,0.3)" }}
+              >
                 {connected[quickView.id] ? "✓ Connected" : "Connect →"}
               </button>
               <button onClick={() => { onMessage(quickView); setQuickView(null); }} style={{ ...btn, padding: "11px 18px", borderRadius: 11, background: "transparent", border: `1px solid ${T.border}`, color: T.text2, fontSize: 13, fontWeight: 600 }}>💬 Message</button>
@@ -245,7 +282,7 @@ export default function DiscoverTab({
   );
 }
 
-function GridCard({ u, i, T, dark, connected, setConnected, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView }) {
+function GridCard({ u, i, T, dark, connected, onConnect, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView, onFavourite }) {
   return (
     <div className="card fade-up" style={{ padding: 20, position: "relative", overflow: "hidden", animationDelay: `${i * 0.06}s`, cursor: "default" }}>
       <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: `radial-gradient(circle,${hsla(u.hue, 70, 60, dark ? 0.08 : 0.05)} 0%,transparent 70%)`, pointerEvents: "none" }} />
@@ -281,7 +318,7 @@ function GridCard({ u, i, T, dark, connected, setConnected, liked, setLiked, aiT
         </div>
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 11, color: T.text3 }}>📍 {u.location}</span>
+        <span style={{ fontSize: 11, color: T.text3 }}>📍 {u.location || "Location not set"}</span>
         <span style={{ fontSize: 11, color: T.text3 }}>📁 {u.projects} projects</span>
         <span style={{ fontSize: 11, color: T.text3 }}>★ {u.followers}</span>
       </div>
@@ -297,9 +334,12 @@ function GridCard({ u, i, T, dark, connected, setConnected, liked, setLiked, aiT
       <div style={{ display: "flex", gap: 6 }}>
         {connected[u.id]
           ? <button style={{ flex: 1, padding: "8px", background: "transparent", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", borderRadius: 11, cursor: "default", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>✓ Connected</button>
-          : <button onClick={() => setConnected(p => ({ ...p, [u.id]: true }))} style={{ flex: 1, padding: "8px", background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, transition: "all 0.2s", boxShadow: "0 4px 14px rgba(124,58,237,0.28)" }}>Connect</button>
+          : <button onClick={() => onConnect(u)} style={{ flex: 1, padding: "8px", background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, transition: "all 0.2s", boxShadow: "0 4px 14px rgba(124,58,237,0.28)" }}>Connect</button>
         }
-        <button onClick={() => setLiked(p => ({ ...p, [u.id]: !p[u.id] }))} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${liked[u.id] ? "rgba(248,113,113,0.3)" : T.border}`, color: liked[u.id] ? "#f87171" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>
+        <button onClick={() => {
+          setLiked(p => ({ ...p, [u.id]: !p[u.id] }));
+          onFavourite(u);
+        }} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${liked[u.id] ? "rgba(248,113,113,0.3)" : T.border}`, color: liked[u.id] ? "#f87171" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>
           {liked[u.id] ? "♥" : "♡"}
         </button>
         <button onClick={() => handleAI(u)} style={{ padding: "8px 10px", background: aiText[u.id] ? dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)" : "transparent", border: `1px solid ${aiText[u.id] ? "rgba(124,58,237,0.3)" : T.border}`, color: aiText[u.id] ? "#a78bfa" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13, transition: "all 0.2s" }}>
@@ -312,7 +352,7 @@ function GridCard({ u, i, T, dark, connected, setConnected, liked, setLiked, aiT
   );
 }
 
-function ListCard({ u, i, T, dark, connected, setConnected, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView }) {
+function ListCard({ u, i, T, dark, connected, onConnect, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView }) {
   return (
     <div className="card fade-up" style={{ padding: "14px 18px", display: "flex", gap: 14, alignItems: "center", animationDelay: `${i * 0.04}s` }}>
       <div style={{ position: "relative", flexShrink: 0 }}>
@@ -329,6 +369,9 @@ function ListCard({ u, i, T, dark, connected, setConnected, liked, setLiked, aiT
           {u.skillsHave.slice(0, 3).map(s => <span key={s} style={{ padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}
           {u.skillsNeed.slice(0, 2).map(s => <span key={s} style={{ padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
         </div>
+        <div style={{ marginTop: 4 }}>
+          <span style={{ fontSize: 11, color: T.text3 }}>📍 {u.location || "Location not set"}</span>
+        </div>
       </div>
       <div style={{ textAlign: "right", flexShrink: 0 }}>
         <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 22, color: scoreColor(u.matchScore), lineHeight: 1 }}>{u.matchScore}%</div>
@@ -337,7 +380,7 @@ function ListCard({ u, i, T, dark, connected, setConnected, liked, setLiked, aiT
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         {connected[u.id]
           ? <span style={{ fontSize: 12, color: "#4ade80", fontWeight: 600 }}>✓</span>
-          : <button onClick={() => setConnected(p => ({ ...p, [u.id]: true }))} style={{ padding: "6px 14px", background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700 }}>Connect</button>
+          : <button onClick={() => onConnect(u)} style={{ padding: "6px 14px", background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700 }}>Connect</button>
         }
         <button onClick={() => onMessage(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>💬</button>
         <button onClick={() => setQuickView(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>↗</button>

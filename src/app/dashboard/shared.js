@@ -134,15 +134,27 @@ export const Lbl = ({ children, T }) => (
   </div>
 );
 
-export const Avatar = ({ u, size = 44, radius = 12, T, dark }) => (
-  <div style={{
-    width: size, height: size, borderRadius: radius,
-    background: hsla(u.hue, 70, 60, dark ? 0.15 : 0.12),
-    border: `1.5px solid ${hsla(u.hue, 70, 60, 0.3)}`,
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: size * 0.3, fontWeight: 700, color: hsl(u.hue),
-    flexShrink: 0, fontFamily: "'Instrument Serif',serif",
-  }}>
-    {u.avatar}
-  </div>
-);
+export const Avatar = ({ u, size = 44, radius = 12, T, dark }) => {
+  // Generate initials from name if avatar field is missing or empty
+  const initials = u.avatar
+    ? u.avatar
+    : (u.name || "?")
+        .split(" ")
+        .map(w => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: radius,
+      background: hsla(u.hue, 70, 60, dark ? 0.15 : 0.12),
+      border: `1.5px solid ${hsla(u.hue, 70, 60, 0.3)}`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.3, fontWeight: 700, color: hsl(u.hue),
+      flexShrink: 0, fontFamily: "'Instrument Serif',serif",
+    }}>
+      {initials}
+    </div>
+  );
+};

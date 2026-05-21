@@ -10,7 +10,9 @@ export async function POST(request) {
       ...profile,
       matchScore: calculateMatchScore(me, profile),
     }));
-
+    
+    console.log(profileswithMatchingScore);
+    
     return NextResponse.json({ profiles: profileswithMatchingScore });
   } catch (error) {
     return NextResponse.json({ error: error });

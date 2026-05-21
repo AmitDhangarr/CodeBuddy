@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   DARK, LIGHT,
   INITIAL_CONVERSATIONS, INITIAL_NOTIFS, DEFAULT_USER,
@@ -31,76 +31,46 @@ export default function Dashboard() {
 
   const T = dark ? DARK : LIGHT;
   const unread = notifs.filter(n => !n.read).length;
-  const prompt = {
-  "user": {
-    "id": 101,
-    "name": "Aman Sharma",
-    "email": "aman.sharma@example.com",
-    "role": "Frontend Developer",
-    "experience": "3 years",
-    "location": "Meerut, India",
 
-    "skillsHave": [
-      "HTML",
-      "CSS",
-      "JavaScript",
-      "React",
-      "Git"
-    ],
 
-    "skillsNeeded": [
-      "TypeScript",
-      "Next.js",
-      "Node.js",
-      "System Design",
-      "Testing"
-    ],
-
-    "projects": [
-      {
-        "name": "Portfolio Website",
-        "techStack": ["React", "CSS"],
-        "status": "Completed"
-      },
-      {
-        "name": "E-commerce Dashboard",
-        "techStack": ["React", "Node.js"],
-        "status": "In Progress"
+  useEffect(() => {
+    const getAllProfiles = async () => {
+      try {
+        const res = await fetch("/api/profiles");
+        const profiles = await res.json();
+        console.log(profiles);
+      } catch (err) {
+        console.error("Failed to fetch profiles:", err);
       }
-    ],
+    };
+    getAllProfiles();
+  }, []);
 
-    "careerGoal": "Become a Full Stack Developer",
-    "availability": "Open to opportunities"
-  }
-}
-  const GetAIInsight = async (prompt) => {
-    const res = await fetch("/api/ai_insights", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt:JSON.stringify(prompt) }),
-    });
 
-    if (!res.ok) {
-      throw new Error("Failed to fetch AI insight");
+  const sendConnection = async (user) => {
+
+    try {
+      const res = await fetch("/api/connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: user.id,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to send connection request");
+      const data = await res.json();
+      console.log("Connection sent:", data);
+    } catch (err) {
+      console.error("sendConnection error:", err);
     }
+  };
 
-    const data = await res.json();
-    console.log(data);
-    
-  }
-  // GetAIInsight(prompt);
 
-   const getAllProfiles = async () => {
-    const data = await fetch("api/profiles");
-    const profiles = await data.json();
-    console.log(profiles);
-    
-  }
+  const handleConnect = useCallback((user) => {
+    setConnected(prev => ({ ...prev, [user.id]: true }));
+    sendConnection(user);
+  }, [currentUser]);
 
-getAllProfiles();
-  // Navigate to Messages with a specific user
   const handleMessage = useCallback((user) => {
     const existing = convos.find(c => c.user.id === user.id);
     if (existing) {
@@ -117,6 +87,24 @@ getAllProfiles();
     setDashPage("messages");
   }, [convos]);
 
+
+  // add to Favourites
+  const handleFavourites = async (user) => {
+    try {
+      const res = await fetch("/api/favourites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: user.id,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to send connection request");
+      const data = await res.json();
+      console.log("added to favourites:", data);
+    } catch (err) {
+      console.error("add to Favourites error:", err);
+    }
+  }
   const globalCss = `
     @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
@@ -135,8 +123,6 @@ getAllProfiles();
     .card{background:${T.card};border:1px solid ${T.border};border-radius:18px;transition:all 0.25s}
     .card:hover{background:${T.cardHover};border-color:${T.border2};transform:translateY(-2px);box-shadow:${T.shadow}}
     .card-flat{background:${T.card};border:1px solid ${T.border};border-radius:18px}
-
-    /* ── Responsive ── */
     @media(max-width:768px){
       .db-main{padding:16px 12px !important}
       .desk-nav{display:none !important}
@@ -145,16 +131,11 @@ getAllProfiles();
       .msg-sidebar{display:none !important}
       .msg-right-panel{display:none !important}
     }
-    @media(max-width:480px){
-      .nav-ghost{display:none}
-    }
-    @media(min-width:769px){
-      .mob-bottom-nav{display:none !important}
-    }
+    @media(max-width:480px){.nav-ghost{display:none}}
+    @media(min-width:769px){.mob-bottom-nav{display:none !important}}
     .mob-bottom-nav{
       display:none;
       position:fixed;bottom:0;left:0;right:0;
-      background:${T.navBg};
       backdrop-filter:blur(20px);
       border-top:1px solid ${T.border};
       z-index:200;padding:8px 0 12px;
@@ -183,13 +164,11 @@ getAllProfiles();
 
       {/* ── Top nav ── */}
       <header style={{ position: "sticky", top: 0, zIndex: 200, background: dark ? "rgba(6,6,8,0.94)" : "rgba(245,245,249,0.96)", backdropFilter: "blur(24px)", borderBottom: `1px solid ${T.border}`, padding: "0 22px", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }} onClick={() => setDashPage("discover")}>
           <LogoIcon />
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 16, color: T.text }}>CodeBuddy</span>
         </div>
 
-        {/* Desktop nav */}
         <nav className="desk-nav" style={{ display: "flex", gap: 2 }}>
           {NAV_ITEMS.map(n => (
             <button key={n.id} onClick={() => setDashPage(n.id)} style={{ background: dashPage === n.id ? dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)" : "none", border: "none", color: dashPage === n.id ? dark ? "#e0d8ff" : "#7c3aed" : T.text3, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 500, padding: "8px 13px", borderRadius: 10, display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
@@ -202,9 +181,7 @@ getAllProfiles();
           ))}
         </nav>
 
-        {/* Right controls */}
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {/* Notification bell */}
           <div style={{ position: "relative" }}>
             <button onClick={() => setNotifOpen(p => !p)} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", position: "relative", transition: "all 0.2s" }}>
               🔔
@@ -233,12 +210,10 @@ getAllProfiles();
             )}
           </div>
 
-          {/* Theme toggle */}
           <button onClick={() => setDark(p => !p)} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", transition: "all 0.2s" }}>
             {dark ? "☀️" : "🌙"}
           </button>
 
-          {/* Avatar */}
           <div onClick={() => setDashPage("profile")} style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2))", border: "1px solid rgba(124,58,237,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#c4b5fd", cursor: "pointer" }}>
             {currentUser.name[0]}
           </div>
@@ -247,17 +222,17 @@ getAllProfiles();
 
       {/* ── Main content ── */}
       <main className="db-main" style={{ flex: 1, maxWidth: 1060, margin: "0 auto", width: "100%", padding: "28px 20px", position: "relative", zIndex: 1 }}>
-
         {dashPage === "discover" && (
           <DiscoverTab
             T={T} dark={dark}
             currentUser={currentUser}
-            connected={connected} setConnected={setConnected}
+            connected={connected}
+            onConnect={handleConnect}
             liked={liked} setLiked={setLiked}
             onMessage={handleMessage}
+            onFavourite={handleFavourites}
           />
         )}
-
         {dashPage === "messages" && (
           <MessagesTab
             T={T} dark={dark}
@@ -266,7 +241,6 @@ getAllProfiles();
             activeConvo={activeConvo} setActiveConvo={setActiveConvo}
           />
         )}
-
         {dashPage === "profile" && (
           <ProfileTab
             T={T} dark={dark}
@@ -275,7 +249,6 @@ getAllProfiles();
             convos={convos} setActiveConvo={setActiveConvo}
           />
         )}
-
         {dashPage === "settings" && (
           <SettingsTab
             T={T} dark={dark} setDark={setDark}
