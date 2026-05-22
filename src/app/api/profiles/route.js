@@ -8,7 +8,10 @@ const PROFILE_FIELDS = `
   id, name, handle, role, bio,
   skills_have, skills_need, looking_for,
   locations ( id, city, state ),
-  projects ( id, sort_order, stars )
+  projects ( id, sort_order, stars ),
+  connections_from:connections!connections_from_user_id_fkey ( id, to_user_id, status ),
+  connections_to:connections!connections_to_user_id_fkey ( id, from_user_id, status ),
+  favourites ( id, target_id, target_type )
 `;
 
 function normalizeProfile(profile) {
@@ -45,13 +48,29 @@ export async function GET(request) {
 
     const me = normalizeProfile(meData);
 
-    const profilesWithMatchScore = allProfiles
-      .filter((profile) => profile.id !== me.id)
-      .map((profile) => ({
-        ...normalizeProfile(profile),
-        matchScore: calculateMatchScore(me, normalizeProfile(profile)),
-      }));
+const profilesWithMatchScore = allProfiles
+  .filter((profile) => profile.id !== me.id)
+  .map((profile) => {
+    const normalized = normalizeProfile(profile);
 
+    const isFavourited =
+      me.favourites?.some(
+        (fav) => fav.target_id === profile.id && fav.target_type === "profile"
+      ) ?? false;
+
+    const isConnected =
+      profile.connections_from?.some((conn) => conn.to_user_id === me.id) ||
+      profile.connections_to?.some((conn) => conn.from_user_id === me.id) ||
+      false;
+
+    return {
+      ...normalized,
+      matchScore: calculateMatchScore(me, normalized),
+      isFavourited,
+      isConnected,
+    };
+  });
+  
     return NextResponse.json({ profiles: profilesWithMatchScore });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

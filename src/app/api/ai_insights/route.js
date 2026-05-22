@@ -6,9 +6,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const getPrompt = body.prompt;
-    const prompt = `Analyze this profile deeply, identify strengths, weaknesses, hidden patterns, 
-    growth opportunities, risks, personality traits, and actionable improvement recommendations 
-    with precision. based on this ${getPrompt} in just 12-15 words  `;
+    const prompt = `Analyze this profile  based on this ${getPrompt} in just very short sentences  `;
 
     const res = await getAIInsight.models.generateContent({
       model: "gemini-2.5-flash",

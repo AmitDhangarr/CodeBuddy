@@ -1,39 +1,42 @@
 import { NextResponse } from "next/server";
-import { supabase, supbase } from "../../../lib/supabaseClient.js";
-import { cookies } from "next/headers";
+import { supabase } from "../../../lib/supabaseClient.js";
+import { cookies } from "next/headers.js";
 import { getPayload } from "../../../../service/handletoken.js";
+
 export async function POST(request) {
   try {
-    const data = await request.json();
-    const receiverId = data.receiverId;
-
     const cookie = await cookies();
     const token = cookie.get("token");
-    const payload = await getPayload(token.value);
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data: senderId, error: senderIdErr } = await supabase
+    const payload = await getPayload(token.value);
+    const { receiverId } = await request.json();
+
+    if (!receiverId) return NextResponse.json({ error: "receiverId is required" }, { status: 400 });
+
+    const { data: me, error: meError } = await supabase
       .from("profiles")
       .select("id")
       .eq("email", payload.email)
       .single();
 
-    if (senderIdErr) {
-      return NextResponse.json({ error: senderIdErr });
-    }
+    if (meError || !me) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const { data: connection, error: connectionErr } = await supabase
+    const { data: existing } = await supabase
       .from("connections")
-      .insert({
-        requester_id: senderId.id,
-        receiver_id: receiverId,
-        status: "pending",
-      });
+      .select("id, status")
+      .or(`and(from_user_id.eq.${me.id},to_user_id.eq.${receiverId}),and(from_user_id.eq.${receiverId},to_user_id.eq.${me.id})`)
+      .single();
 
-    if (connectionErr) {
-      return NextResponse.json({ error: connectionErr });
+    if (existing) {
+      await supabase.from("connections").delete().eq("id", existing.id);
+      return NextResponse.json({ action: "removed" });
     }
+
+    await supabase.from("connections").insert({ from_user_id: me.id, to_user_id: receiverId, status: "pending" });
+    return NextResponse.json({ action: "added" });
+
   } catch (error) {
-    return NextResponse.json({ error: "internal server error", status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({success:true,message:"connection has been sent"})
 }

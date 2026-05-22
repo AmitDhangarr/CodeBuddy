@@ -65,12 +65,6 @@ export default function Dashboard() {
     }
   };
 
-
-  const handleConnect = useCallback((user) => {
-    setConnected(prev => ({ ...prev, [user.id]: true }));
-    sendConnection(user);
-  }, [currentUser]);
-
   const handleMessage = useCallback((user) => {
     const existing = convos.find(c => c.user.id === user.id);
     if (existing) {
@@ -88,23 +82,51 @@ export default function Dashboard() {
   }, [convos]);
 
 
-  // add to Favourites
-  const handleFavourites = async (user) => {
+  const handleConnect = useCallback(async (user) => {
+    const wasConnected = connected[user.id];
+    setConnected(prev => ({ ...prev, [user.id]: !wasConnected }));
+
+    try {
+      const res = await fetch("/api/connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiverId: user.id }),
+      });
+      const json = await res.json();
+
+      if (json.action === "removed") {
+        setConnected(prev => ({ ...prev, [user.id]: false }));
+      } else {
+        setConnected(prev => ({ ...prev, [user.id]: true }));
+      }
+    } catch (err) {
+      setConnected(prev => ({ ...prev, [user.id]: wasConnected }));
+    }
+  }, [connected]);
+
+  const handleFavourite = useCallback(async (user) => {
+    const wasFav = liked[user.id];
+    setLiked(prev => ({ ...prev, [user.id]: !wasFav }));
+
     try {
       const res = await fetch("/api/favourites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          receiverId: user.id,
-        }),
+        body: JSON.stringify({ receiverId: user.id }),
       });
-      if (!res.ok) throw new Error("Failed to send connection request");
-      const data = await res.json();
-      console.log("added to favourites:", data);
+      const json = await res.json();
+
+      if (json.action === "removed") {
+        setLiked(prev => ({ ...prev, [user.id]: false }));
+      } else {
+        setLiked(prev => ({ ...prev, [user.id]: true }));
+      }
     } catch (err) {
-      console.error("add to Favourites error:", err);
+      setLiked(prev => ({ ...prev, [user.id]: wasFav }));
     }
-  }
+  }, [liked]);
+
+
   const globalCss = `
     @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
@@ -228,9 +250,11 @@ export default function Dashboard() {
             currentUser={currentUser}
             connected={connected}
             onConnect={handleConnect}
+            onSeedConnected={(init) => setConnected(init)}
             liked={liked} setLiked={setLiked}
+            onSeedLiked={(init) => setLiked(init)}
             onMessage={handleMessage}
-            onFavourite={handleFavourites}
+            onFavourite={handleFavourite}
           />
         )}
         {dashPage === "messages" && (
