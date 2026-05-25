@@ -8,6 +8,15 @@ import { useSignupStore } from "../../../../store/UsesignupStore";
 const hsl  = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
 const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
 
+// ── GitHub URL validator ────────────────────────────────────────────────────
+function validateGithubUrl(url) {
+  if (!url || !url.trim()) return null; // optional on non-primary cards, enforced separately
+  const trimmed = url.trim();
+  const pattern = /^(https?:\/\/)?(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/;
+  if (!pattern.test(trimmed)) return "Enter a valid GitHub repo URL (e.g. github.com/user/repo)";
+  return null;
+}
+
 // ─── India locations ───────────────────────────────────────────────────────
 
 const INDIA_STATES = [
@@ -111,7 +120,7 @@ const SKILLS_ALL = [
   "Django","FastAPI","Express.js","Prisma","Firebase","Supabase","Redis","tRPC"
 ];
 
-// ─── Steps: added "Location" (index 4) and "Projects" (index 5) ──────────
+// ─── Steps ─────────────────────────────────────────────────────────────────
 const STEPS = ["Identity", "Role", "Your Skills", "You Need", "Location", "Projects", "Review"];
 
 // ─── Empty project template ───────────────────────────────────────────────
@@ -141,6 +150,16 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
   const filteredSkills = SKILLS_ALL.filter(s =>
     s.toLowerCase().includes((project.skillSearch || "").toLowerCase())
   );
+
+  // ── live GitHub URL validation on blur ──────────────────────────────────
+  const handleGithubBlur = () => {
+    if (!project.githubUrl.trim()) return; // empty allowed unless isFirst
+    const err = validateGithubUrl(project.githubUrl);
+    if (err) onChange({ ...project, _githubErr: err });
+    else onChange({ ...project, _githubErr: null });
+  };
+
+  const githubError = errors?.githubUrl || project._githubErr || null;
 
   return (
     <div style={{
@@ -227,11 +246,22 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
               className="input"
               placeholder="github.com/user/repo"
               value={project.githubUrl}
-              onChange={e => upd("githubUrl", e.target.value)}
-              style={{ paddingLeft: 30, borderColor: errors?.githubUrl ? "rgba(248,113,113,0.5)" : undefined }}
+              onChange={e => {
+                upd("githubUrl", e.target.value);
+                // clear inline error while typing
+                if (project._githubErr) onChange({ ...project, githubUrl: e.target.value, _githubErr: null });
+              }}
+              onBlur={handleGithubBlur}
+              style={{
+                paddingLeft: 30,
+                borderColor: githubError ? "rgba(248,113,113,0.5)" : undefined
+              }}
             />
           </div>
-          <Err msg={errors?.githubUrl} />
+          <Err msg={githubError} />
+          {!githubError && project.githubUrl.trim() && (
+            <div style={{ fontSize: 11, color: "#4ade80", marginTop: 4 }}>✓ Valid GitHub URL</div>
+          )}
         </div>
         <div>
           <label style={{ fontSize: 11, fontWeight: 600, color: T.text2, display: "block", marginBottom: 5 }}>Branch</label>
@@ -526,8 +556,23 @@ function OnBoarding() {
     // Projects step (index 5) — first project mandatory
     if (onboardStep === 5) {
       const first = formData.projects[0];
-      if (!first.name.trim())     e["proj_0_name"]      = "Project name required";
-      if (!first.githubUrl.trim()) e["proj_0_githubUrl"] = "GitHub URL required";
+      if (!first.name.trim()) e["proj_0_name"] = "Project name required";
+
+      // GitHub URL required on first project
+      if (!first.githubUrl.trim()) {
+        e["proj_0_githubUrl"] = "GitHub URL required";
+      } else {
+        const urlErr = validateGithubUrl(first.githubUrl);
+        if (urlErr) e["proj_0_githubUrl"] = urlErr;
+      }
+
+      // Validate GitHub URLs on additional projects (if filled in)
+      formData.projects.slice(1).forEach((proj, idx) => {
+        if (proj.githubUrl.trim()) {
+          const urlErr = validateGithubUrl(proj.githubUrl);
+          if (urlErr) e[`proj_${idx + 1}_githubUrl`] = urlErr;
+        }
+      });
     }
 
     setErrors(e);
@@ -560,7 +605,13 @@ function OnBoarding() {
         pincode: formData.pincode,
         remote:  formData.remote,
       },
-      projects: formData.projects.map(({ skillSearch, ...rest }) => rest),
+      projects: formData.projects.map(({ skillSearch, _githubErr, ...rest }) => ({
+        ...rest,
+        // Normalise GitHub URL — ensure https:// prefix
+        githubUrl: rest.githubUrl && !rest.githubUrl.startsWith("http")
+          ? "https://" + rest.githubUrl
+          : rest.githubUrl,
+      })),
     };
 
     updateForm(payload);
@@ -749,7 +800,6 @@ function OnBoarding() {
               <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>Where are you based?</h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 24 }}>Helps surface nearby collaborators and local meetups.</p>
 
-              {/* State selector */}
               <div style={{ marginBottom: 18 }}>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 8 }}>
                   State / UT <span style={{ color: "#f87171" }}>*</span>
@@ -766,7 +816,6 @@ function OnBoarding() {
                 <Err msg={errors.state} />
               </div>
 
-              {/* City — dropdown if known cities exist, else free text */}
               {formData.state && (
                 <div style={{ marginBottom: 18 }}>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 8 }}>
@@ -804,7 +853,6 @@ function OnBoarding() {
                 </div>
               )}
 
-              {/* Pincode */}
               <div style={{ marginBottom: 18 }}>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>
                   PIN code <span style={{ color: T.text3, fontWeight: 400 }}>(optional)</span>
@@ -820,7 +868,6 @@ function OnBoarding() {
                 />
               </div>
 
-              {/* Remote toggle */}
               <label className="toggle-wrap" style={{ display: "flex" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Open to remote collaboration</div>
@@ -844,7 +891,6 @@ function OnBoarding() {
                 </div>
               </label>
 
-              {/* Map hint */}
               <div style={{ marginTop: 20, padding: "12px 14px", borderRadius: 12, background: T.aiBg, border: `1px solid ${T.aiBorder}` }}>
                 <p style={{ fontSize: 12, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.6 }}>
                   📍 Location is used only for matching and discovery — your exact address is never shared.
@@ -859,7 +905,6 @@ function OnBoarding() {
               <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>Showcase your work</h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 8 }}>Add projects to show collaborators what you've built.</p>
 
-              {/* Legend */}
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, padding: "9px 12px", borderRadius: 10, background: dark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.05)", border: `1px solid ${dark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.15)"}` }}>
                 <span style={{ fontSize: 14 }}>★</span>
                 <span style={{ fontSize: 12, color: dark ? "#c4a8ff" : "#7c3aed" }}>
@@ -911,7 +956,6 @@ function OnBoarding() {
               </h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 22 }}>Review your profile before we launch matching.</p>
 
-              {/* Profile card */}
               <div className="card-flat" style={{ padding: 22, marginBottom: 12 }}>
                 <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${T.border}` }}>
                   <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg,rgba(124,58,237,0.2),rgba(168,85,247,0.1))", border: "2px solid rgba(124,58,237,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, color: "#c4b5fd", flexShrink: 0 }}>
@@ -931,7 +975,6 @@ function OnBoarding() {
 
                 {formData.bio && <p style={{ fontSize: 12, color: T.text2, lineHeight: 1.5, marginBottom: 14 }}>{formData.bio}</p>}
 
-                {/* Location summary */}
                 {(formData.state || formData.city) && (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14, fontSize: 12, color: T.text2 }}>
                     <span>📍</span>
@@ -962,7 +1005,6 @@ function OnBoarding() {
                 )}
               </div>
 
-              {/* Projects summary */}
               {formData.projects.filter(p => p.name).length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <Lbl T={T}>Projects ({formData.projects.filter(p => p.name).length})</Lbl>
@@ -996,7 +1038,6 @@ function OnBoarding() {
                 </div>
               )}
 
-              {/* AI tip */}
               {!apiSuccess && (
                 <div style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 12, padding: "12px 14px" }}>
                   <p style={{ fontSize: 12, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.6 }}>
@@ -1005,7 +1046,6 @@ function OnBoarding() {
                 </div>
               )}
 
-              {/* Error banner */}
               {apiError && (
                 <div className="banner-error slide-down">
                   <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>⚠️</span>
@@ -1023,7 +1063,6 @@ function OnBoarding() {
                 </div>
               )}
 
-              {/* Success banner */}
               {apiSuccess && (
                 <div className="banner-success slide-down">
                   <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>🎉</span>
