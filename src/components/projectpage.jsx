@@ -549,7 +549,7 @@ export default function ProjectPage({ projectId, onBack, T, dark, currentUser })
             </div>
           )}
 
-          {/* ── ENDORSEMENTS ──────────────────────────── */}
+          
           {activeSection === "endorsements" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 

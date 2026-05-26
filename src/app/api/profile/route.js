@@ -37,9 +37,6 @@ export async function GET(request) {
       .select(PROFILE_FIELDS)
       .eq("email", email)
       .single();
-
-
-      console.log(profileInfo);
       
     if (error || !profileInfo) {
       return NextResponse.json({

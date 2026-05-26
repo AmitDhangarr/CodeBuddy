@@ -1,5 +1,5 @@
 'use client'
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import Link from "next/link";
 
 const T = {
@@ -146,12 +146,54 @@ const TESTIMONIALS = [
   { name: "TechCorp India", role: "Team of 4", plan: "Team", avatar: "TC", hue: 38, quote: "Built our entire founding engineering team through CodeBuddy's Team plan. Worth every rupee." },
 ];
 
+ const tickerItems = [
+    "Aanya matched with Rohan · 2 min ago",
+    "Sara shipped a project · 5 min ago",
+    "Dev joined as Rust mentor · 8 min ago",
+    "Priya found her co-founder · 12 min ago",
+    "Karan matched with ML engineer · 15 min ago",
+  ];
+
 export default function PricingPage() {
   const [yearly, setYearly] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
+   const [ticker, setTicker] = useState(0);
   const [hoveredPlan, setHoveredPlan] = useState(null);
+  const [dark, setDark] = useState(true);
+  const [token, settoken] = useState(false);
+  const [showSignoutModal, setShowSignoutModal] = useState(false);
 
-  const hsl  = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
+  const getToken = async () => {
+    const data = await fetch("/api/auth/me");
+    const json = await data.json();
+
+    settoken(json.token || false);
+  };
+
+  useEffect(() => {
+    getToken();
+  }, [])
+
+
+
+  const handleSignout = async () => {
+    try {
+      const res = await fetch("/api/signout", { method: "POST" });
+      const data = await res.json();
+
+      if (data.success) {
+        setShowSignoutModal(false);
+        settoken(false);
+        router.push("/");
+      }
+    } catch (err) {
+      console.error("Sign out failed:", err);
+    }
+  };
+
+
+
+  const hsl = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
   const hsla = (h, s = 70, l = 60, a = 0.15) => `hsla(${h},${s}%,${l}%,${a})`;
 
   const css = `
@@ -189,41 +231,111 @@ export default function PricingPage() {
     }
   `;
 
+   const SignoutModal = () => (
+    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowSignoutModal(false); }}>
+      <div className="modal-box" style={{ background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: 22, padding: "36px 32px", width: "min(380px, calc(100vw - 32px))", boxShadow: T.shadow, textAlign: "center" }}>
+
+        {/* Icon */}
+        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 24 }}>
+          🚪
+        </div>
+
+        {/* Title */}
+        <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 24, fontWeight: 400, color: T.text, letterSpacing: "-0.5px", marginBottom: 10 }}>
+          Sign out of CodeBuddy?
+        </h3>
+
+        {/* Subtitle */}
+        <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, marginBottom: 28, maxWidth: 280, margin: "0 auto 28px" }}>
+          You'll need to sign back in to access your matches and messages.
+        </p>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            className="btn-ghost"
+            style={{ flex: 1, padding: "11px 0", fontSize: 13 }}
+            onClick={() => setShowSignoutModal(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn-danger"
+            style={{ flex: 1, padding: "11px 0", fontSize: 13 }}
+            onClick={handleSignout}
+          >
+            Yes, sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const Logo = () => (
+    <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill={dark ? "#1a0a6a" : "#1a0a6a"} />
+      <path fillRule="evenodd" clipRule="evenodd" d="M28.0441 7.60927C28.8868 6.80331 30.2152 6.79965 31.0622 7.58229L31.1425 7.66005L31.4164 7.94729C34.1911 10.9318 35.2251 14.4098 34.9599 17.8065C34.6908 21.2511 33.1012 24.4994 30.8836 27.0664C28.6673 29.6316 25.7084 31.6519 22.51 32.5287C19.2714 33.4164 15.7294 33.1334 12.6547 30.9629C10.0469 29.1218 9.05406 26.1465 8.98661 23.2561C7.52323 22.5384 5.98346 21.6463 4.36789 20.5615L3.941 20.2716L3.85006 20.206C2.93285 19.5053 2.72313 18.2084 3.39161 17.2564C4.06029 16.3043 5.36233 16.046 6.34665 16.6512L6.44134 16.7126L6.83024 16.9771C7.79805 17.6269 8.72153 18.1903 9.59966 18.6767C10.1661 16.6889 11.1047 14.7802 12.3413 13.207C14.1938 10.8501 16.9713 8.96525 20.374 9.24647C23.439 9.49995 25.7036 11.081 26.8725 13.3122C28.0044 15.4728 28.0211 18.0719 27.0319 20.307C26.0234 22.5857 23.976 24.484 21.0309 25.2662C18.9114 25.8291 16.4284 25.7905 13.6267 25.0367V25.0377C12.5115 24.7375 11.3427 24.323 10.1212 23.7846C9.8472 23.6638 9.60873 23.8483 10.1212 24.1686C11.5636 25.1924 13.5956 26.0505 14.1836 26.3385C14.4615 26.788 14.8061 27.1568 15.2011 27.4356C17.0188 28.7188 19.1451 28.9539 21.3396 28.3523C23.5743 27.7397 25.8141 26.2625 27.5514 24.2516C29.2873 22.2423 30.4065 19.8348 30.5909 17.4727C30.765 15.2439 30.1218 12.9543 28.1842 10.8736L27.9927 10.6731L27.9162 10.5906C27.1538 9.72748 27.2018 8.41516 28.0441 7.60927ZM20.0092 13.5651C18.6033 13.4489 17.1196 14.189 15.8013 15.8662C14.7973 17.1436 14.0376 18.8033 13.6503 20.5112C16.4093 21.4544 18.4655 21.4608 19.8942 21.0814C21.5481 20.6422 22.5399 19.6477 23.0172 18.5693C23.5137 17.4472 23.4628 16.2245 22.9813 15.3055C22.5369 14.4571 21.6422 13.7002 20.0092 13.5651Z" fill="#ffffff" />
+    </svg>
+  );
+
+
   const CheckMark = ({ val }) => {
-    if (val === true)   return <span style={{ fontSize: 15, color: "#4ade80" }}>✓</span>;
-    if (val === false)  return <span style={{ fontSize: 15, color: T.text3 }}>—</span>;
+    if (val === true) return <span style={{ fontSize: 15, color: "#4ade80" }}>✓</span>;
+    if (val === false) return <span style={{ fontSize: 15, color: T.text3 }}>—</span>;
     return <span style={{ fontSize: 11, fontWeight: 600, color: T.text }}>{val}</span>;
   };
 
   return (
-    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
+   <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
       <style>{css}</style>
+
+      {/* ── SIGN OUT MODAL ── */}
+      {showSignoutModal && <SignoutModal />}
 
       {/* Ambient */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "-20%", left: "-10%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle,hsla(259,70%,35%,0.1) 0%,transparent 65%)" }} />
-        <div style={{ position: "absolute", bottom: "-15%", right: "-10%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle,hsla(300,60%,30%,0.07) 0%,transparent 65%)" }} />
-        <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.015 }} xmlns="http://www.w3.org/2000/svg">
-          <defs><pattern id="g" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" strokeWidth="0.5" /></pattern></defs>
-          <rect width="100%" height="100%" fill="url(#g)" />
-        </svg>
+        <div style={{ position: "absolute", top: "-18%", left: "-8%", width: 650, height: 650, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(259,70%,35%,0.11)" : "hsla(259,70%,60%,0.055)"} 0%,transparent 65%)` }} />
+        <div style={{ position: "absolute", bottom: "-12%", right: "-8%", width: 550, height: 550, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(300,60%,30%,0.07)" : "hsla(300,60%,60%,0.04)"} 0%,transparent 65%)` }} />
+        {dark && <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.018 }} xmlns="http://www.w3.org/2000/svg"><defs><pattern id="g" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" strokeWidth="0.5" /></pattern></defs><rect width="100%" height="100%" fill="url(#g)" /></svg>}
+      </div>
+
+      {/* Live ticker bar */}
+      <div style={{ background: dark ? "rgba(124,58,237,0.1)" : "rgba(124,58,237,0.07)", borderBottom: `1px solid ${T.surfaceBorder}`, padding: "7px 24px", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, position: "relative", zIndex: 99 }}>
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 7px #22c55e", flexShrink: 0, animation: "pulse 2s ease-in-out infinite" }} />
+        <div style={{ height: 18, overflow: "hidden", position: "relative" }}>
+          <div key={ticker} style={{ fontSize: 11, fontWeight: 600, color: "#a78bfa", animation: "tickerFade 3s ease-in-out both" }}>
+            {tickerItems[ticker]}
+          </div>
+        </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 100, background: T.navBg, backdropFilter: "blur(28px)", borderBottom: `1px solid ${T.border}`, padding: "0 clamp(16px,5vw,32px)", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: "#00DC33", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>C</div>
-          <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 17, color: T.text }}>CodeBuddy</span>
-        </Link>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/signin"><button style={{ background: "transparent", border: `1px solid ${T.border}`, color: T.text2, padding: "7px 16px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, transition: "all 0.2s" }}>Sign in</button></Link>
-          <Link href="/signup"><button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", padding: "7px 18px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700 }}>Get started →</button></Link>
+      <nav className="landing-nav" style={{ position: "sticky", top: 0, zIndex: 100, padding: "0 clamp(16px,5vw,32px)", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Logo />
+          <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(14px,4vw,18px)", color: T.text, letterSpacing: "-0.3px" }}>CodeBuddy</span>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }} title="Toggle theme">
+            {dark ? <i class="fa-regular fa-sun"></i> : <i class="fa-regular fa-moon"></i>}
+          </button>
+
+          {/* Sign in / Sign out */}
+          {!token
+            ? <Link href="/signin"><button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13 }}>Sign in</button></Link>
+            : <button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13, color: "#f87171", borderColor: "rgba(248,113,113,0.25)" }} onClick={() => setShowSignoutModal(true)}>Sign out</button>
+          }
+
+          {/* Get started / Dashboard */}
+          {!token
+            ? <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link>
+            : <Link href="/dashboard"><button className="btn-primary" style={{ padding: "8px 18px" }}>Dashboard →</button></Link>
+          }
         </div>
       </nav>
 
       <div style={{ position: "relative", zIndex: 1 }}>
-
-        {/* ── Hero ── */}
+     {/* ── Hero ── */}
         <section style={{ maxWidth: 800, margin: "0 auto", padding: "clamp(50px,10vw,96px) clamp(16px,5vw,32px) 0", textAlign: "center" }}>
           <div className="fade-up" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: T.surfaceA, border: `1px solid ${T.surfaceBorder}`, borderRadius: 99, padding: "5px 14px", marginBottom: 24 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.8px", textTransform: "uppercase" }}>Simple Pricing</span>
@@ -292,7 +404,7 @@ export default function PricingPage() {
                     <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
                       {val === true ? <span style={{ color: "#4ade80", fontSize: 13, flexShrink: 0 }}>✓</span>
                         : val === false ? <span style={{ color: T.text3, fontSize: 13, flexShrink: 0 }}>—</span>
-                        : <span style={{ color: plan.color, fontSize: 13, flexShrink: 0 }}>✦</span>}
+                          : <span style={{ color: plan.color, fontSize: 13, flexShrink: 0 }}>✦</span>}
                       <span style={{ color: val === false ? T.text3 : T.text2 }}>
                         {feat}: {typeof val === "string" ? <strong style={{ color: T.text }}>{val}</strong> : ""}
                       </span>

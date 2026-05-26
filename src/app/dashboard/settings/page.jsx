@@ -497,7 +497,12 @@ export default function SettingsTab({
                     </button>
                   ))}
                 </div>
+               
               </div>
+               <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
+              <button onClick={handleSave} style={primaryBtn()}>
+                {saved ? "✓ Saved!" : "Save Changes"}
+              </button>
             </>
           )}
 
@@ -581,6 +586,10 @@ export default function SettingsTab({
                   <Toggle on={notifPrefs[n.key]} onToggle={() => setNotifPrefs(p => ({ ...p, [n.key]: !p[n.key] }))} />
                 </div>
               ))}
+              <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
+              <button onClick={handleSave} style={primaryBtn()}>
+                {saved ? "✓ Saved!" : "Save Preferences"}
+              </button>
             </>
           )}
 
@@ -606,6 +615,10 @@ export default function SettingsTab({
                   <Toggle on={privacyPrefs[n.key]} onToggle={() => setPrivacyPrefs(p => ({ ...p, [n.key]: !p[n.key] }))} />
                 </div>
               ))}
+              <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
+              <button onClick={handleSave} style={primaryBtn()}>
+                {saved ? "✓ Saved!" : "Save Changes"}
+              </button>
 
               <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
 
@@ -633,6 +646,7 @@ export default function SettingsTab({
                     </button>
                   ))}
                 </div>
+                
               </div>
             </>
           )}
@@ -758,7 +772,6 @@ export default function SettingsTab({
                         </label>
 
                         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                          {/* Input + feedback */}
                           <div style={{ flex: 1 }}>
                             <input
                               type="url"
@@ -784,7 +797,6 @@ export default function SettingsTab({
                               }}
                             />
 
-                            {/* Inline validation feedback */}
                             {s.error && (
                               <div style={{
                                 fontSize: 11, color: "#f87171", marginTop: 5,

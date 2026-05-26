@@ -1,14 +1,13 @@
+import { cookies } from "next/headers";
 import { supabase } from "../lib/supabaseClient";
+import { getPayload } from "../../service/handletoken";
 
 const getUser = async () => {
-  const { data, error } = await supabase.auth.getUser();
-
-  if (error) {
-    console.log("error while getting", error);
-    return null;
-  }
-
-  return data.user;
+  const cookie = await cookies();
+  const token = cookie.get("token");
+  const payload = await getPayload(token.value);
+  const userEmail = payload.email;
+  return { userEmail };
 };
 
 export default getUser;
