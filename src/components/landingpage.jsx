@@ -6,39 +6,39 @@ import { supabase } from "../lib/supabaseClient";
 import { useSignupStore } from "../../store/UsesignupStore";
 
 function LandingPage() {
-    const router = useRouter();
+  const router = useRouter();
   const [token, settoken] = useState(false);
   const [showSignoutModal, setShowSignoutModal] = useState(false);
 
   const formData = useSignupStore((state) => state.formData);
 
-const getToken = async () => {
-  const data = await fetch("/api/auth/me");
-  const json = await data.json();
-  
-  settoken(json.token || false);  
-};
+  const getToken = async () => {
+    const data = await fetch("/api/auth/me");
+    const json = await data.json();
+
+    settoken(json.token || false);
+  };
 
   useEffect(() => {
     getToken();
   }, [])
 
-  
 
- const handleSignout = async () => {
-  try {
-    const res = await fetch("/api/signout", { method: "POST" });
-    const data = await res.json();
 
-    if (data.success) {
-      setShowSignoutModal(false);
-      settoken(false);        
-      router.push("/");   
+  const handleSignout = async () => {
+    try {
+      const res = await fetch("/api/signout", { method: "POST" });
+      const data = await res.json();
+
+      if (data.success) {
+        setShowSignoutModal(false);
+        settoken(false);
+        router.push("/");
+      }
+    } catch (err) {
+      console.error("Sign out failed:", err);
     }
-  } catch (err) {
-    console.error("Sign out failed:", err);
-  }
-};
+  };
 
 
   const [dark, setDark] = useState(true);
@@ -320,7 +320,7 @@ const getToken = async () => {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }} title="Toggle theme">
-            {dark ? <i class="fa-regular fa-sun"></i> : <i class="fa-regular fa-moon"></i>}
+            {dark ? <i className="fa-regular fa-sun"></i> : <i className="fa-regular fa-moon"></i>}
           </button>
 
           {/* Sign in / Sign out */}
@@ -424,10 +424,10 @@ const getToken = async () => {
         <SectionWrap>
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
             {[
-              { v: "3,200+", l: "Active Builders", icon: "👥" },
-              { v: "94%", l: "Match Accuracy", icon: "🎯" },
-              { v: "847", l: "Projects Shipped", icon: "🚀" },
-              { v: "40+", l: "Countries", icon: "🌐" },
+              { v: "3,200+", l: "Active Builders", icon: <i className="fa-solid fa-user-group"></i> },
+              { v: "94%", l: "Match Accuracy", icon: <i className="fa-solid fa-bullseye"></i> },
+              { v: "847", l: "Projects Shipped", icon: <i className="fa-solid fa-folder"></i> },
+              { v: "40+", l: "Countries", icon: <i class="fa-solid fa-globe"></i> },
             ].map((s, i) => (
               <div key={i} className="card-flat" style={{ padding: "22px 24px", textAlign: "center" }}>
                 <div style={{ fontSize: 20, marginBottom: 8 }}>{s.icon}</div>
@@ -445,8 +445,8 @@ const getToken = async () => {
             {[
               { n: "01", icon: "🛠", t: "Build your profile", d: "List what you know and what you need. Add projects, availability, and collaboration style." },
               { n: "02", icon: "✦", t: "AI matches you", d: "Our model scans thousands of builders and surfaces the ones who fill your exact skill gaps." },
-              { n: "03", icon: "💬", t: "Review insights", d: "See why each match works before you reach out. AI explains compatibility in plain English." },
-              { n: "04", icon: "🚀", t: "Start building", d: "Connect, chat, and move into a shared project room — all without leaving the platform." },
+              { n: "03", icon: <i className="fa-solid fa-message"></i>, t: "Review insights", d: "See why each match works before you reach out. AI explains compatibility in plain English." },
+              { n: "04", icon: <i className="fa-solid fa-wrench"></i>, t: "Start building", d: "Connect, chat, and move into a shared project room — all without leaving the platform." },
             ].map((s, i) => (
               <div key={i} className={`howit-step fade-up${matchStep === i ? " active" : ""}`} style={{ animationDelay: `${i * 0.09}s` }} onClick={() => setMatchStep(i)}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -500,7 +500,7 @@ const getToken = async () => {
             ))}
           </div>
           <div style={{ textAlign: "center", marginTop: 28 }}>
-            <Link href={token ? "dashboard" :"signin"}><button className="btn-ghost">See all 3,200+ builders →</button></Link>
+            <Link href={token ? "dashboard" : "signin"}><button className="btn-ghost">See all 3,200+ builders →</button></Link>
           </div>
         </SectionWrap>
 
@@ -510,11 +510,11 @@ const getToken = async () => {
           <div className="features-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
             {[
               { icon: "⚡", t: "AI-Powered Matching", d: "Our model surfaces builders you'll actually ship with — matched by skills, goals and work style.", badge: "Core" },
-              { icon: "🎯", t: "Skill Gap Pairing", d: "We match by what you have AND what you need, creating two-way complementary partnerships.", badge: null },
-              { icon: "💬", t: "Real-Time Chat", d: "Chat with context — always see why you matched right above every conversation.", badge: null },
+              { icon: <i class="fa-solid fa-bullseye"></i>, t: "Skill Gap Pairing", d: "We match by what you have AND what you need, creating two-way complementary partnerships.", badge: null },
+              { icon: <i class="fa-solid fa-message"></i>, t: "Real-Time Chat", d: "Chat with context — always see why you matched right above every conversation.", badge: null },
               { icon: "🔮", t: "Match Insights", d: "AI explains every match in plain English so you can decide in seconds, not days.", badge: "AI" },
-              { icon: "🚀", t: "Project Rooms", d: "Spin up a shared space to plan tasks and track progress without leaving the platform.", badge: null },
-              { icon: "🌐", t: "Global Network", d: "3,200+ builders across 40+ countries. Someone's always online and ready to build.", badge: null },
+              { icon: <i class="fa-solid fa-folder"></i>, t: "Project Rooms", d: "Spin up a shared space to plan tasks and track progress without leaving the platform.", badge: null },
+              { icon: <i class="fa-solid fa-globe"></i>, t: "Global Network", d: "3,200+ builders across 40+ countries. Someone's always online and ready to build.", badge: null },
             ].map((f, i) => (
               <div key={i} className="feat-card fade-up" style={{ animationDelay: `${i * 0.07}s`, position: "relative" }}>
                 {f.badge && (
@@ -664,18 +664,27 @@ const getToken = async () => {
               </div>
             </div>
             {[
-              { h: "Product", links: ["Features", "Pricing", "Changelog", "Roadmap"] },
-              { h: "Company", links: ["About", "Blog", "Careers", "Press"] },
-              { h: "Legal", links: ["Privacy", "Terms", "Cookies", "Security"] },
+              { h: "Product", links: ["Features", "Pricing", "Changelog", "Roadmap"], href: ["/features", "/pricing", "/changelog", "/roadmap",] },
+              { h: "Company", links: ["About", "Blog", "Careers", "Press"], href: ["/about", "/blog", "/careers", "/press",] },
+              { h: "Legal", links: ["Privacy", "Terms", "Cookies", "Security"], href: ["/privacypolicy", "/terms", "/cookies", "/security",] },
             ].map(col => (
               <div key={col.h}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: "1px", textTransform: "uppercase", marginBottom: 14 }}>{col.h}</div>
-                {col.links.map(l => (
+                {col.links.map((l, i) => (
                   <div key={l} style={{ marginBottom: 10 }}>
-                    <a href="#" style={{ fontSize: 13, color: T.text3, textDecoration: "none", transition: "color 0.2s" }}
+                    <a
+                      href={col.href[i]}
+                      style={{
+                        fontSize: 13,
+                        color: T.text3,
+                        textDecoration: "none",
+                        transition: "color 0.2s"
+                      }}
                       onMouseEnter={e => e.target.style.color = T.text}
                       onMouseLeave={e => e.target.style.color = T.text3}
-                    >{l}</a>
+                    >
+                      {l}
+                    </a>
                   </div>
                 ))}
               </div>

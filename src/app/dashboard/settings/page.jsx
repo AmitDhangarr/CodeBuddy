@@ -48,13 +48,13 @@ function makeTheme(dark) {
 
 /* ─── Sidebar sections ────────────────────────────────────────────────────── */
 const SETTING_SECTIONS = [
-  { id: "account",       icon: "👤", l: "Account" },
-  { id: "profile",       icon: "✏️",  l: "Profile" },
-  { id: "skills",        icon: "⚡",  l: "Skills" },
-  { id: "appearance",    icon: "🎨", l: "Appearance" },
-  { id: "notifications", icon: "🔔", l: "Notifications" },
-  { id: "privacy",       icon: "🔒", l: "Privacy" },
-  { id: "integrations",  icon: "🔗", l: "Integrations" },
+  { id: "account",       icon: <i className="fa-regular fa-user"></i>, l: "Account" },
+  { id: "profile",       icon: <i className="fa-regular fa-pen-to-square"></i>,  l: "Profile" },
+  { id: "skills",        icon: <i className="fa-solid fa-wrench"></i>,  l: "Skills" },
+  { id: "appearance",    icon: <i className="fa-solid fa-circle-half-stroke"></i>, l: "Appearance" },
+  { id: "notifications", icon: <i className="fa-regular fa-bell"></i>, l: "Notifications" },
+  { id: "privacy",       icon: <i className="fa-solid fa-lock"></i>, l: "Privacy" },
+  { id: "integrations",  icon: <i className="fa-solid fa-link"></i>, l: "Integrations" },
 ];
 
 /* ─── Integration platform definitions ───────────────────────────────────── */

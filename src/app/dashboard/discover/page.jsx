@@ -678,7 +678,7 @@ export default function DiscoverTab({
         <div style={{ display: "flex", gap: 6 }}>
           {["grid", "list"].map(v => (
             <button key={v} onClick={() => setView(v)} style={{ ...btn, padding: "7px 14px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: view === v ? dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)" : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T.border}`, color: view === v ? "#a78bfa" : T.text3 }}>
-              {v === "grid" ? "⊞ Grid" : "≡ List"}
+              {v === "grid" ? <i class="fa-solid fa-bars"></i>: <i className="fa-solid fa-list"></i>}
             </button>
           ))}
         </div>
@@ -687,7 +687,7 @@ export default function DiscoverTab({
       {/* Filters */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20, alignItems: "center" }}>
         <div style={{ position: "relative", flex: "1 1 180px", minWidth: 140 }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.text3, fontSize: 14, pointerEvents: "none" }}>🔍</span>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.text3, fontSize: 14, pointerEvents: "none" }}><i class="fa-solid fa-magnifying-glass"></i></span>
           <input placeholder="Search name, role, skill…" value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text, borderRadius: 11, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "inherit" }} />
         </div>
         <select value={filterSkill} onChange={e => setFilterSkill(e.target.value)} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
@@ -738,7 +738,7 @@ export default function DiscoverTab({
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: T.text3 }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}>🔍</div>
+          <div style={{ fontSize: 40, marginBottom: 14 }}><i className="fa-solid fa-magnifying-glass"></i></div>
           <div style={{ fontSize: 15, fontWeight: 600, color: T.text2, marginBottom: 6 }}>No builders found</div>
           <div style={{ fontSize: 13 }}>Try adjusting your filters</div>
         </div>

@@ -85,7 +85,7 @@ export default function MessagesTab({
         <div style={{ padding: "14px 14px 10px", borderBottom: `1px solid ${T.border}` }}>
           <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 18, color: T.text, marginBottom: 10 }}>Messages</div>
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.text3, fontSize: 13, pointerEvents: "none" }}>🔍</span>
+            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.text3, fontSize: 13, pointerEvents: "none" }}><i className="fa-solid fa-magnifying-glass"></i></span>
             <input
               placeholder="Search conversations…"
               value={searchQ}
@@ -153,7 +153,7 @@ export default function MessagesTab({
                   {matchScore}% match
                 </span>
                 {/* Message search toggle */}
-                <button onClick={() => setShowMsgSearch(p => !p)} title="Search messages" style={{ padding: "6px 9px", background: showMsgSearch ? dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.09)" : "transparent", border: `1px solid ${showMsgSearch ? "rgba(124,58,237,0.35)" : T.border}`, color: showMsgSearch ? "#a78bfa" : T.text3, borderRadius: 9, cursor: "pointer", fontSize: 13 }}>🔍</button>
+                <button onClick={() => setShowMsgSearch(p => !p)} title="Search messages" style={{ padding: "6px 9px", background: showMsgSearch ? dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.09)" : "transparent", border: `1px solid ${showMsgSearch ? "rgba(124,58,237,0.35)" : T.border}`, color: showMsgSearch ? "#a78bfa" : T.text3, borderRadius: 9, cursor: "pointer", fontSize: 13 }}><i className="fa-solid fa-magnifying-glass"></i></button>
               </div>
             </>
           )}

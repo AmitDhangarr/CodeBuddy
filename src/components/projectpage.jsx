@@ -260,7 +260,7 @@ export default function ProjectPage({ projectId, onBack, T, dark, currentUser })
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 24,
                 }}>
-                  {p.emoji ?? "🗂"}
+                  {p.emoji ?? <i className="fa-solid fa-folder-open"></i>}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -317,10 +317,10 @@ export default function ProjectPage({ projectId, onBack, T, dark, currentUser })
                 flexWrap: "wrap",
               }}>
                 {[
-                  { icon: "★", v: p.stars  ?? 0,  l: "Stars" },
-                  { icon: "⑂", v: p.forks  ?? 0,  l: "Forks" },
-                  { icon: "💬", v: endorsers.length, l: "Endorsements" },
-                  { icon: "📅", v: p.created_at
+                  { icon: <i className="fa-solid fa-star"></i>, v: p.stars  ?? 0,  l: "Stars" },
+                  { icon: <i className="fa-solid fa-code-branch"></i>, v: p.forks  ?? 0,  l: "Forks" },
+                  { icon: <i className="fa-solid fa-message"></i>, v: endorsers.length, l: "Endorsements" },
+                  { icon: <i className="fa-solid fa-calendar"></i>, v: p.created_at
                       ? new Date(p.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
                       : "—",
                     l: "Created" },
@@ -541,7 +541,7 @@ export default function ProjectPage({ projectId, onBack, T, dark, currentUser })
                       }}
                       className="pp-btn"
                     >
-                      <span style={{ fontSize: 16 }}>⎈</span> View on GitHub
+                      <span style={{ fontSize: 16 }}><i className="fa-brands fa-github"></i></span> View on GitHub
                     </button>
                   )}
                 </>
