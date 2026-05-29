@@ -15,7 +15,7 @@ const DARK = {
   navBg: "rgba(6,6,8,0.9)",
   skillHaveBg: "rgba(110,224,110,0.1)", skillHaveBorder: "rgba(110,224,110,0.25)", skillHaveText: "#7de87d",
   skillNeedBg: "rgba(120,120,255,0.1)", skillNeedBorder: "rgba(120,120,255,0.25)", skillNeedText: "#9898ff",
-  logoFill: "#00DC33",
+  logoFill: "#1a0a6a",
 };
 const LIGHT = {
   bg: "#f5f5f9", bg2: "#ffffff", bg3: "#eeeef5",

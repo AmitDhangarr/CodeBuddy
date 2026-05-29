@@ -96,8 +96,7 @@ export default function TermsPage() {
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 18, color: T.text }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }}>{dark ? "☀" : "🌙"}</button>
-          <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link>
+        
         </div>
       </nav>
 
@@ -219,7 +218,7 @@ export default function TermsPage() {
         <div style={{ marginTop: 64, paddingTop: 32, borderTop: `1px solid ${T.border}`, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 12, color: T.text3 }}>© 2026 CodeBuddy · Built by builders, for builders.</span>
           <div style={{ display: "flex", gap: 12 }}>
-            {[["Privacy", "/privacy"], ["Cookies", "/cookies"], ["Security", "/security"]].map(([l, h]) => (
+            {[["Privacy", "/privacypolicy"], ["Cookies", "/cookies"], ["Security", "/security"]].map(([l, h]) => (
               <Link key={l} href={h} style={{ fontSize: 12, color: T.text3, textDecoration: "none" }}>{l}</Link>
             ))}
           </div>

@@ -114,8 +114,7 @@ export default function CookiesPage() {
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 18, color: T.text }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }}>{dark ? "☀" : "🌙"}</button>
-          <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link>
+        
         </div>
       </nav>
 

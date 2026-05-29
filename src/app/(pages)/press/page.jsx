@@ -141,11 +141,7 @@ export default function Press() {
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 18, color: T.text, letterSpacing: "-0.3px" }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }}>
-            {dark ? "☀" : "🌙"}
-          </button>
-          <Link href="/signin"><button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13 }}>Sign in</button></Link>
-          <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link>
+          
         </div>
       </nav>
 
@@ -291,7 +287,7 @@ export default function Press() {
               <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 16, color: T.text }}>CodeBuddy</span>
             </Link>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-              {["About", "Blog", "Careers", "Privacy", "Terms"].map(l => (
+              {["About", "Blog", "Careers", "PrivacyPolicy", "Terms"].map(l => (
                 <Link key={l} href={`/${l.toLowerCase()}`} style={{ fontSize: 13, color: T.text3, textDecoration: "none" }}>{l}</Link>
               ))}
             </div>

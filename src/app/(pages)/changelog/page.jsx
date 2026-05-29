@@ -213,21 +213,8 @@ function ChangelogPage() {
           <Link href="/" style={{ textDecoration: "none" }}>
             <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(14px,4vw,18px)", color: T.text, letterSpacing: "-0.3px" }}>CodeBuddy</span>
           </Link>
-          <span style={{ color: T.text3, fontSize: 13, margin: "0 4px" }}>/</span>
-          <span style={{ fontSize: 13, color: T.text2, fontWeight: 600 }}>Changelog</span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }} title="Toggle theme">
-            {dark ? "☀️" : "🌙"}
-          </button>
-          {!token
-            ? <Link href="/signin"><button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13 }}>Sign in</button></Link>
-            : <button className="btn-ghost nav-ghost" style={{ padding: "7px 16px", fontSize: 13, color: "#f87171", borderColor: "rgba(248,113,113,0.25)" }} onClick={() => setShowSignoutModal(true)}>Sign out</button>
-          }
-          {!token
-            ? <Link href="/signup"><button className="btn-primary" style={{ padding: "8px 18px" }}>Get started →</button></Link>
-            : <Link href="/dashboard"><button className="btn-primary" style={{ padding: "8px 18px" }}>Dashboard →</button></Link>
-          }
         </div>
       </nav>
 
@@ -254,9 +241,9 @@ function ChangelogPage() {
               <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 2 }}>Stay in the loop</div>
               <div style={{ fontSize: 12, color: T.text2 }}>Get notified when we ship something new.</div>
             </div>
-            <Link href="/settings/notifications">
+           
               <button className="btn-ghost" style={{ fontSize: 12, padding: "7px 16px", whiteSpace: "nowrap" }}>Subscribe →</button>
-            </Link>
+           
           </div>
 
           {/* Filters */}

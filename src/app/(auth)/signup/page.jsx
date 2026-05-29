@@ -13,7 +13,7 @@ const DARK = {
   card: "rgba(255,255,255,0.025)",
   input: "rgba(255,255,255,0.05)", inputBorder: "rgba(255,255,255,0.09)",
   navBg: "rgba(6,6,8,0.9)",
-  logoFill: "#00DC33",
+  logoFill: "#1a0a6a",
 };
 const LIGHT = {
   bg: "#f5f5f9", bg2: "#ffffff", bg3: "#eeeef5",
@@ -22,7 +22,7 @@ const LIGHT = {
   card: "#ffffff",
   input: "#ffffff", inputBorder: "rgba(0,0,0,0.12)",
   navBg: "rgba(245,245,249,0.95)",
-  logoFill: "#7c3aed",
+  logoFill: "#1a0a6a",
 };
 
 const STATIC_CSS = `
