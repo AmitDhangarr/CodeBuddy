@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
 import { useSignupStore } from "../../../../store/UsesignupStore";
+import { useThemeStore } from "../../../../store/themeprovider";
 // ─── Theme constants ─────────────────────────────────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
@@ -150,7 +151,7 @@ export default function PasswordSetup() {
   }, [email])
 
   const router = useRouter();
-  const [dark, setDark] = useState(true);
+ const { dark, toggleDark } = useThemeStore();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -222,9 +223,6 @@ useEffect(() => {
           <Logo fill={T.logoFill} />
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 16, color: T.text }}>CodeBuddy</span>
         </Link>
-        <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 34, height: 34, border: `1px solid ${T.border}`, color: T.text3, background: "transparent" }} aria-label="Toggle theme">
-          {dark ? "☀️" : "🌙"}
-        </button>
       </nav>
 
       {/* Content */}

@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
+import { useThemeStore } from "../../../../store/themeprovider";
 // ─── Theme constants ───────────────────────────────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
@@ -11,7 +12,7 @@ const DARK = {
   card: "rgba(255,255,255,0.025)",
   input: "rgba(255,255,255,0.05)", inputBorder: "rgba(255,255,255,0.09)",
   navBg: "rgba(6,6,8,0.9)",
-  logoFill: "#00DC33",
+  logoFill: "#1a0a5a",
   otpBg: "rgba(255,255,255,0.05)",
 };
 
@@ -141,7 +142,7 @@ function CountdownRing({ seconds, total, color }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PasswordVerify() {
   const router = useRouter();
-  const [dark, setDark] = useState(true);
+   const { dark, toggleDark } = useThemeStore();
   const [view, setView] = useState("verify");
 
   // User email from Supabase session
@@ -524,9 +525,7 @@ export default function PasswordVerify() {
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 16, color: T.text }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 34, height: 34, border: `1px solid ${T.border}`, color: T.text3, background: "transparent" }}>
-            {dark ? "☀️" : "🌙"}
-          </button>
+         
           <button className="btn-ghost" onClick={() => router.back()} style={{ color: T.text3, fontSize: 13, padding: "4px 8px" }}>← Back</button>
         </div>
       </nav>

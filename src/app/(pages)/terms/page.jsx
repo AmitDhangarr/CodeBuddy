@@ -1,9 +1,9 @@
 "use client"
 import Link from "next/link";
 import { useState } from "react";
-
+import { useThemeStore } from "../../../../store/themeprovider";
 export default function TermsPage() {
-  const [dark, setDark] = useState(true);
+ const { dark, toggleDark } = useThemeStore();
   const [activeSection, setActiveSection] = useState(0);
   const [expanded, setExpanded] = useState({});
 

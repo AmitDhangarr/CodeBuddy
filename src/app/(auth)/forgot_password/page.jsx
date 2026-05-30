@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient.js";
 import bcrypt from "bcryptjs";
-
+import { useThemeStore } from "../../../../store/themeprovider";
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
@@ -221,7 +221,7 @@ const validatePassword = (password) => {
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = true, initialEmail = "" }) {
   const router = useRouter();
-  const [dark, setDark] = useState(darkProp);
+   const { dark, toggleDark } = useThemeStore();
   const T = dark ? DARK : LIGHT;
 
   // views: "email" → "otp" → "new-password" → "success"
@@ -611,9 +611,7 @@ export default function ForgotPasswordFlow({ onBackToSignIn, dark: darkProp = tr
       {/* Nav */}
       <nav style={{ padding: "0 clamp(16px,5vw,28px)", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, background: T.navBg, backdropFilter: "blur(20px)" }}>
         <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 15, color: T.text2 }}>Account recovery</span>
-        <button className="btn-ghost" onClick={() => setDark(p => !p)} style={{ fontSize: 18, lineHeight: 1 }}>
-          {dark ? "☀️" : "🌙"}
-        </button>
+       
       </nav>
 
       {/* Content */}

@@ -1,13 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useThemeStore } from "../../../store/themeprovider"
 const hsl = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
 const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
-
 
 const THEME = {
   dark: {
     bg: "#07070f", bg2: "#0d0d1a", bg3: "#111124",
+    // FIX 1: Added navBg (was undefined, causing transparent/broken nav background)
+    navBg: "rgba(7,7,15,0.85)",
     border: "rgba(255,255,255,0.06)", border2: "rgba(255,255,255,0.11)", border3: "rgba(255,255,255,0.17)",
     text: "#e4e4f0", text2: "#8888aa", text3: "#44445a",
     card: "rgba(255,255,255,0.025)", cardHover: "rgba(255,255,255,0.04)",
@@ -24,6 +26,8 @@ const THEME = {
   },
   light: {
     bg: "#f4f4f8", bg2: "#ffffff", bg3: "#f0f0f6",
+    // FIX 1: Added navBg to light theme too
+    navBg: "rgba(244,244,248,0.85)",
     border: "rgba(0,0,0,0.07)", border2: "rgba(0,0,0,0.13)", border3: "rgba(0,0,0,0.2)",
     text: "#18182c", text2: "#555570", text3: "#9090b0",
     card: "#ffffff", cardHover: "#f7f7fc",
@@ -67,11 +71,11 @@ const Avatar = ({ u, size = 44, radius = 12, dark }) => (
 );
 
 const Logo = () => (
-    <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill="#1a0a6a" />
-      <path fillRule="evenodd" clipRule="evenodd" d="M28.0441 7.60927C28.8868 6.80331 30.2152 6.79965 31.0622 7.58229L31.1425 7.66005L31.4164 7.94729C34.1911 10.9318 35.2251 14.4098 34.9599 17.8065C34.6908 21.2511 33.1012 24.4994 30.8836 27.0664C28.6673 29.6316 25.7084 31.6519 22.51 32.5287C19.2714 33.4164 15.7294 33.1334 12.6547 30.9629C10.0469 29.1218 9.05406 26.1465 8.98661 23.2561C7.52323 22.5384 5.98346 21.6463 4.36789 20.5615L3.941 20.2716L3.85006 20.206C2.93285 19.5053 2.72313 18.2084 3.39161 17.2564C4.06029 16.3043 5.36233 16.046 6.34665 16.6512L6.44134 16.7126L6.83024 16.9771C7.79805 17.6269 8.72153 18.1903 9.59966 18.6767C10.1661 16.6889 11.1047 14.7802 12.3413 13.207C14.1938 10.8501 16.9713 8.96525 20.374 9.24647C23.439 9.49995 25.7036 11.081 26.8725 13.3122C28.0044 15.4728 28.0211 18.0719 27.0319 20.307C26.0234 22.5857 23.976 24.484 21.0309 25.2662C18.9114 25.8291 16.4284 25.7905 13.6267 25.0367V25.0377C12.5115 24.7375 11.3427 24.323 10.1212 23.7846C9.8472 23.6638 9.60873 23.8483 10.1212 24.1686C11.5636 25.1924 13.5956 26.0505 14.1836 26.3385C14.4615 26.788 14.8061 27.1568 15.2011 27.4356C17.0188 28.7188 19.1451 28.9539 21.3396 28.3523C23.5743 27.7397 25.8141 26.2625 27.5514 24.2516C29.2873 22.2423 30.4065 19.8348 30.5909 17.4727C30.765 15.2439 30.1218 12.9543 28.1842 10.8736L27.9927 10.6731L27.9162 10.5906C27.1538 9.72748 27.2018 8.41516 28.0441 7.60927ZM20.0092 13.5651C18.6033 13.4489 17.1196 14.189 15.8013 15.8662C14.7973 17.1436 14.0376 18.8033 13.6503 20.5112C16.4093 21.4544 18.4655 21.4608 19.8942 21.0814C21.5481 20.6422 22.5399 19.6477 23.0172 18.5693C23.5137 17.4472 23.4628 16.2245 22.9813 15.3055C22.5369 14.4571 21.6422 13.7002 20.0092 13.5651Z" fill="#ffffff" />
-    </svg>
-  );
+  <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill="#1a0a6a" />
+    <path fillRule="evenodd" clipRule="evenodd" d="M28.0441 7.60927C28.8868 6.80331 30.2152 6.79965 31.0622 7.58229L31.1425 7.66005L31.4164 7.94729C34.1911 10.9318 35.2251 14.4098 34.9599 17.8065C34.6908 21.2511 33.1012 24.4994 30.8836 27.0664C28.6673 29.6316 25.7084 31.6519 22.51 32.5287C19.2714 33.4164 15.7294 33.1334 12.6547 30.9629C10.0469 29.1218 9.05406 26.1465 8.98661 23.2561C7.52323 22.5384 5.98346 21.6463 4.36789 20.5615L3.941 20.2716L3.85006 20.206C2.93285 19.5053 2.72313 18.2084 3.39161 17.2564C4.06029 16.3043 5.36233 16.046 6.34665 16.6512L6.44134 16.7126L6.83024 16.9771C7.79805 17.6269 8.72153 18.1903 9.59966 18.6767C10.1661 16.6889 11.1047 14.7802 12.3413 13.207C14.1938 10.8501 16.9713 8.96525 20.374 9.24647C23.439 9.49995 25.7036 11.081 26.8725 13.3122C28.0044 15.4728 28.0211 18.0719 27.0319 20.307C26.0234 22.5857 23.976 24.484 21.0309 25.2662C18.9114 25.8291 16.4284 25.7905 13.6267 25.0367V25.0377C12.5115 24.7375 11.3427 24.323 10.1212 23.7846C9.8472 23.6638 9.60873 23.8483 10.1212 24.1686C11.5636 25.1924 13.5956 26.0505 14.1836 26.3385C14.4615 26.788 14.8061 27.1568 15.2011 27.4356C17.0188 28.7188 19.1451 28.9539 21.3396 28.3523C23.5743 27.7397 25.8141 26.2625 27.5514 24.2516C29.2873 22.2423 30.4065 19.8348 30.5909 17.4727C30.765 15.2439 30.1218 12.9543 28.1842 10.8736L27.9927 10.6731L27.9162 10.5906C27.1538 9.72748 27.2018 8.41516 28.0441 7.60927ZM20.0092 13.5651C18.6033 13.4489 17.1196 14.189 15.8013 15.8662C14.7973 17.1436 14.0376 18.8033 13.6503 20.5112C16.4093 21.4544 18.4655 21.4608 19.8942 21.0814C21.5481 20.6422 22.5399 19.6477 23.0172 18.5693C23.5137 17.4472 23.4628 16.2245 22.9813 15.3055C22.5369 14.4571 21.6422 13.7002 20.0092 13.5651Z" fill="#ffffff" />
+  </svg>
+);
 
 const MatchBadge = ({ val }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.22)", borderRadius: 99, padding: "3px 10px" }}>
@@ -80,8 +84,10 @@ const MatchBadge = ({ val }) => (
   </div>
 );
 
-const Pill = ({ label, type }) => {
-  const T = THEME.dark;
+// FIX 2: Pill now accepts `dark` prop and uses it to pick theme colors,
+// instead of always hardcoding THEME.dark regardless of the active theme.
+const Pill = ({ label, type, dark }) => {
+  const T = dark ? THEME.dark : THEME.light;
   const style = type === "have"
     ? { background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }
     : { background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText };
@@ -110,7 +116,8 @@ const EmptyState = ({ T, icon, title, sub }) => (
   </div>
 );
 
-export default function Connections({ dark = true, onThemeToggle }) {
+export default function Connections() {
+  const { dark, toggleDark } = useThemeStore();
   const T = dark ? THEME.dark : THEME.light;
   const [activeTab, setActiveTab] = useState("pending");
   const [search, setSearch] = useState("");
@@ -220,13 +227,14 @@ export default function Connections({ dark = true, onThemeToggle }) {
     unblock: { title: "Unblock user?", message: (u) => `${u.name} will be able to find your profile and send connection requests again.`, confirmLabel: "Unblock", confirmDanger: false, icon: "✅" },
   };
 
+  // FIX 3: Pass `dark` prop down to Pill so it uses the correct theme colors
   const renderActions = (user) => {
     if (activeTab === "pending") return (
       <div className="actions-row" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="btn-accept" onClick={() => handleAction("accept", user)}>Accept</button>
         <button className="btn-decline" onClick={() => handleAction("decline", user)}>Decline</button>
         <button className="icon-btn" onClick={() => handleAction("block", user)} title="Block">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/><line x1="3.5" y1="3.5" x2="12.5" y2="12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" /><line x1="3.5" y1="3.5" x2="12.5" y2="12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           Block
         </button>
       </div>
@@ -240,11 +248,11 @@ export default function Connections({ dark = true, onThemeToggle }) {
       <div className="actions-row" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="btn-message">Message</button>
         <button className="icon-btn" onClick={() => handleAction("remove", user)}>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           Remove
         </button>
         <button className="icon-btn" onClick={() => handleAction("block", user)}>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/><line x1="3.5" y1="3.5" x2="12.5" y2="12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" /><line x1="3.5" y1="3.5" x2="12.5" y2="12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           Block
         </button>
       </div>
@@ -264,9 +272,12 @@ export default function Connections({ dark = true, onThemeToggle }) {
   };
 
   return (
-    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", padding: "clamp(20px,4vw,40px) clamp(16px,4vw,32px)" }}>
+    // FIX 4: Restructured layout — root div is just a bg wrapper with no padding.
+    // Nav is a direct child (full-width). Content has its own padded wrapper below.
+    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
       <style>{css}</style>
-      {/* Nav */}
+
+      {/* FIX 4 cont: Nav is now full-width, not constrained by the maxWidth:860 content div */}
       <nav style={{ background: T.navBg, backdropFilter: "blur(28px)", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, padding: "0 clamp(16px,5vw,32px)", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <Logo />
@@ -275,8 +286,6 @@ export default function Connections({ dark = true, onThemeToggle }) {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         </div>
       </nav>
-
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1060, margin: "0 auto", padding: "clamp(32px,6vw,64px) clamp(16px,5vw,32px)" }}></div>
 
       {modal && modal.action && (() => {
         const cfg = MODAL_CONFIGS[modal.action];
@@ -294,6 +303,7 @@ export default function Connections({ dark = true, onThemeToggle }) {
         );
       })()}
 
+      {/* FIX 5: Toast moved outside the maxWidth container so it always renders at fixed position correctly */}
       {toast && (
         <div style={{ position: "fixed", top: 20, right: 20, zIndex: 2000, background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: 14, padding: "13px 18px", boxShadow: T.shadow, display: "flex", alignItems: "center", gap: 10, animation: "toastIn 0.3s ease both", minWidth: 220, maxWidth: 320 }}>
           <span style={{ fontSize: 16 }}>{toast.type === "success" ? "✅" : toast.type === "warn" ? "⚠️" : "ℹ️"}</span>
@@ -301,7 +311,8 @@ export default function Connections({ dark = true, onThemeToggle }) {
         </div>
       )}
 
-      <div style={{ maxWidth: 860, margin: "0 auto" }}>
+      {/* Content wrapper with proper padding */}
+      <div style={{ maxWidth: 860, margin: "0 auto", padding: "clamp(28px,4vw,40px) clamp(16px,4vw,32px)" }}>
         {/* Header */}
         <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
@@ -310,11 +321,6 @@ export default function Connections({ dark = true, onThemeToggle }) {
             </h1>
             <p style={{ fontSize: 13, color: T.text3 }}>Manage your builder network and collaboration requests.</p>
           </div>
-          {onThemeToggle && (
-            <button onClick={onThemeToggle} style={{ background: "transparent", border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 14px", cursor: "pointer", color: T.text3, fontSize: 18, display: "flex", alignItems: "center" }}>
-              {dark ? "☀️" : "🌙"}
-            </button>
-          )}
         </div>
 
         {/* Tabs */}
@@ -374,7 +380,7 @@ export default function Connections({ dark = true, onThemeToggle }) {
                       {user.match > 0 && <MatchBadge val={user.match} />}
                       {user.mutual > 0 && (
                         <span className="mutual-badge">
-                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M8 2a3 3 0 100 6 3 3 0 000-6zM2 13c0-2.5 2.7-4 6-4s6 1.5 6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M8 2a3 3 0 100 6 3 3 0 000-6zM2 13c0-2.5 2.7-4 6-4s6 1.5 6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
                           {user.mutual} mutual
                         </span>
                       )}
@@ -390,13 +396,14 @@ export default function Connections({ dark = true, onThemeToggle }) {
                       </div>
                     )}
 
+                    {/* FIX 3: Pass dark prop to Pill components so they respect the active theme */}
                     {(user.skillsHave?.length > 0 || user.skillsNeed?.length > 0) && (
                       <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
                         {user.skillsHave?.length > 0 && (
                           <div>
                             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: T.text3, marginBottom: 5 }}>Has</div>
                             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                              {user.skillsHave.slice(0, 3).map(s => <Pill key={s} label={s} type="have" />)}
+                              {user.skillsHave.slice(0, 3).map(s => <Pill key={s} label={s} type="have" dark={dark} />)}
                             </div>
                           </div>
                         )}
@@ -404,7 +411,7 @@ export default function Connections({ dark = true, onThemeToggle }) {
                           <div>
                             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: T.text3, marginBottom: 5 }}>Needs</div>
                             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                              {user.skillsNeed.slice(0, 2).map(s => <Pill key={s} label={s} type="need" />)}
+                              {user.skillsNeed.slice(0, 2).map(s => <Pill key={s} label={s} type="need" dark={dark} />)}
                             </div>
                           </div>
                         )}

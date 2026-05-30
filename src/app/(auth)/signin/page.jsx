@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
+import { useThemeStore } from "../../../../store/themeprovider";
 // ─── Theme constants (stable, outside component) ─────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
@@ -161,7 +161,7 @@ const Field = ({ label, id, type = "text", placeholder, value, onChange, error, 
 // ─── Main component ───────────────────────────────────────────────────────────
 function Signin() {
   const router = useRouter();
-  const [dark, setDark] = useState(true);
+   const { dark, toggleDark } = useThemeStore();
   const [authTab, setAuthTab] = useState("signin");
   const [slideDir, setSlideDir] = useState(null); // "left" | "right" | null
   const [formData, setFormData] = useState({ email: "", password: "", confirm: "" });
@@ -311,14 +311,6 @@ function Signin() {
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(14px,4vw,16px)", color: T.text }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            className="btn-icon"
-            onClick={() => setDark(p => !p)}
-            style={{ width: 34, height: 34, border: `1px solid ${T.border}`, color: T.text3, background: "transparent" }}
-            aria-label="Toggle theme"
-          >
-            {dark ? "☀️" : "🌙"}
-          </button>
           <button
             className="auth-back-btn"
             onClick={() => router.back()}

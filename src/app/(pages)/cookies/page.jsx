@@ -1,9 +1,9 @@
 "use client"
 import Link from "next/link";
 import { useState } from "react";
-
+import { useThemeStore } from "../../../../store/themeprovider";
 export default function CookiesPage() {
-  const [dark, setDark] = useState(true);
+   const { dark, toggleDark } = useThemeStore();
   const [preferences, setPreferences] = useState({ essential: true, analytics: false, preferences: false, marketing: false });
   const [saved, setSaved] = useState(false);
 

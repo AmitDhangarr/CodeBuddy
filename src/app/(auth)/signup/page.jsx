@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
 import { useSignupStore } from "../../../../store/UsesignupStore";
 import { supabase } from "../../../lib/supabaseClient";
-
+import { useThemeStore } from "../../../../store/themeprovider";
 // ─── Theme constants (stable, outside component) ─────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
@@ -79,13 +79,13 @@ const STATIC_CSS = `
 // ─── Eye icon SVG ─────────────────────────────────────────────────────────────
 const EyeIcon = ({ open, color }) => open ? (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
   </svg>
 ) : (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-    <line x1="1" y1="1" x2="23" y2="23"/>
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
   </svg>
 );
 
@@ -146,7 +146,7 @@ function SignUp() {
   const router = useRouter();
   const updateForm = useSignupStore(state => state.updateForm);
 
-  const [dark, setDark] = useState(true);
+  const { dark, toggleDark } = useThemeStore();
   const [authTab, setAuthTab] = useState("signup");
   const [slideDir, setSlideDir] = useState(null);
   const [formData, setFormData] = useState({ email: "", password: "", confirm: "" });
@@ -236,14 +236,6 @@ function SignUp() {
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(14px,4vw,16px)", color: T.text }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            className="btn-icon"
-            onClick={() => setDark(p => !p)}
-            style={{ width: 34, height: 34, border: `1px solid ${T.border}`, color: T.text3, background: "transparent" }}
-            aria-label="Toggle theme"
-          >
-            {dark ? "☀️" : "🌙"}
-          </button>
           <button
             className="auth-back-btn"
             onClick={() => router.back()}

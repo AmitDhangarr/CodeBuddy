@@ -2,10 +2,10 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
+import { useThemeStore } from "../../../../store/themeprovider";
 function ChangelogPage() {
   const router = useRouter();
-  const [dark, setDark] = useState(true);
+ const { dark, toggleDark } = useThemeStore();
   const [activeFilter, setActiveFilter] = useState("all");
   const [token, setToken] = useState(false);
   const [showSignoutModal, setShowSignoutModal] = useState(false);

@@ -7,10 +7,14 @@ import {
   hsl, hsla,
 } from "./shared";
 
+import { useThemeStore } from "../../../store/themeprovider";
+
 import DiscoverTab from "./discover/page";
 import MessagesTab from "./messages/page";
 import ProfileTab from "./profile/page";
 import SettingsTab from "./settings/page";
+
+
 
 const NAV_ITEMS = [
   { id: "discover", icon: <i class="fa-solid fa-code"></i>, label: "Discover" },
@@ -21,7 +25,7 @@ const NAV_ITEMS = [
 
 export default function Dashboard() {
   const router = useRouter();
-  const [dark, setDark] = useState(true);
+  const { dark, toggleDark } = useThemeStore();
   const [dashPage, setDashPage] = useState("discover");
   const [currentUser, setCurrentUser] = useState(DEFAULT_USER);
   const [convos, setConvos] = useState(INITIAL_CONVERSATIONS);
@@ -40,7 +44,6 @@ export default function Dashboard() {
       try {
         const res = await fetch("/api/profiles");
         const profiles = await res.json();
-        console.log(profiles);
       } catch (err) {
         console.error("Failed to fetch profiles:", err);
       }
@@ -234,7 +237,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <button onClick={() => setDark(p => !p)} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", transition: "all 0.2s" }}>
+          <button onClick={() => toggleDark(p => !p)} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", transition: "all 0.2s" }}>
             {dark ? <i class="fa-regular fa-sun"></i> : <i class="fa-regular fa-moon"></i>}
           </button>
 
@@ -277,7 +280,7 @@ export default function Dashboard() {
         )}
         {dashPage === "settings" && (
           <SettingsTab
-            T={T} dark={dark} setDark={setDark}
+            T={T} dark={dark} toggleDark={toggleDark}
             currentUser={currentUser} setCurrentUser={setCurrentUser}
             setDashPage={setDashPage}
           />

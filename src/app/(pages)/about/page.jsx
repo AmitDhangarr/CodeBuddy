@@ -2,6 +2,8 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { useThemeStore } from "../../../../store/themeprovider";
+
 const Logo = () => (
   <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill="#1a0a6a" />
@@ -19,7 +21,7 @@ const Avatar = ({ hue, initials, size = 56, radius = 16, dark }) => (
 );
 
 export default function About() {
-  const [dark, setDark] = useState(true);
+   const { dark, toggleDark } = useThemeStore();
 
   const T = dark ? {
     bg: "#07070f", bg2: "#0d0d1a",

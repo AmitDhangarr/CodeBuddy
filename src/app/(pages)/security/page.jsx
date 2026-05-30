@@ -1,9 +1,9 @@
 "use client"
 import Link from "next/link";
 import { useState } from "react";
-
+import { useThemeStore } from "../../../../store/themeprovider";
 export default function SecurityPage() {
-  const [dark, setDark] = useState(true);
+ const { dark, toggleDark } = useThemeStore();
   const [reportExpanded, setReportExpanded] = useState(false);
   const [formState, setFormState] = useState({ type: "", description: "", email: "" });
   const [submitted, setSubmitted] = useState(false);

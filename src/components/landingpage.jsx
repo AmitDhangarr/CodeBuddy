@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import { useSignupStore } from "../../store/UsesignupStore";
-
+import { useThemeStore } from "../../store/themeprovider";
 function LandingPage() {
   const router = useRouter();
   const [token, settoken] = useState(false);
@@ -40,8 +40,7 @@ function LandingPage() {
     }
   };
 
-
-  const [dark, setDark] = useState(true);
+  const { dark, toggleDark } = useThemeStore();
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [activeFaq, setActiveFaq] = useState(null);
   const [matchStep, setMatchStep] = useState(0);
@@ -319,7 +318,7 @@ function LandingPage() {
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(14px,4vw,18px)", color: T.text, letterSpacing: "-0.3px" }}>CodeBuddy</span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn-icon" onClick={() => setDark(p => !p)} style={{ width: 36, height: 36 }} title="Toggle theme">
+          <button className="btn-icon" onClick={() => toggleDark(p => !p)} style={{ width: 36, height: 36 }} title="Toggle theme">
             {dark ? <i className="fa-regular fa-sun"></i> : <i className="fa-regular fa-moon"></i>}
           </button>
 
@@ -510,11 +509,11 @@ function LandingPage() {
           <div className="features-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
             {[
               { icon: "⚡", t: "AI-Powered Matching", d: "Our model surfaces builders you'll actually ship with — matched by skills, goals and work style.", badge: "Core" },
-              { icon: <i class="fa-solid fa-bullseye"></i>, t: "Skill Gap Pairing", d: "We match by what you have AND what you need, creating two-way complementary partnerships.", badge: null },
-              { icon: <i class="fa-solid fa-message"></i>, t: "Real-Time Chat", d: "Chat with context — always see why you matched right above every conversation.", badge: null },
+              { icon: <i className="fa-solid fa-bullseye"></i>, t: "Skill Gap Pairing", d: "We match by what you have AND what you need, creating two-way complementary partnerships.", badge: null },
+              { icon: <i className="fa-solid fa-message"></i>, t: "Real-Time Chat", d: "Chat with context — always see why you matched right above every conversation.", badge: null },
               { icon: "🔮", t: "Match Insights", d: "AI explains every match in plain English so you can decide in seconds, not days.", badge: "AI" },
-              { icon: <i class="fa-solid fa-folder"></i>, t: "Project Rooms", d: "Spin up a shared space to plan tasks and track progress without leaving the platform.", badge: null },
-              { icon: <i class="fa-solid fa-globe"></i>, t: "Global Network", d: "3,200+ builders across 40+ countries. Someone's always online and ready to build.", badge: null },
+              { icon: <i className="fa-solid fa-folder"></i>, t: "Project Rooms", d: "Spin up a shared space to plan tasks and track progress without leaving the platform.", badge: null },
+              { icon: <i className="fa-solid fa-globe"></i>, t: "Global Network", d: "3,200+ builders across 40+ countries. Someone's always online and ready to build.", badge: null },
             ].map((f, i) => (
               <div key={i} className="feat-card fade-up" style={{ animationDelay: `${i * 0.07}s`, position: "relative" }}>
                 {f.badge && (
@@ -658,7 +657,7 @@ function LandingPage() {
               </div>
               <p style={{ fontSize: 13, color: T.text3, lineHeight: 1.65, maxWidth: 240 }}>Matching developers by skills so they can stop searching and start building.</p>
               <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-                {["𝕏", "GH", "in"].map((s, i) => (
+                {[<i className="fa-brands fa-x-twitter"></i>, <i class="fa-brands fa-github"></i>, <i class="fa-brands fa-linkedin"></i>].map((s, i) => (
                   <button key={i} className="btn-icon" style={{ width: 34, height: 34, fontSize: 12, fontWeight: 700 }}>{s}</button>
                 ))}
               </div>

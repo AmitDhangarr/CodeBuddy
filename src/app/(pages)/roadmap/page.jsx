@@ -1,9 +1,9 @@
 "use client"
 import Link from "next/link";
 import { useState } from "react";
-
+import { useThemeStore } from "../../../../store/themeprovider";
 export default function RoadmapPage() {
-  const [dark, setDark] = useState(true);
+  const { dark, toggleDark } = useThemeStore();
   const [activeFilter, setActiveFilter] = useState("all");
   const [voted, setVoted] = useState({});
 
