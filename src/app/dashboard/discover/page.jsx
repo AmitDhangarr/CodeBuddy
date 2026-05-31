@@ -10,6 +10,14 @@ import {
 
 const PROFILES_PER_PAGE = 9;
 
+// Maps frontend action to the status string your /api/connection/response expects
+const ACTION_TO_STATUS = {
+  disconnect: "declined",
+  cancel:     "declined",
+  block:      "blocked",
+  unblock:    "unblocked",
+};
+
 function normalizeProfile(profile) {
   let location = "";
   if (Array.isArray(profile.locations) && profile.locations.length > 0) {
@@ -56,57 +64,28 @@ function getStatusConfig(connectionStatus) {
     case "accepted":
       return {
         label: "✓ Connected",
-        style: {
-          background: "transparent",
-          border: "1px solid rgba(74,222,128,0.35)",
-          color: "#4ade80",
-        },
-        hoverStyle: {
-          background: "rgba(239,68,68,0.08)",
-          border: "1px solid rgba(239,68,68,0.35)",
-          color: "#f87171",
-        },
+        style: { background: "transparent", border: "1px solid rgba(74,222,128,0.35)", color: "#4ade80" },
+        hoverStyle: { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" },
         hoverLabel: "✕ Disconnect",
       };
     case "pending":
       return {
         label: "⏳ Pending",
-        style: {
-          background: "transparent",
-          border: "1px solid rgba(245,158,11,0.35)",
-          color: "#f59e0b",
-        },
-        hoverStyle: {
-          background: "rgba(245,158,11,0.08)",
-          border: "1px solid rgba(245,158,11,0.5)",
-          color: "#fbbf24",
-        },
+        style: { background: "transparent", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b" },
+        hoverStyle: { background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.5)", color: "#fbbf24" },
         hoverLabel: "✕ Cancel",
       };
     case "blocked":
       return {
         label: "⊘ Blocked",
-        style: {
-          background: "transparent",
-          border: "1px solid rgba(239,68,68,0.35)",
-          color: "#f87171",
-        },
-        hoverStyle: {
-          background: "rgba(239,68,68,0.08)",
-          border: "1px solid rgba(239,68,68,0.5)",
-          color: "#fca5a5",
-        },
+        style: { background: "transparent", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" },
+        hoverStyle: { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.5)", color: "#fca5a5" },
         hoverLabel: "↩ Unblock",
       };
     default:
       return {
         label: "Connect",
-        style: {
-          background: "linear-gradient(135deg,#7c3aed,#a855f7)",
-          border: "none",
-          color: "white",
-          boxShadow: "0 4px 14px rgba(124,58,237,0.28)",
-        },
+        style: { background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", boxShadow: "0 4px 14px rgba(124,58,237,0.28)" },
         hoverStyle: null,
         hoverLabel: null,
       };
@@ -118,7 +97,6 @@ function StatusButton({ connectionStatus, onClick, style: extraStyle = {}, size 
   const config = getStatusConfig(connectionStatus);
   const padding = size === "small" ? "6px 14px" : "8px 14px";
   const fontSize = size === "small" ? 12 : 13;
-
   const currentStyle = hovered && config.hoverStyle ? config.hoverStyle : config.style;
   const currentLabel = hovered && config.hoverLabel ? config.hoverLabel : config.label;
 
@@ -127,18 +105,7 @@ function StatusButton({ connectionStatus, onClick, style: extraStyle = {}, size 
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{
-        flex: 1,
-        padding,
-        borderRadius: 11,
-        cursor: "pointer",
-        fontFamily: "'Instrument Sans',sans-serif",
-        fontSize,
-        fontWeight: 700,
-        transition: "all 0.2s",
-        ...currentStyle,
-        ...extraStyle,
-      }}
+      style={{ flex: 1, padding, borderRadius: 11, cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif", fontSize, fontWeight: 700, transition: "all 0.2s", ...currentStyle, ...extraStyle }}
     >
       {currentLabel}
     </button>
@@ -160,30 +127,13 @@ function BlockMenu({ u, onBlock, T, dark }) {
     <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{
-          padding: "8px 10px", background: "transparent",
-          border: `1px solid ${T.border}`, color: T.text3,
-          borderRadius: 10, cursor: "pointer", fontSize: 13,
-          fontFamily: "inherit", transition: "all 0.2s",
-        }}
+        style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", transition: "all 0.2s" }}
       >⋯</button>
       {open && (
-        <div style={{
-          position: "absolute", bottom: "calc(100% + 6px)", right: 0,
-          background: dark ? "#1a1a2e" : "#fff",
-          border: `1px solid ${T.border}`, borderRadius: 12,
-          padding: "6px", zIndex: 50, minWidth: 140,
-          boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
-        }}>
+        <div style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, background: dark ? "#1a1a2e" : "#fff", border: `1px solid ${T.border}`, borderRadius: 12, padding: "6px", zIndex: 50, minWidth: 140, boxShadow: "0 8px 30px rgba(0,0,0,0.2)" }}>
           <button
             onClick={() => { onBlock(u); setOpen(false); }}
-            style={{
-              display: "block", width: "100%", padding: "8px 12px",
-              background: "transparent", border: "none", color: "#f87171",
-              cursor: "pointer", fontFamily: "inherit", fontSize: 12,
-              fontWeight: 600, textAlign: "left", borderRadius: 8,
-              transition: "background 0.15s",
-            }}
+            style={{ display: "block", width: "100%", padding: "8px 12px", background: "transparent", border: "none", color: "#f87171", cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, textAlign: "left", borderRadius: 8, transition: "background 0.15s" }}
             onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}
             onMouseLeave={e => e.currentTarget.style.background = "transparent"}
           >
@@ -211,10 +161,7 @@ function ResizableAIBox({ text, dark, T }) {
 
   useEffect(() => {
     if (!dragging) return;
-    const onMove = (e) => {
-      const delta = e.clientY - startY.current;
-      setHeight(Math.max(60, Math.min(220, startH.current + delta)));
-    };
+    const onMove = (e) => setHeight(Math.max(60, Math.min(220, startH.current + (e.clientY - startY.current))));
     const onUp = () => setDragging(false);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -222,29 +169,12 @@ function ResizableAIBox({ text, dark, T }) {
   }, [dragging]);
 
   return (
-    <div
-      className="fade-in"
-      style={{
-        background: T.aiBg, border: `1px solid ${T.aiBorder}`,
-        borderRadius: 12, marginBottom: 12, position: "relative",
-        overflow: "hidden", height, transition: dragging ? "none" : "height 0.1s",
-      }}
-    >
+    <div className="fade-in" style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 12, marginBottom: 12, position: "relative", overflow: "hidden", height, transition: dragging ? "none" : "height 0.1s" }}>
       <div style={{ padding: "11px 13px", height: "100%", overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", marginBottom: 5 }}>✦ AI MATCH INSIGHT</div>
         <p style={{ fontSize: 11, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.6, margin: 0 }}>{text}</p>
       </div>
-      {/* Drag handle */}
-      <div
-        onMouseDown={onMouseDown}
-        style={{
-          position: "absolute", bottom: 0, left: 0, right: 0,
-          height: 10, cursor: "ns-resize", display: "flex",
-          alignItems: "center", justifyContent: "center",
-          background: dragging ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.08)") : "transparent",
-          transition: "background 0.15s",
-        }}
-      >
+      <div onMouseDown={onMouseDown} style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 10, cursor: "ns-resize", display: "flex", alignItems: "center", justifyContent: "center", background: dragging ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.08)") : "transparent", transition: "background 0.15s" }}>
         <div style={{ width: 28, height: 3, borderRadius: 99, background: dark ? "rgba(167,139,250,0.3)" : "rgba(124,58,237,0.2)" }} />
       </div>
     </div>
@@ -254,63 +184,21 @@ function ResizableAIBox({ text, dark, T }) {
 // ── Pagination controls ───────────────────────────────────────────────────────
 function Pagination({ page, totalPages, onChange, T, dark }) {
   if (totalPages <= 1) return null;
-
   const pages = [];
   for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) {
-      pages.push(i);
-    } else if (pages[pages.length - 1] !== "…") {
-      pages.push("…");
-    }
+    if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) pages.push(i);
+    else if (pages[pages.length - 1] !== "…") pages.push("…");
   }
 
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 32, paddingBottom: 8 }}>
-      <button
-        onClick={() => onChange(page - 1)}
-        disabled={page === 1}
-        style={{
-          padding: "7px 14px", borderRadius: 10, border: `1px solid ${T.border}`,
-          background: "transparent", color: page === 1 ? T.text3 : T.text2,
-          cursor: page === 1 ? "not-allowed" : "pointer", fontFamily: "inherit",
-          fontSize: 13, fontWeight: 600, opacity: page === 1 ? 0.4 : 1,
-          transition: "all 0.2s",
-        }}
-      >← Prev</button>
-
+      <button onClick={() => onChange(page - 1)} disabled={page === 1} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${T.border}`, background: "transparent", color: page === 1 ? T.text3 : T.text2, cursor: page === 1 ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, opacity: page === 1 ? 0.4 : 1, transition: "all 0.2s" }}>← Prev</button>
       {pages.map((p, i) =>
-        p === "…" ? (
-          <span key={`ellipsis-${i}`} style={{ color: T.text3, padding: "0 4px", fontSize: 13 }}>…</span>
-        ) : (
-          <button
-            key={p}
-            onClick={() => onChange(p)}
-            style={{
-              width: 36, height: 36, borderRadius: 10,
-              border: p === page ? "1px solid rgba(124,58,237,0.5)" : `1px solid ${T.border}`,
-              background: p === page
-                ? dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.1)"
-                : "transparent",
-              color: p === page ? "#a78bfa" : T.text2,
-              cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: p === page ? 700 : 500,
-              transition: "all 0.2s",
-            }}
-          >{p}</button>
-        )
+        p === "…"
+          ? <span key={`ellipsis-${i}`} style={{ color: T.text3, padding: "0 4px", fontSize: 13 }}>…</span>
+          : <button key={p} onClick={() => onChange(p)} style={{ width: 36, height: 36, borderRadius: 10, border: p === page ? "1px solid rgba(124,58,237,0.5)" : `1px solid ${T.border}`, background: p === page ? (dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.1)") : "transparent", color: p === page ? "#a78bfa" : T.text2, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: p === page ? 700 : 500, transition: "all 0.2s" }}>{p}</button>
       )}
-
-      <button
-        onClick={() => onChange(page + 1)}
-        disabled={page === totalPages}
-        style={{
-          padding: "7px 14px", borderRadius: 10, border: `1px solid ${T.border}`,
-          background: "transparent", color: page === totalPages ? T.text3 : T.text2,
-          cursor: page === totalPages ? "not-allowed" : "pointer", fontFamily: "inherit",
-          fontSize: 13, fontWeight: 600, opacity: page === totalPages ? 0.4 : 1,
-          transition: "all 0.2s",
-        }}
-      >Next →</button>
-
+      <button onClick={() => onChange(page + 1)} disabled={page === totalPages} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${T.border}`, background: "transparent", color: page === totalPages ? T.text3 : T.text2, cursor: page === totalPages ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, opacity: page === totalPages ? 0.4 : 1, transition: "all 0.2s" }}>Next →</button>
       <span style={{ marginLeft: 8, fontSize: 11, color: T.text3 }}>Page {page} of {totalPages}</span>
     </div>
   );
@@ -324,48 +212,13 @@ function FullProfileModal({ user, onClose, T, dark, onConnect, onFavourite, onMe
   }, []);
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0,
-        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)",
-        zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 20, animation: "fadeIn 0.2s ease",
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: dark ? "#0e0e18" : "#fff",
-          border: `1px solid ${T.border}`, borderRadius: 24,
-          width: "100%", maxWidth: 560, maxHeight: "90vh",
-          overflowY: "auto", position: "relative",
-          animation: "slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.4)",
-        }}
-      >
-        {/* Header banner */}
-        <div style={{
-          height: 90, borderRadius: "24px 24px 0 0", overflow: "hidden",
-          background: `linear-gradient(135deg, hsl(${user.hue},60%,${dark ? "15%" : "88%"}), hsl(${(user.hue + 60) % 360},50%,${dark ? "10%" : "92%"}))`,
-          position: "relative",
-        }}>
-          <div style={{
-            position: "absolute", inset: 0,
-            background: `radial-gradient(circle at 70% 50%, ${hsla(user.hue, 80, 60, 0.2)}, transparent 70%)`,
-          }} />
-          <button onClick={onClose} style={{
-            position: "absolute", top: 12, right: 12,
-            width: 32, height: 32, borderRadius: "50%",
-            background: dark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.6)",
-            border: "none", cursor: "pointer", fontSize: 16, color: T.text,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            backdropFilter: "blur(4px)",
-          }}>✕</button>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "fadeIn 0.2s ease" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: dark ? "#0e0e18" : "#fff", border: `1px solid ${T.border}`, borderRadius: 24, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", position: "relative", animation: "slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 30px 80px rgba(0,0,0,0.4)" }}>
+        <div style={{ height: 90, borderRadius: "24px 24px 0 0", overflow: "hidden", background: `linear-gradient(135deg, hsl(${user.hue},60%,${dark ? "15%" : "88%"}), hsl(${(user.hue + 60) % 360},50%,${dark ? "10%" : "92%"}))`, position: "relative" }}>
+          <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 70% 50%, ${hsla(user.hue, 80, 60, 0.2)}, transparent 70%)` }} />
+          <button onClick={onClose} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: dark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.6)", border: "none", cursor: "pointer", fontSize: 16, color: T.text, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>✕</button>
         </div>
-
         <div style={{ padding: "0 28px 28px" }}>
-          {/* Avatar & name row */}
           <div style={{ display: "flex", gap: 16, alignItems: "flex-end", marginTop: -28, marginBottom: 20 }}>
             <div style={{ border: `3px solid ${dark ? "#0e0e18" : "#fff"}`, borderRadius: 18, flexShrink: 0 }}>
               <Avatar u={user} size={64} radius={15} T={T} dark={dark} />
@@ -379,13 +232,9 @@ function FullProfileModal({ user, onClose, T, dark, onConnect, onFavourite, onMe
               <div style={{ fontSize: 10, color: T.text3 }}>match</div>
             </div>
           </div>
-
-          {/* Match bar */}
           <div style={{ height: 4, background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.07)", borderRadius: 99, overflow: "hidden", marginBottom: 20 }}>
             <div style={{ height: "100%", width: `${user.matchScore}%`, background: `linear-gradient(90deg,hsl(${user.hue},70%,45%),hsl(${user.hue},80%,65%))`, borderRadius: 99 }} />
           </div>
-
-          {/* Status chips */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
             <span style={{ fontSize: 11, color: user.online ? "#4ade80" : T.text3, fontWeight: 600 }}>
               <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: user.online ? "#22c55e" : "#555570", marginRight: 5, boxShadow: user.online ? "0 0 6px #22c55e" : "none" }} />
@@ -394,11 +243,7 @@ function FullProfileModal({ user, onClose, T, dark, onConnect, onFavourite, onMe
             <span style={{ fontSize: 11, color: T.text3 }}>📍 {user.location || "Location not set"}</span>
             <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 99, background: hsla(user.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(user.hue, 70, 60, 0.25)}`, color: hsl(user.hue) }}>Seeking {user.lookingFor}</span>
           </div>
-
-          {/* Bio */}
           <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.7, marginBottom: 20 }}>{user.bio}</p>
-
-          {/* Stats row */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 1, marginBottom: 20, background: T.border, borderRadius: 14, overflow: "hidden" }}>
             {[{ v: user.projects, l: "Projects" }, { v: user.followers, l: "Followers" }, { v: user.matchScore + "%", l: "Match Score" }].map((s, i) => (
               <div key={i} style={{ background: dark ? "#0e0e18" : "#fff", padding: "14px 0", textAlign: "center" }}>
@@ -407,8 +252,6 @@ function FullProfileModal({ user, onClose, T, dark, onConnect, onFavourite, onMe
               </div>
             ))}
           </div>
-
-          {/* Skills */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
             <div style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderRadius: 14, padding: 14 }}>
               <Lbl T={T}>Skills</Lbl>
@@ -423,45 +266,44 @@ function FullProfileModal({ user, onClose, T, dark, onConnect, onFavourite, onMe
               </div>
             </div>
           </div>
-
-          {/* Connection status indicator */}
           {user.connectionStatus && (
-            <div style={{
-              padding: "10px 14px", borderRadius: 12, marginBottom: 16,
-              background: user.connectionStatus === "accepted" ? "rgba(74,222,128,0.06)" : user.connectionStatus === "pending" ? "rgba(245,158,11,0.06)" : user.connectionStatus === "blocked" ? "rgba(239,68,68,0.06)" : "transparent",
-              border: `1px solid ${user.connectionStatus === "accepted" ? "rgba(74,222,128,0.2)" : user.connectionStatus === "pending" ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.2)"}`,
-              fontSize: 12, color: user.connectionStatus === "accepted" ? "#4ade80" : user.connectionStatus === "pending" ? "#f59e0b" : "#f87171",
-              fontWeight: 600,
-            }}>
+            <div style={{ padding: "10px 14px", borderRadius: 12, marginBottom: 16, background: user.connectionStatus === "accepted" ? "rgba(74,222,128,0.06)" : user.connectionStatus === "pending" ? "rgba(245,158,11,0.06)" : "rgba(239,68,68,0.06)", border: `1px solid ${user.connectionStatus === "accepted" ? "rgba(74,222,128,0.2)" : user.connectionStatus === "pending" ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.2)"}`, fontSize: 12, color: user.connectionStatus === "accepted" ? "#4ade80" : user.connectionStatus === "pending" ? "#f59e0b" : "#f87171", fontWeight: 600 }}>
               {user.connectionStatus === "accepted" ? "✓ You are connected with this builder" : user.connectionStatus === "pending" ? "⏳ Connection request sent — awaiting response" : "⊘ This user is blocked"}
             </div>
           )}
-
-          {/* Action buttons */}
           <div style={{ display: "flex", gap: 8 }}>
             <StatusButton connectionStatus={user.connectionStatus} onClick={() => onConnect(user)} extraStyle={{ flex: 1 }} />
-            <button onClick={() => onFavourite(user)} style={{
-              padding: "8px 14px", background: "transparent",
-              border: `1px solid ${user.isFavourited ? "rgba(248,113,113,0.3)" : T.border}`,
-              color: user.isFavourited ? "#f87171" : T.text3,
-              borderRadius: 11, cursor: "pointer", fontSize: 14, transition: "all 0.2s",
-            }}>{user.isFavourited ? "♥" : "♡"}</button>
-            <button onClick={() => { onMessage(user); onClose(); }} style={{
-              padding: "8px 16px", background: "transparent",
-              border: `1px solid ${T.border}`, color: T.text2,
-              borderRadius: 11, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-            }}>💬 Message</button>
-            <button onClick={() => { onBlock(user); }} style={{
-              padding: "8px 12px", background: "transparent",
-              border: `1px solid ${user.connectionStatus === "blocked" ? "rgba(239,68,68,0.4)" : T.border}`,
-              color: user.connectionStatus === "blocked" ? "#f87171" : T.text3,
-              borderRadius: 11, cursor: "pointer", fontSize: 13, transition: "all 0.2s",
-            }}>⊘</button>
+            <button onClick={() => onFavourite(user)} style={{ padding: "8px 14px", background: "transparent", border: `1px solid ${user.isFavourited ? "rgba(248,113,113,0.3)" : T.border}`, color: user.isFavourited ? "#f87171" : T.text3, borderRadius: 11, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>{user.isFavourited ? "♥" : "♡"}</button>
+            <button onClick={() => { onMessage(user); onClose(); }} style={{ padding: "8px 16px", background: "transparent", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 11, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>💬 Message</button>
+            <button onClick={() => onBlock(user)} style={{ padding: "8px 12px", background: "transparent", border: `1px solid ${user.connectionStatus === "blocked" ? "rgba(239,68,68,0.4)" : T.border}`, color: user.connectionStatus === "blocked" ? "#f87171" : T.text3, borderRadius: 11, cursor: "pointer", fontSize: 13, transition: "all 0.2s" }}>⊘</button>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+// ── Helper: update a user across profiles + open modals ──────────────────────
+// Keeps all three in sync with one call instead of repeating the same three lines everywhere
+function syncUser(id, patch, setProfiles, setQuickView, setFullView) {
+  const apply = u => u.id === id ? { ...u, ...patch } : u;
+  setProfiles(p => p.map(apply));
+  setQuickView(v => v?.id === id ? { ...v, ...patch } : v);
+  setFullView(v => v?.id === id ? { ...v, ...patch } : v);
+}
+
+// ── Calls /api/connection/response to persist a status change ─────────────────
+async function callConnectionResponse(receiverId, status) {
+  const res = await fetch("/api/connection/response", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ receiverId, status }),
+  });
+  const json = await res.json();
+  if (!res.ok || json.success === false) {
+    throw new Error(json.error || "Request failed");
+  }
+  return json;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -472,20 +314,26 @@ export default function DiscoverTab({
   liked, setLiked, onSeedLiked,
   onMessage,
 }) {
-  const [filterSkill, setFilterSkill] = useState("All");
+  const [filterSkill, setFilterSkill]   = useState("All");
   const [filterLooking, setFilterLooking] = useState("All");
   const [filterOnline, setFilterOnline] = useState(false);
-  const [searchQ, setSearchQ] = useState("");
-  const [sortBy, setSortBy] = useState("match");
-  const [aiLoading, setAiLoading] = useState(null);
-  const [aiText, setAiText] = useState({});
-  const [quickView, setQuickView] = useState(null);       // compact modal
-  const [fullView, setFullView] = useState(null);          // full profile modal
-  const [view, setView] = useState("grid");
-  const [profiles, setProfiles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-  const [page, setPage] = useState(1);
+  const [searchQ, setSearchQ]           = useState("");
+  const [sortBy, setSortBy]             = useState("match");
+  const [aiLoading, setAiLoading]       = useState(null);
+  const [aiText, setAiText]             = useState({});
+  const [quickView, setQuickView]       = useState(null);
+  const [fullView, setFullView]         = useState(null);
+  const [view, setView]                 = useState("grid");
+  const [profiles, setProfiles]         = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [fetchError, setFetchError]     = useState(null);
+  const [page, setPage]                 = useState(1);
+  const [toast, setToast]               = useState(null); // { msg, type }
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -496,10 +344,8 @@ export default function DiscoverTab({
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         const json = await res.json();
         if (json.error) throw new Error(json.error);
-
         const normalized = json.profiles.map(normalizeProfile);
         setProfiles(normalized);
-
         const initialConnected = {};
         const initialLiked = {};
         json.profiles.forEach((p) => {
@@ -517,50 +363,83 @@ export default function DiscoverTab({
     fetchProfiles();
   }, []);
 
-  // Reset to page 1 when filters change
   useEffect(() => { setPage(1); }, [filterSkill, filterLooking, filterOnline, searchQ, sortBy]);
 
+  // ── Connect / Disconnect / Cancel ──────────────────────────────────────────
+  // New request    → POST /api/connection        (existing logic, status becomes "pending")
+  // Disconnect     → POST /api/connection/response  { status: "declined" }
+  // Cancel pending → POST /api/connection/response  { status: "declined" }
   const handleConnect = async (user) => {
     if (user.connectionStatus === "blocked") return;
-    const prev = user.connectionStatus;
-    const next = prev ? null : "pending";
-    setProfiles(p => p.map(x => x.id === user.id ? { ...x, connectionStatus: next } : x));
-    if (quickView?.id === user.id) setQuickView(v => v ? { ...v, connectionStatus: next } : v);
-    if (fullView?.id === user.id) setFullView(v => v ? { ...v, connectionStatus: next } : v);
 
+    const prev = user.connectionStatus;
+
+    // If already connected or pending → we're reversing it (disconnect / cancel)
+    if (prev === "accepted" || prev === "pending") {
+      const action = prev === "accepted" ? "disconnect" : "cancel";
+      // Optimistic update
+      syncUser(user.id, { connectionStatus: null }, setProfiles, setQuickView, setFullView);
+      try {
+        await callConnectionResponse(user.id, ACTION_TO_STATUS[action]);
+        showToast(
+          action === "disconnect"
+            ? `Disconnected from ${user.name}.`
+            : `Request to ${user.name} cancelled.`,
+          "info"
+        );
+      } catch (err) {
+        // Roll back on failure
+        syncUser(user.id, { connectionStatus: prev }, setProfiles, setQuickView, setFullView);
+        showToast(err.message || "Something went wrong.", "warn");
+      }
+      return;
+    }
+
+    // No existing connection → send a new request via /api/connection
+    syncUser(user.id, { connectionStatus: "pending" }, setProfiles, setQuickView, setFullView);
     try {
       const res = await fetch("/api/connection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ receiverId: user.id }),
+        body: JSON.stringify(user),
       });
       const json = await res.json();
       const status = json.action === "added" ? "pending" : null;
-      setProfiles(p => p.map(x => x.id === user.id ? { ...x, connectionStatus: status } : x));
-      if (quickView?.id === user.id) setQuickView(v => v ? { ...v, connectionStatus: status } : v);
-      if (fullView?.id === user.id) setFullView(v => v ? { ...v, connectionStatus: status } : v);
+      syncUser(user.id, { connectionStatus: status }, setProfiles, setQuickView, setFullView);
+      if (status === "pending") showToast(`Request sent to ${user.name}!`);
     } catch {
-      setProfiles(p => p.map(x => x.id === user.id ? { ...x, connectionStatus: prev } : x));
-      if (quickView?.id === user.id) setQuickView(v => v ? { ...v, connectionStatus: prev } : v);
-      if (fullView?.id === user.id) setFullView(v => v ? { ...v, connectionStatus: prev } : v);
+      syncUser(user.id, { connectionStatus: prev }, setProfiles, setQuickView, setFullView);
+      showToast("Failed to send request.", "warn");
     }
   };
 
-  const handleBlock = (user) => {
+  // ── Block / Unblock ────────────────────────────────────────────────────────
+  const handleBlock = async (user) => {
     const isBlocked = user.connectionStatus === "blocked";
     const next = isBlocked ? null : "blocked";
-    setProfiles(p => p.map(x => x.id === user.id ? { ...x, connectionStatus: next } : x));
-    if (quickView?.id === user.id) setQuickView(v => v ? { ...v, connectionStatus: next } : v);
-    if (fullView?.id === user.id) setFullView(v => v ? { ...v, connectionStatus: next } : v);
+    const status = isBlocked ? ACTION_TO_STATUS.unblock : ACTION_TO_STATUS.block;
+
+    // Optimistic update
+    syncUser(user.id, { connectionStatus: next }, setProfiles, setQuickView, setFullView);
+
+    try {
+      await callConnectionResponse(user.id, status);
+      showToast(
+        isBlocked ? `${user.name} has been unblocked.` : `${user.name} has been blocked.`,
+        isBlocked ? "success" : "warn"
+      );
+    } catch (err) {
+      // Roll back
+      syncUser(user.id, { connectionStatus: user.connectionStatus }, setProfiles, setQuickView, setFullView);
+      showToast(err.message || "Something went wrong.", "warn");
+    }
   };
 
+  // ── Favourite ──────────────────────────────────────────────────────────────
   const handleFavourite = async (user) => {
     const wasFav = user.isFavourited;
-    setProfiles(p => p.map(x => x.id === user.id ? { ...x, isFavourited: !wasFav } : x));
+    syncUser(user.id, { isFavourited: !wasFav }, setProfiles, setQuickView, setFullView);
     setLiked(p => ({ ...p, [user.id]: !wasFav }));
-    if (quickView?.id === user.id) setQuickView(v => v ? { ...v, isFavourited: !wasFav } : v);
-    if (fullView?.id === user.id) setFullView(v => v ? { ...v, isFavourited: !wasFav } : v);
-
     try {
       const res = await fetch("/api/favourites", {
         method: "POST",
@@ -569,10 +448,10 @@ export default function DiscoverTab({
       });
       const json = await res.json();
       const newFav = json.action === "added";
-      setProfiles(p => p.map(x => x.id === user.id ? { ...x, isFavourited: newFav } : x));
+      syncUser(user.id, { isFavourited: newFav }, setProfiles, setQuickView, setFullView);
       setLiked(p => ({ ...p, [user.id]: newFav }));
     } catch {
-      setProfiles(p => p.map(x => x.id === user.id ? { ...x, isFavourited: wasFav } : x));
+      syncUser(user.id, { isFavourited: wasFav }, setProfiles, setQuickView, setFullView);
       setLiked(p => ({ ...p, [user.id]: wasFav }));
     }
   };
@@ -580,10 +459,10 @@ export default function DiscoverTab({
   const rankedUsers = profiles
     .map(u => ({ ...u, matchScore: u.matchScore ?? 0 }))
     .sort((a, b) => {
-      if (sortBy === "match") return b.matchScore - a.matchScore;
+      if (sortBy === "match")     return b.matchScore - a.matchScore;
       if (sortBy === "followers") return b.followers - a.followers;
-      if (sortBy === "projects") return b.projects - a.projects;
-      if (sortBy === "online") return (b.online ? 1 : 0) - (a.online ? 1 : 0);
+      if (sortBy === "projects")  return b.projects - a.projects;
+      if (sortBy === "online")    return (b.online ? 1 : 0) - (a.online ? 1 : 0);
       return 0;
     });
 
@@ -599,7 +478,7 @@ export default function DiscoverTab({
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PROFILES_PER_PAGE));
-  const paginated = filtered.slice((page - 1) * PROFILES_PER_PAGE, page * PROFILES_PER_PAGE);
+  const paginated  = filtered.slice((page - 1) * PROFILES_PER_PAGE, page * PROFILES_PER_PAGE);
 
   const scoreColor = (score) => {
     if (score >= 80) return "#4ade80";
@@ -608,11 +487,7 @@ export default function DiscoverTab({
     return hsl(0, 60, 60);
   };
 
-  const btn = {
-    border: "none", cursor: "pointer",
-    fontFamily: "'Instrument Sans',sans-serif",
-    transition: "all 0.2s",
-  };
+  const btn = { border: "none", cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif", transition: "all 0.2s" };
 
   const handleAIAPI = async (prompt) => {
     const res = await fetch("/api/ai_insights", {
@@ -640,18 +515,34 @@ export default function DiscoverTab({
     }
   }, [currentUser, aiLoading]);
 
-  const openQuickView = (u) => { setQuickView(u); };
-  const openFullView = (u) => { setFullView(u); setQuickView(null); };
+  const openQuickView = (u) => setQuickView(u);
+  const openFullView  = (u) => { setFullView(u); setQuickView(null); };
 
   return (
     <div className="fade-up">
-      {/* Header */}
+      {/* Global toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", top: 20, right: 20, zIndex: 9999,
+          background: dark ? "#0d0d1a" : "#fff",
+          border: `1px solid ${toast.type === "warn" ? "rgba(245,158,11,0.3)" : toast.type === "info" ? "rgba(99,102,241,0.3)" : "rgba(34,197,94,0.3)"}`,
+          borderRadius: 14, padding: "13px 18px",
+          boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
+          display: "flex", alignItems: "center", gap: 10,
+          animation: "toastIn 0.3s ease both", minWidth: 220, maxWidth: 320,
+        }}>
+          <span style={{ fontSize: 16 }}>
+            {toast.type === "success" ? "✅" : toast.type === "warn" ? "⚠️" : "ℹ️"}
+          </span>
+          <span style={{ fontSize: 13, color: dark ? "#e4e4f0" : "#18182c", fontWeight: 500 }}>{toast.msg}</span>
+        </div>
+      )}
+
       {fullView && (
         <UserFullProfile
           user={fullView}
           currentUser={currentUser}
-          T={T}
-          dark={dark}
+          T={T} dark={dark}
           onClose={() => setFullView(null)}
           onConnect={handleConnect}
           onFavourite={handleFavourite}
@@ -659,26 +550,24 @@ export default function DiscoverTab({
           onBlock={handleBlock}
           scoreColor={scoreColor}
           calculateMatchScore={calculateMatchScore}
-          Avatar={Avatar}
-          Lbl={Lbl}
-          hsl={hsl}
-          hsla={hsla}
+          Avatar={Avatar} Lbl={Lbl} hsl={hsl} hsla={hsla}
         />
       )}
+
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20, gap: 14, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: "#7c3aed", marginBottom: 6 }}>
             <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e", marginRight: 7, verticalAlign: "middle" }} />
             Live Matching
           </div>
-
           <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, letterSpacing: "-0.8px", lineHeight: 1.1 }}>Discover Builders</h1>
           <p style={{ fontSize: 13, color: T.text3, marginTop: 4 }}>{filtered.length} builders ranked by your match score</p>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {["grid", "list"].map(v => (
-            <button key={v} onClick={() => setView(v)} style={{ ...btn, padding: "7px 14px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: view === v ? dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)" : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T.border}`, color: view === v ? "#a78bfa" : T.text3 }}>
-              {v === "grid" ? <i class="fa-solid fa-bars"></i>: <i className="fa-solid fa-list"></i>}
+            <button key={v} onClick={() => setView(v)} style={{ ...btn, padding: "7px 14px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: view === v ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)") : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T.border}`, color: view === v ? "#a78bfa" : T.text3 }}>
+              {v === "grid" ? "⊞" : "☰"}
             </button>
           ))}
         </div>
@@ -687,7 +576,7 @@ export default function DiscoverTab({
       {/* Filters */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20, alignItems: "center" }}>
         <div style={{ position: "relative", flex: "1 1 180px", minWidth: 140 }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.text3, fontSize: 14, pointerEvents: "none" }}><i class="fa-solid fa-magnifying-glass"></i></span>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.text3, fontSize: 14, pointerEvents: "none" }}>🔍</span>
           <input placeholder="Search name, role, skill…" value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text, borderRadius: 11, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "inherit" }} />
         </div>
         <select value={filterSkill} onChange={e => setFilterSkill(e.target.value)} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
@@ -704,7 +593,7 @@ export default function DiscoverTab({
           <option value="projects">Sort: Projects</option>
           <option value="online">Sort: Online First</option>
         </select>
-        <button onClick={() => setFilterOnline(p => !p)} style={{ ...btn, padding: "7px 13px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: filterOnline ? dark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)" : "transparent", border: `1px solid ${filterOnline ? "rgba(34,197,94,0.35)" : T.border}`, color: filterOnline ? "#4ade80" : T.text3 }}>
+        <button onClick={() => setFilterOnline(p => !p)} style={{ ...btn, padding: "7px 13px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: filterOnline ? (dark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)") : "transparent", border: `1px solid ${filterOnline ? "rgba(34,197,94,0.35)" : T.border}`, color: filterOnline ? "#4ade80" : T.text3 }}>
           ● Online only
         </button>
       </div>
@@ -738,7 +627,7 @@ export default function DiscoverTab({
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: T.text3 }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}><i className="fa-solid fa-magnifying-glass"></i></div>
+          <div style={{ fontSize: 40, marginBottom: 14 }}>🔍</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: T.text2, marginBottom: 6 }}>No builders found</div>
           <div style={{ fontSize: 13 }}>Try adjusting your filters</div>
         </div>
@@ -751,32 +640,14 @@ export default function DiscoverTab({
                 : <GridCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} setQuickView={openQuickView} onFavourite={handleFavourite} setProfiles={setProfiles} />
             ))}
           </div>
-
           <Pagination page={page} totalPages={totalPages} onChange={setPage} T={T} dark={dark} />
         </>
       )}
 
-      {/* Quick View Modal (compact) — centered with "See Full Profile" button */}
+      {/* Quick View Modal */}
       {quickView && (
-        <div
-          onClick={() => setQuickView(null)}
-          style={{
-            position: "fixed", inset: 0,
-            background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)",
-            zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: dark ? "#0e0e18" : "#fff",
-              border: `1px solid ${T.border}`, borderRadius: 22, padding: 28,
-              width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto",
-              boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
-              animation: "slideUp 0.22s cubic-bezier(0.34,1.56,0.64,1)",
-            }}
-          >
+        <div onClick={() => setQuickView(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: dark ? "#0e0e18" : "#fff", border: `1px solid ${T.border}`, borderRadius: 22, padding: 28, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.35)", animation: "slideUp 0.22s cubic-bezier(0.34,1.56,0.64,1)" }}>
             <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 18 }}>
               <Avatar u={quickView} size={60} radius={16} T={T} dark={dark} />
               <div style={{ flex: 1 }}>
@@ -794,8 +665,14 @@ export default function DiscoverTab({
               </div>
             </div>
 
-            <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, marginBottom: 16 }}>{quickView.bio}</p>
+            {/* Connection status banner inside quick view */}
+            {quickView.connectionStatus && (
+              <div style={{ padding: "8px 12px", borderRadius: 10, marginBottom: 14, fontSize: 12, fontWeight: 600, background: quickView.connectionStatus === "accepted" ? "rgba(74,222,128,0.06)" : quickView.connectionStatus === "pending" ? "rgba(245,158,11,0.06)" : "rgba(239,68,68,0.06)", border: `1px solid ${quickView.connectionStatus === "accepted" ? "rgba(74,222,128,0.2)" : quickView.connectionStatus === "pending" ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.2)"}`, color: quickView.connectionStatus === "accepted" ? "#4ade80" : quickView.connectionStatus === "pending" ? "#f59e0b" : "#f87171" }}>
+                {quickView.connectionStatus === "accepted" ? "✓ Connected" : quickView.connectionStatus === "pending" ? "⏳ Request sent" : "⊘ Blocked"}
+              </div>
+            )}
 
+            <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, marginBottom: 16 }}>{quickView.bio}</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
               <div style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderRadius: 12, padding: 12 }}>
                 <Lbl T={T}>Skills</Lbl>
@@ -810,7 +687,6 @@ export default function DiscoverTab({
                 </div>
               </div>
             </div>
-
             <div style={{ display: "flex", gap: 18, marginBottom: 16, padding: "12px 0", borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}` }}>
               {[{ v: quickView.projects, l: "Projects" }, { v: quickView.followers, l: "Followers" }, { v: quickView.matchScore + "%", l: "Match" }].map((s, i) => (
                 <div key={i} style={{ textAlign: "center", flex: 1 }}>
@@ -819,29 +695,15 @@ export default function DiscoverTab({
                 </div>
               ))}
             </div>
-
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-              <StatusButton connectionStatus={quickView.connectionStatus} onClick={() => { handleConnect(quickView); }} />
-              <button onClick={() => { onMessage(quickView); setQuickView(null); }} style={{ padding: "11px 18px", borderRadius: 11, background: "transparent", border: `1px solid ${T.border}`, color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>💬 Message</button>
+              <StatusButton connectionStatus={quickView.connectionStatus} onClick={() => handleConnect(quickView)} />
+              <button onClick={() => { handleBlock(quickView); }} style={{ padding: "8px 12px", background: "transparent", border: `1px solid ${quickView.connectionStatus === "blocked" ? "rgba(239,68,68,0.4)" : T.border}`, color: quickView.connectionStatus === "blocked" ? "#f87171" : T.text3, borderRadius: 11, cursor: "pointer", fontSize: 13 }}>⊘</button>
+              <button onClick={() => { onMessage(quickView); setQuickView(null); }} style={{ padding: "8px 16px", borderRadius: 11, background: "transparent", border: `1px solid ${T.border}`, color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>💬 Message</button>
             </div>
-
-            {/* See Full Profile button */}
-            <button
-              onClick={() => openFullView(quickView)}
-              style={{
-                width: "100%", padding: "10px", borderRadius: 11,
-                background: "transparent",
-                border: `1px solid ${T.border}`,
-                color: T.text2, fontSize: 13, fontWeight: 600,
-                cursor: "pointer", fontFamily: "inherit",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                transition: "all 0.2s",
-              }}
+            <button onClick={() => openFullView(quickView)} style={{ width: "100%", padding: "10px", borderRadius: 11, background: "transparent", border: `1px solid ${T.border}`, color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.2s" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.4)"; e.currentTarget.style.color = "#a78bfa"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.text2; }}
-            >
-              ↗ See Full Profile
-            </button>
+            >↗ See Full Profile</button>
           </div>
         </div>
       )}
@@ -851,8 +713,7 @@ export default function DiscoverTab({
         <FullProfileModal
           user={fullView}
           onClose={() => setFullView(null)}
-          T={T}
-          dark={dark}
+          T={T} dark={dark}
           onConnect={handleConnect}
           onFavourite={handleFavourite}
           onMessage={onMessage}
@@ -862,23 +723,18 @@ export default function DiscoverTab({
       )}
 
       <style>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
+        @keyframes slideUp { from { opacity:0; transform:translateY(20px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+        @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes spin    { to { transform:rotate(360deg); } }
       `}</style>
     </div>
   );
 }
 
 // ── Grid Card ─────────────────────────────────────────────────────────────────
-function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView, onFavourite, setProfiles }) {
+function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView, onFavourite }) {
   const isFav = u.isFavourited;
-
   return (
     <div className="card fade-up" style={{ padding: 20, position: "relative", overflow: "hidden", animationDelay: `${i * 0.06}s`, cursor: "default", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: `radial-gradient(circle,${hsla(u.hue, 70, 60, dark ? 0.08 : 0.05)} 0%,transparent 70%)`, pointerEvents: "none" }} />
@@ -922,18 +778,25 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
         <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 99, background: hsla(u.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(u.hue, 70, 60, 0.25)}`, color: hsl(u.hue) }}>Seeking {u.lookingFor}</span>
       </div>
 
-      {/* Resizable AI insight */}
+      {/* Connection status badge on card */}
+      {u.connectionStatus && (
+        <div style={{ marginBottom: 10 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 99, background: u.connectionStatus === "accepted" ? "rgba(74,222,128,0.08)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${u.connectionStatus === "accepted" ? "rgba(74,222,128,0.25)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.25)"}`, color: u.connectionStatus === "accepted" ? "#4ade80" : u.connectionStatus === "pending" ? "#f59e0b" : "#f87171" }}>
+            {u.connectionStatus === "accepted" ? "✓ Connected" : u.connectionStatus === "pending" ? "⏳ Pending" : "⊘ Blocked"}
+          </span>
+        </div>
+      )}
+
       {aiText[u.id] && <ResizableAIBox text={aiText[u.id]} dark={dark} T={T} />}
 
       <div style={{ display: "flex", gap: 6, marginTop: "auto" }}>
         <StatusButton connectionStatus={u.connectionStatus} onClick={() => onConnect(u)} />
-        <button onClick={() => onFavourite(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${isFav ? "rgba(248,113,113,0.3)" : T.border}`, color: isFav ? "#f87171" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>
-          {isFav ? "♥" : "♡"}
-        </button>
-        <button onClick={() => handleAI(u)} style={{ padding: "8px 10px", background: aiText[u.id] ? dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)" : "transparent", border: `1px solid ${aiText[u.id] ? "rgba(124,58,237,0.3)" : T.border}`, color: aiText[u.id] ? "#a78bfa" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13, transition: "all 0.2s" }}>
+        <button onClick={() => onFavourite(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${isFav ? "rgba(248,113,113,0.3)" : T.border}`, color: isFav ? "#f87171" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>{isFav ? "♥" : "♡"}</button>
+        <button onClick={() => handleAI(u)} style={{ padding: "8px 10px", background: aiText[u.id] ? (dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)") : "transparent", border: `1px solid ${aiText[u.id] ? "rgba(124,58,237,0.3)" : T.border}`, color: aiText[u.id] ? "#a78bfa" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13, transition: "all 0.2s" }}>
           {aiLoading === u.id ? <span style={{ display: "inline-block", animation: "spin 0.9s linear infinite" }}>✦</span> : "✦"}
         </button>
         <button onClick={() => onMessage(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>💬</button>
+        <button onClick={() => onBlock(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>⊘</button>
         <button onClick={() => setQuickView(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>↗</button>
       </div>
     </div>
@@ -941,7 +804,7 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
 }
 
 // ── List Card ─────────────────────────────────────────────────────────────────
-function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView, setProfiles }) {
+function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView }) {
   return (
     <div className="card fade-up" style={{ padding: "14px 18px", display: "flex", gap: 14, alignItems: "center", animationDelay: `${i * 0.04}s` }}>
       <div style={{ position: "relative", flexShrink: 0 }}>
@@ -949,18 +812,12 @@ function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
         <div style={{ position: "absolute", bottom: -1, right: -1, width: 7, height: 7, borderRadius: "50%", background: u.online ? "#22c55e" : "#555570", border: `2px solid ${dark ? "#060608" : "#f5f5f9"}` }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{u.name}</span>
           <span style={{ fontSize: 11, color: hsl(u.hue), fontWeight: 600 }}>{u.role}</span>
           <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: hsla(u.hue, 70, 60, dark ? 0.1 : 0.07), border: `1px solid ${hsla(u.hue, 70, 60, 0.22)}`, color: hsl(u.hue) }}>{u.lookingFor}</span>
-          {/* Inline status badge for list view */}
           {u.connectionStatus && (
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
-              background: u.connectionStatus === "accepted" ? "rgba(74,222,128,0.08)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)",
-              border: `1px solid ${u.connectionStatus === "accepted" ? "rgba(74,222,128,0.25)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.25)"}`,
-              color: u.connectionStatus === "accepted" ? "#4ade80" : u.connectionStatus === "pending" ? "#f59e0b" : "#f87171",
-            }}>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: u.connectionStatus === "accepted" ? "rgba(74,222,128,0.08)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${u.connectionStatus === "accepted" ? "rgba(74,222,128,0.25)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.25)"}`, color: u.connectionStatus === "accepted" ? "#4ade80" : u.connectionStatus === "pending" ? "#f59e0b" : "#f87171" }}>
               {u.connectionStatus === "accepted" ? "✓ Connected" : u.connectionStatus === "pending" ? "⏳ Pending" : "⊘ Blocked"}
             </span>
           )}
@@ -979,6 +836,7 @@ function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <StatusButton connectionStatus={u.connectionStatus} onClick={() => onConnect(u)} size="small" extraStyle={{ flex: "none", padding: "6px 14px" }} />
+        <button onClick={() => onBlock(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>⊘</button>
         <button onClick={() => onMessage(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>💬</button>
         <button onClick={() => setQuickView(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>↗</button>
       </div>

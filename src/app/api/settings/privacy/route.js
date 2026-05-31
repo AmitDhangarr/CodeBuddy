@@ -5,7 +5,7 @@ import getUser from "../../../../utils/getuser.js";
 export async function POST(request) {
   try {
     const { userEmail } = await getUser();
-    const { publicProfile, onlineStatus, discoverable, showLocation } =
+    const { publicProfile, onlineStatus, showLocation } =
       await request.json();
 
     const { data, error } = await supabase
@@ -13,7 +13,6 @@ export async function POST(request) {
       .update({
         publicProfile: publicProfile,
         onlineStatus: onlineStatus,
-        discoverable: discoverable,
         showLocation: showLocation,
       })
       .eq("email", userEmail)

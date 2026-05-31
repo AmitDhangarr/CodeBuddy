@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useThemeStore } from "../../../store/themeprovider"
+import { useThemeStore } from "../../../store/themeprovider";
+
 const hsl = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
 const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
 
 const THEME = {
   dark: {
     bg: "#07070f", bg2: "#0d0d1a", bg3: "#111124",
-    // FIX 1: Added navBg (was undefined, causing transparent/broken nav background)
     navBg: "rgba(7,7,15,0.85)",
     border: "rgba(255,255,255,0.06)", border2: "rgba(255,255,255,0.11)", border3: "rgba(255,255,255,0.17)",
     text: "#e4e4f0", text2: "#8888aa", text3: "#44445a",
@@ -26,7 +26,6 @@ const THEME = {
   },
   light: {
     bg: "#f4f4f8", bg2: "#ffffff", bg3: "#f0f0f6",
-    // FIX 1: Added navBg to light theme too
     navBg: "rgba(244,244,248,0.85)",
     border: "rgba(0,0,0,0.07)", border2: "rgba(0,0,0,0.13)", border3: "rgba(0,0,0,0.2)",
     text: "#18182c", text2: "#555570", text3: "#9090b0",
@@ -42,26 +41,6 @@ const THEME = {
     tabActive: "rgba(124,58,237,0.09)", tabActiveBorder: "rgba(124,58,237,0.35)",
     searchBg: "#ffffff",
   },
-};
-
-const MOCK_CONNECTIONS = {
-  pending: [
-    { id: 1, name: "Ishaan Verma", handle: "ishaan.rust", role: "Systems Engineer · Delhi", avatar: "IV", hue: 200, bio: "Distributed systems at scale. Building a high-frequency trading infra tool.", skillsHave: ["Rust", "Go", "Redis"], skillsNeed: ["React", "UI/UX"], match: 91, time: "2 min ago", mutual: 3 },
-    { id: 2, name: "Kavya Reddy", handle: "kavya.ml", role: "ML Researcher · Hyderabad", avatar: "KR", hue: 320, bio: "Working on diffusion models for code generation. Need frontend wizardry.", skillsHave: ["Python", "PyTorch", "CUDA"], skillsNeed: ["React", "Next.js", "Figma"], match: 87, time: "18 min ago", mutual: 1 },
-    { id: 3, name: "Siddharth Jain", handle: "sid.fullstack", role: "Full Stack Dev · Pune", avatar: "SJ", hue: 40, bio: "Ex-Razorpay. Building a B2B SaaS fintech product. Need mobile expertise.", skillsHave: ["Node.js", "TypeScript", "PostgreSQL"], skillsNeed: ["Flutter", "iOS"], match: 79, time: "1 hr ago", mutual: 5 },
-  ],
-  sent: [
-    { id: 4, name: "Nia Okafor", handle: "nia.web3", role: "Blockchain Dev · Lagos", avatar: "NO", hue: 158, bio: "Smart contracts and DeFi protocols. Scaling a DEX on Polygon.", skillsHave: ["Solidity", "Hardhat", "Ethers.js"], skillsNeed: ["React", "GraphQL"], match: 83, time: "3 hr ago", mutual: 2 },
-    { id: 5, name: "Yuki Tanaka", handle: "yuki.ios", role: "iOS Engineer · Tokyo", avatar: "YT", hue: 0, bio: "Shipped 4 apps with 500k+ combined downloads. Obsessed with SwiftUI.", skillsHave: ["Swift", "SwiftUI", "CoreML"], skillsNeed: ["Backend", "Node.js"], match: 76, time: "Yesterday", mutual: 0 },
-  ],
-  connected: [
-    { id: 6, name: "Aanya Sharma", handle: "aanya.dev", role: "Full Stack Engineer · Bangalore", avatar: "AS", hue: 259, bio: "Building SaaS tools. Shipped 2 products together with great momentum.", skillsHave: ["React", "Next.js", "Node.js"], skillsNeed: ["UI/UX", "Figma"], match: 94, time: "Connected 3 days ago", mutual: 8, project: "Collab on: Notara" },
-    { id: 7, name: "Rohan Mehra", handle: "rohan.ui", role: "Design Engineer · Mumbai", avatar: "RM", hue: 340, bio: "Designer who writes production code. Currently in a project room together.", skillsHave: ["Figma", "React", "Tailwind"], skillsNeed: ["Node.js", "DevOps"], match: 88, time: "Connected 1 week ago", mutual: 4, project: "Collab on: Slate" },
-    { id: 8, name: "Priya Nair", handle: "priya.ml", role: "ML Engineer · Chennai", avatar: "PN", hue: 158, bio: "Research to production pipeline. Looking at another project together.", skillsHave: ["Python", "AWS", "Docker"], skillsNeed: ["React", "TypeScript"], match: 82, time: "Connected 2 weeks ago", mutual: 6, project: null },
-  ],
-  blocked: [
-    { id: 9, name: "Anonymous User", handle: "user_9x2k", role: "Unknown role", avatar: "AU", hue: 0, bio: "Blocked after repeated unsolicited messages.", skillsHave: [], skillsNeed: [], match: 0, time: "Blocked 5 days ago", mutual: 0 },
-  ],
 };
 
 const Avatar = ({ u, size = 44, radius = 12, dark }) => (
@@ -84,8 +63,6 @@ const MatchBadge = ({ val }) => (
   </div>
 );
 
-// FIX 2: Pill now accepts `dark` prop and uses it to pick theme colors,
-// instead of always hardcoding THEME.dark regardless of the active theme.
 const Pill = ({ label, type, dark }) => {
   const T = dark ? THEME.dark : THEME.light;
   const style = type === "have"
@@ -94,15 +71,35 @@ const Pill = ({ label, type, dark }) => {
   return <span style={{ ...style, padding: "2px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600 }}>{label}</span>;
 };
 
-const ConfirmModal = ({ dark, T, title, message, confirmLabel, confirmDanger = false, onConfirm, onCancel, icon = "⚠️" }) => (
+const ConfirmModal = ({ dark, T, title, message, confirmLabel, confirmDanger = false, onConfirm, onCancel, icon = "⚠️", loading = false }) => (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(6px)", animation: "fadeIn 0.18s ease both" }}>
     <div style={{ background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: 22, padding: "36px 32px", width: "min(360px, calc(100vw - 32px))", boxShadow: T.shadow, textAlign: "center", animation: "modalIn 0.26s cubic-bezier(0.16,1,0.3,1) both" }}>
       <div style={{ width: 52, height: 52, borderRadius: "50%", background: confirmDanger ? "rgba(239,68,68,0.1)" : "rgba(124,58,237,0.1)", border: `1px solid ${confirmDanger ? "rgba(239,68,68,0.22)" : "rgba(124,58,237,0.22)"}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22 }}>{icon}</div>
       <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 22, color: T.text, marginBottom: 9, letterSpacing: "-0.4px" }}>{title}</h3>
       <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, marginBottom: 26 }}>{message}</p>
       <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", background: "transparent", border: `1px solid ${T.border}`, borderRadius: 11, color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-        <button onClick={onConfirm} style={{ flex: 1, padding: "10px 0", background: confirmDanger ? "linear-gradient(135deg,#dc2626,#ef4444)" : "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 11, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: confirmDanger ? "0 4px 16px rgba(220,38,38,0.28)" : "0 4px 16px rgba(124,58,237,0.28)" }}>{confirmLabel}</button>
+        <button
+          onClick={onCancel}
+          disabled={loading}
+          style={{ flex: 1, padding: "10px 0", background: "transparent", border: `1px solid ${T.border}`, borderRadius: 11, color: T.text2, fontSize: 13, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: loading ? 0.5 : 1 }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          style={{ flex: 1, padding: "10px 0", background: confirmDanger ? "linear-gradient(135deg,#dc2626,#ef4444)" : "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 11, color: "#fff", fontSize: 13, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", boxShadow: confirmDanger ? "0 4px 16px rgba(220,38,38,0.28)" : "0 4px 16px rgba(124,58,237,0.28)", opacity: loading ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          {loading ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 0.8s linear infinite" }}>
+                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+              Processing...
+            </>
+          ) : confirmLabel}
+        </button>
       </div>
     </div>
   </div>
@@ -116,54 +113,146 @@ const EmptyState = ({ T, icon, title, sub }) => (
   </div>
 );
 
+// Maps frontend action names to the status strings your API accepts
+const ACTION_TO_STATUS = {
+  accept:  "accepted",
+  decline: "declined",
+  block:   "blocked",
+  unblock: "unblocked",
+  cancel:  "declined",  // cancelling a sent request = declining it from your side
+  remove:  "declined",  // removing a connection = declining it
+};
+
 export default function Connections() {
-  const { dark, toggleDark } = useThemeStore();
+
+  const [connectionErr, setConnectionErr] = useState(null);
+  const [pendingConnections, setPendingConnections]     = useState([]);
+  const [declinedConnections, setDeclinedConnections]   = useState([]);
+  const [blockedConnections, setBlockedConnections]     = useState([]);
+  const [connectedConnections, setConnectedConnections] = useState([]);
+  const [sentConnections, setSentConnections]           = useState([]);
+
+  const getConnections = async () => {
+    try {
+      const response = await fetch("/api/connections");
+      const res = await response.json();
+
+      console.log(res);
+      
+      if (!res || !res.data) {
+        setConnectionErr("Failed to load connections.");
+        return;
+      }
+      setPendingConnections(res.data.filter(item => item.status === "pending"));
+      setDeclinedConnections(res.data.filter(item => item.status === "declined"));
+      setBlockedConnections(res.data.filter(item => item.status === "blocked"));
+      setConnectedConnections(res.data.filter(item => item.status === "connected"));
+      setSentConnections(res.data.filter(item => item.status === "sent"));
+    } catch (error) {
+      console.error("Failed to fetch connections:", error);
+      setConnectionErr("Network error. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    getConnections();
+  }, []);
+
+  const [data, setData] = useState({ pending: [], sent: [], connected: [], blocked: [] });
+
+  useEffect(() => {
+    setData({
+      pending:   pendingConnections,
+      sent:      sentConnections,
+      connected: connectedConnections,
+      blocked:   blockedConnections,
+    });
+  }, [pendingConnections, sentConnections, connectedConnections, blockedConnections]);
+
+  const { dark } = useThemeStore();
   const T = dark ? THEME.dark : THEME.light;
-  const [activeTab, setActiveTab] = useState("pending");
-  const [search, setSearch] = useState("");
-  const [data, setData] = useState(MOCK_CONNECTIONS);
-  const [modal, setModal] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [activeTab, setActiveTab]   = useState("pending");
+  const [search, setSearch]         = useState("");
+  const [modal, setModal]           = useState(null);
+  const [toast, setToast]           = useState(null);
+  const [actionLoading, setActionLoading] = useState(false); // tracks API call in progress
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
   const handleAction = (action, user) => {
     setModal({ action, user });
   };
 
-  const executeAction = () => {
+  // ─── Core: calls /api/connection/response then updates local state ───────────
+  const executeAction = async () => {
     const { action, user } = modal;
-    setModal(null);
+    const status = ACTION_TO_STATUS[action];
+    setActionLoading(true);
 
-    setData(prev => {
-      const next = { ...prev };
-      if (action === "accept") {
-        next.pending = prev.pending.filter(u => u.id !== user.id);
-        next.connected = [{ ...user, time: "Connected just now", project: null }, ...prev.connected];
-        showToast(`Connected with ${user.name}! 🎉`);
-      } else if (action === "decline") {
-        next.pending = prev.pending.filter(u => u.id !== user.id);
-        showToast(`Request from ${user.name} declined.`, "info");
-      } else if (action === "cancel") {
-        next.sent = prev.sent.filter(u => u.id !== user.id);
-        showToast(`Request to ${user.name} cancelled.`, "info");
-      } else if (action === "remove") {
-        next.connected = prev.connected.filter(u => u.id !== user.id);
-        showToast(`Removed ${user.name} from connections.`, "warn");
-      } else if (action === "block") {
-        next.connected = prev.connected.filter(u => u.id !== user.id);
-        next.pending = prev.pending.filter(u => u.id !== user.id);
-        next.blocked = [{ ...user, time: "Blocked just now" }, ...prev.blocked];
-        showToast(`${user.name} has been blocked.`, "warn");
-      } else if (action === "unblock") {
-        next.blocked = prev.blocked.filter(u => u.id !== user.id);
-        showToast(`${user.name} has been unblocked.`, "success");
+    try {
+      const response = await fetch("/api/connection/response", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Your API expects receiverId — we use user.id as the receiver
+        body: JSON.stringify({ receiverId: user.to_user_id, status }),
+      });
+
+      const res = await response.json();
+
+      // If HTTP status is not ok OR API returned success: false
+      if (!response.ok || res.success === false) {
+        showToast(res.error || "Something went wrong. Try again.", "warn");
+        setActionLoading(false);
+        setModal(null);
+        return;
       }
-      return next;
-    });
+
+      // ── API succeeded — now update local state so UI reflects the change ──
+      setData(prev => {
+        const next = { ...prev };
+
+        if (action === "accept") {
+          next.pending   = prev.pending.filter(u => u.id !== user.id);
+          next.connected = [{ ...user, time: "Connected just now", project: null }, ...prev.connected];
+          showToast(`Connected with ${user.name}! 🎉`);
+
+        } else if (action === "decline") {
+          next.pending = prev.pending.filter(u => u.id !== user.id);
+          showToast(`Request from ${user.name} declined.`, "info");
+
+        } else if (action === "cancel") {
+          next.sent = prev.sent.filter(u => u.id !== user.id);
+          showToast(`Request to ${user.name} withdrawn.`, "info");
+
+        } else if (action === "remove") {
+          next.connected = prev.connected.filter(u => u.id !== user.id);
+          showToast(`Removed ${user.name} from connections.`, "warn");
+
+        } else if (action === "block") {
+          // Block removes user from wherever they currently are
+          next.connected = prev.connected.filter(u => u.id !== user.id);
+          next.pending   = prev.pending.filter(u => u.id !== user.id);
+          next.blocked   = [{ ...user, time: "Blocked just now" }, ...prev.blocked];
+          showToast(`${user.name} has been blocked.`, "warn");
+
+        } else if (action === "unblock") {
+          next.blocked = prev.blocked.filter(u => u.id !== user.id);
+          showToast(`${user.name} has been unblocked.`, "success");
+        }
+
+        return next;
+      });
+
+    } catch (error) {
+      console.error("Action failed:", error);
+      showToast("Network error. Please try again.", "warn");
+    } finally {
+      setActionLoading(false);
+      setModal(null);
+    }
   };
 
   const filtered = (data[activeTab] || []).filter(u =>
@@ -173,10 +262,10 @@ export default function Connections() {
   );
 
   const TABS = [
-    { key: "pending", label: "Pending", count: data.pending.length },
-    { key: "sent", label: "Sent", count: data.sent.length },
+    { key: "pending",   label: "Pending",   count: data.pending.length },
+    { key: "sent",      label: "Sent",      count: data.sent.length },
     { key: "connected", label: "Connected", count: data.connected.length },
-    { key: "blocked", label: "Blocked", count: data.blocked.length },
+    { key: "blocked",   label: "Blocked",   count: data.blocked.length },
   ];
 
   const css = `
@@ -188,7 +277,7 @@ export default function Connections() {
     @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     @keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
     @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-    @keyframes slideDown{from{opacity:0;max-height:0}to{opacity:1;max-height:200px}}
+    @keyframes spin{to{transform:rotate(360deg)}}
     .conn-card{background:${T.card};border:1px solid ${T.border};border-radius:18px;padding:20px;transition:all 0.28s;animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
     .conn-card:hover{background:${T.cardHover};border-color:${T.border2};box-shadow:${T.shadow}}
     .tab-btn{background:transparent;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:10px;transition:all 0.18s;color:${T.text3}}
@@ -219,21 +308,20 @@ export default function Connections() {
   `;
 
   const MODAL_CONFIGS = {
-    accept: { title: "Accept request?", message: (u) => `Connect with ${u.name} and start collaborating. They'll be notified immediately.`, confirmLabel: "Accept →", confirmDanger: false, icon: "🤝" },
-    decline: { title: "Decline request?", message: (u) => `${u.name}'s connection request will be removed. They won't be notified.`, confirmLabel: "Decline", confirmDanger: true, icon: "🙅" },
-    cancel: { title: "Cancel request?", message: (u) => `Your pending request to ${u.name} will be withdrawn.`, confirmLabel: "Cancel request", confirmDanger: true, icon: "↩️" },
-    remove: { title: "Remove connection?", message: (u) => `You'll be disconnected from ${u.name}. Any shared project rooms will be unaffected.`, confirmLabel: "Remove", confirmDanger: true, icon: "🔗" },
-    block: { title: "Block this user?", message: (u) => `${u.name} won't be able to see your profile or send requests. You can unblock anytime.`, confirmLabel: "Block user", confirmDanger: true, icon: "🚫" },
-    unblock: { title: "Unblock user?", message: (u) => `${u.name} will be able to find your profile and send connection requests again.`, confirmLabel: "Unblock", confirmDanger: false, icon: "✅" },
+    accept:  { title: "Accept request?",    message: (u) => `Connect with ${u.name} and start collaborating. They'll be notified immediately.`,      confirmLabel: "Accept →",       confirmDanger: false, icon: "🤝" },
+    decline: { title: "Decline request?",   message: (u) => `${u.name}'s connection request will be removed. They won't be notified.`,               confirmLabel: "Decline",        confirmDanger: true,  icon: "🙅" },
+    cancel:  { title: "Withdraw request?",  message: (u) => `Your pending request to ${u.name} will be withdrawn.`,                                  confirmLabel: "Withdraw",       confirmDanger: true,  icon: "↩️" },
+    remove:  { title: "Remove connection?", message: (u) => `You'll be disconnected from ${u.name}. Any shared project rooms will be unaffected.`,   confirmLabel: "Remove",         confirmDanger: true,  icon: "🔗" },
+    block:   { title: "Block this user?",   message: (u) => `${u.name} won't be able to see your profile or send requests. You can unblock anytime.`, confirmLabel: "Block user",    confirmDanger: true,  icon: "🚫" },
+    unblock: { title: "Unblock user?",      message: (u) => `${u.name} will be able to find your profile and send connection requests again.`,        confirmLabel: "Unblock",        confirmDanger: false, icon: "✅" },
   };
 
-  // FIX 3: Pass `dark` prop down to Pill so it uses the correct theme colors
   const renderActions = (user) => {
     if (activeTab === "pending") return (
       <div className="actions-row" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="btn-accept" onClick={() => handleAction("accept", user)}>Accept</button>
         <button className="btn-decline" onClick={() => handleAction("decline", user)}>Decline</button>
-        <button className="icon-btn" onClick={() => handleAction("block", user)} title="Block">
+        <button className="icon-btn" onClick={() => handleAction("block", user)}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" /><line x1="3.5" y1="3.5" x2="12.5" y2="12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           Block
         </button>
@@ -265,28 +353,25 @@ export default function Connections() {
   };
 
   const EMPTY = {
-    pending: { icon: "📭", title: "No pending requests", sub: "When someone wants to connect with you, they'll appear here." },
-    sent: { icon: "📤", title: "No sent requests", sub: "Requests you've sent to other builders will show here." },
-    connected: { icon: "🤝", title: "No connections yet", sub: "Accept pending requests or find builders in the Discover tab." },
-    blocked: { icon: "🔐", title: "No blocked users", sub: "Users you block will appear here. They cannot view your profile." },
+    pending:   { icon: "📭", title: "No pending requests",  sub: "When someone wants to connect with you, they'll appear here." },
+    sent:      { icon: "📤", title: "No sent requests",     sub: "Requests you've sent to other builders will show here." },
+    connected: { icon: "🤝", title: "No connections yet",   sub: "Accept pending requests or find builders in the Discover tab." },
+    blocked:   { icon: "🔐", title: "No blocked users",     sub: "Users you block will appear here. They cannot view your profile." },
   };
 
   return (
-    // FIX 4: Restructured layout — root div is just a bg wrapper with no padding.
-    // Nav is a direct child (full-width). Content has its own padded wrapper below.
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
       <style>{css}</style>
 
-      {/* FIX 4 cont: Nav is now full-width, not constrained by the maxWidth:860 content div */}
       <nav style={{ background: T.navBg, backdropFilter: "blur(28px)", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, padding: "0 clamp(16px,5vw,32px)", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <Logo />
           <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 18, color: T.text }}>CodeBuddy</span>
         </Link>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }} />
       </nav>
 
+      {/* Confirm modal — passes loading state so buttons disable during API call */}
       {modal && modal.action && (() => {
         const cfg = MODAL_CONFIGS[modal.action];
         return (
@@ -297,13 +382,13 @@ export default function Connections() {
             confirmLabel={cfg.confirmLabel}
             confirmDanger={cfg.confirmDanger}
             icon={cfg.icon}
+            loading={actionLoading}
             onConfirm={executeAction}
-            onCancel={() => setModal(null)}
+            onCancel={() => !actionLoading && setModal(null)}
           />
         );
       })()}
 
-      {/* FIX 5: Toast moved outside the maxWidth container so it always renders at fixed position correctly */}
       {toast && (
         <div style={{ position: "fixed", top: 20, right: 20, zIndex: 2000, background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: 14, padding: "13px 18px", boxShadow: T.shadow, display: "flex", alignItems: "center", gap: 10, animation: "toastIn 0.3s ease both", minWidth: 220, maxWidth: 320 }}>
           <span style={{ fontSize: 16 }}>{toast.type === "success" ? "✅" : toast.type === "warn" ? "⚠️" : "ℹ️"}</span>
@@ -311,9 +396,7 @@ export default function Connections() {
         </div>
       )}
 
-      {/* Content wrapper with proper padding */}
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "clamp(28px,4vw,40px) clamp(16px,4vw,32px)" }}>
-        {/* Header */}
         <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(24px,6vw,34px)", fontWeight: 400, color: T.text, letterSpacing: "-0.8px", lineHeight: 1.1, marginBottom: 6 }}>
@@ -323,7 +406,12 @@ export default function Connections() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {connectionErr && (
+          <div style={{ background: T.dangerBg, border: `1px solid ${T.dangerBorder}`, borderRadius: 12, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: T.dangerText }}>
+            {connectionErr}
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 4, marginBottom: 20, background: T.bg2, border: `1px solid ${T.border}`, borderRadius: 14, padding: 5, overflowX: "auto" }}>
           {TABS.map(tab => (
             <button key={tab.key} className={`tab-btn${activeTab === tab.key ? " active" : ""}`} onClick={() => { setActiveTab(tab.key); setSearch(""); }}>
@@ -333,7 +421,6 @@ export default function Connections() {
           ))}
         </div>
 
-        {/* Search */}
         <div style={{ position: "relative", marginBottom: 20 }}>
           <svg style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: T.text3, pointerEvents: "none" }} width="16" height="16" viewBox="0 0 20 20" fill="none">
             <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.5" />
@@ -345,7 +432,6 @@ export default function Connections() {
           )}
         </div>
 
-        {/* Count line */}
         {filtered.length > 0 && (
           <div style={{ marginBottom: 14, fontSize: 12, color: T.text3 }}>
             {filtered.length} {activeTab === "pending" ? "incoming request" : activeTab === "sent" ? "outgoing request" : activeTab}
@@ -354,7 +440,6 @@ export default function Connections() {
           </div>
         )}
 
-        {/* Cards */}
         {filtered.length === 0 ? (
           <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 20 }}>
             <EmptyState T={T} {...(search ? { icon: "🔍", title: "No results found", sub: `No ${activeTab} connections match "${search}". Try a different search.` } : EMPTY[activeTab])} />
@@ -396,7 +481,6 @@ export default function Connections() {
                       </div>
                     )}
 
-                    {/* FIX 3: Pass dark prop to Pill components so they respect the active theme */}
                     {(user.skillsHave?.length > 0 || user.skillsNeed?.length > 0) && (
                       <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
                         {user.skillsHave?.length > 0 && (
