@@ -63,24 +63,24 @@ function getStatusConfig(connectionStatus) {
   switch (connectionStatus) {
     case "accepted":
       return {
-        label: "✓ Connected",
+        label: "Connected",
         style: { background: "transparent", border: "1px solid rgba(74,222,128,0.35)", color: "#4ade80" },
         hoverStyle: { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" },
-        hoverLabel: "✕ Disconnect",
+        hoverLabel: "Disconnect",
       };
     case "pending":
       return {
-        label: "⏳ Pending",
+        label: "Pending",
         style: { background: "transparent", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b" },
         hoverStyle: { background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.5)", color: "#fbbf24" },
-        hoverLabel: "✕ Cancel",
+        hoverLabel: " Cancel",
       };
     case "blocked":
       return {
-        label: "⊘ Blocked",
+        label: "Blocked",
         style: { background: "transparent", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" },
         hoverStyle: { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.5)", color: "#fca5a5" },
-        hoverLabel: "↩ Unblock",
+        hoverLabel: "Unblock",
       };
     default:
       return {
@@ -778,14 +778,6 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
         <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 99, background: hsla(u.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(u.hue, 70, 60, 0.25)}`, color: hsl(u.hue) }}>Seeking {u.lookingFor}</span>
       </div>
 
-      {/* Connection status badge on card */}
-      {u.connectionStatus && (
-        <div style={{ marginBottom: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 99, background: u.connectionStatus === "accepted" ? "rgba(74,222,128,0.08)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${u.connectionStatus === "accepted" ? "rgba(74,222,128,0.25)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.25)"}`, color: u.connectionStatus === "accepted" ? "#4ade80" : u.connectionStatus === "pending" ? "#f59e0b" : "#f87171" }}>
-            {u.connectionStatus === "accepted" ? "✓ Connected" : u.connectionStatus === "pending" ? "⏳ Pending" : "⊘ Blocked"}
-          </span>
-        </div>
-      )}
 
       {aiText[u.id] && <ResizableAIBox text={aiText[u.id]} dark={dark} T={T} />}
 

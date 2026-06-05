@@ -1,41 +1,38 @@
-const { NextResponse } = require("next/server");
+import { NextResponse } from "next/server";
 import { supabase } from "../../../../lib/supabaseClient.js";
 import getUser from "../../../../utils/getuser.js";
-
 export async function POST(request) {
   try {
-    const { fullName, username, bio, location, github, lookingFor } =
-      await request.json();
+    const body = await request.json();
+    console.log(body);
     const { userEmail } = await getUser();
-
-    const { data, error } = await supabase
+    const { fullName, handle, bio, github, lookingFor } = body;
+    const { error } = await supabase
       .from("profiles")
       .update({
-        fullName: fullName,
-        username: username,
+        name: fullName,
+        handle: handle,
         bio: bio,
-        location: location,
         github: github,
-        lookingFor: lookingFor,
+        looking_for: lookingFor,
       })
-      .eq("email", userEmail)
-      .single();
-
-    if (!data) {
+      .eq("email", userEmail);
+    if (error) {
+      console.error("Profile update error:", error);
       return NextResponse.json({
         success: false,
-        message: "encounter a error while updating the profile",
-      });
-
-      return NextResponse.json({
-        succes: true,
-        message: "account has been updated successfully!",
-      });
+        message: "Error while updating the profile.",
+      }, { status: 500 });
     }
+    return NextResponse.json({
+      success: true,
+      message: "Profile updated successfully.",
+    });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({
       success: false,
-      message: "something went wrong , try again later",
-    });
+      message: "Something went wrong. Try again later.",
+    }, { status: 500 });
   }
 }

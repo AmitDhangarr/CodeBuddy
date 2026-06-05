@@ -1,94 +1,90 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
-/* ─── Minimal inline stand-ins for shared constants ──────────────────────── */
 const SKILLS_ALL = [
-  "React","Vue","Angular","TypeScript","JavaScript","Python","Rust","Go","Swift",
-  "Kotlin","GraphQL","Node.js","Django","FastAPI","PostgreSQL","MongoDB","Redis",
-  "Docker","Kubernetes","AWS","GCP","Figma","Three.js","Web3","ML/AI","DevOps",
-  "Solidity","Unity","Flutter","Svelte","TailwindCSS",
+  "React", "Vue", "Angular", "TypeScript", "JavaScript", "Python", "Rust", "Go", "Swift",
+  "Kotlin", "GraphQL", "Node.js", "Django", "FastAPI", "PostgreSQL", "MongoDB", "Redis",
+  "Docker", "Kubernetes", "AWS", "GCP", "Figma", "Three.js", "Web3", "ML/AI", "DevOps",
+  "Solidity", "Unity", "Flutter", "Svelte", "TailwindCSS",
 ];
 
 const Lbl = ({ T, children }) => (
   <span style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>{children}</span>
 );
 
-/* ─── Minimal theme token builder (mirrors your existing light/dark tokens) ─ */
 function makeTheme(dark) {
   return dark
     ? {
-        text:            "#e2e2ef",
-        text2:           "#a0a0b8",
-        text3:           "#606078",
-        border:          "rgba(255,255,255,0.08)",
-        input:           "rgba(255,255,255,0.04)",
-        inputBorder:     "rgba(255,255,255,0.12)",
-        skillHaveBg:     "rgba(124,58,237,0.12)",
-        skillHaveBorder: "rgba(124,58,237,0.3)",
-        skillHaveText:   "#a78bfa",
-        skillNeedBg:     "rgba(236,72,153,0.1)",
-        skillNeedBorder: "rgba(236,72,153,0.25)",
-        skillNeedText:   "#f472b6",
-      }
+      text: "#e2e2ef",
+      text2: "#a0a0b8",
+      text3: "#606078",
+      border: "rgba(255,255,255,0.08)",
+      input: "rgba(255,255,255,0.04)",
+      inputBorder: "rgba(255,255,255,0.12)",
+      skillHaveBg: "rgba(124,58,237,0.12)",
+      skillHaveBorder: "rgba(124,58,237,0.3)",
+      skillHaveText: "#a78bfa",
+      skillNeedBg: "rgba(236,72,153,0.1)",
+      skillNeedBorder: "rgba(236,72,153,0.25)",
+      skillNeedText: "#f472b6",
+    }
     : {
-        text:            "#1a1a2e",
-        text2:           "#4a4a6a",
-        text3:           "#8888aa",
-        border:          "rgba(0,0,0,0.08)",
-        input:           "rgba(0,0,0,0.03)",
-        inputBorder:     "rgba(0,0,0,0.12)",
-        skillHaveBg:     "rgba(124,58,237,0.07)",
-        skillHaveBorder: "rgba(124,58,237,0.2)",
-        skillHaveText:   "#7c3aed",
-        skillNeedBg:     "rgba(236,72,153,0.06)",
-        skillNeedBorder: "rgba(236,72,153,0.18)",
-        skillNeedText:   "#db2777",
-      };
+      text: "#1a1a2e",
+      text2: "#4a4a6a",
+      text3: "#8888aa",
+      border: "rgba(0,0,0,0.08)",
+      input: "rgba(0,0,0,0.03)",
+      inputBorder: "rgba(0,0,0,0.12)",
+      skillHaveBg: "rgba(124,58,237,0.07)",
+      skillHaveBorder: "rgba(124,58,237,0.2)",
+      skillHaveText: "#7c3aed",
+      skillNeedBg: "rgba(236,72,153,0.06)",
+      skillNeedBorder: "rgba(236,72,153,0.18)",
+      skillNeedText: "#db2777",
+    };
 }
 
-/* ─── Sidebar sections ────────────────────────────────────────────────────── */
 const SETTING_SECTIONS = [
-  { id: "account",       icon: <i className="fa-regular fa-user"></i>, l: "Account" },
-  { id: "profile",       icon: <i className="fa-regular fa-pen-to-square"></i>,  l: "Profile" },
-  { id: "skills",        icon: <i className="fa-solid fa-wrench"></i>,  l: "Skills" },
-  { id: "appearance",    icon: <i className="fa-solid fa-circle-half-stroke"></i>, l: "Appearance" },
-  { id: "notifications", icon: <i className="fa-regular fa-bell"></i>, l: "Notifications" },
-  { id: "privacy",       icon: <i className="fa-solid fa-lock"></i>, l: "Privacy" },
-  { id: "integrations",  icon: <i className="fa-solid fa-link"></i>, l: "Integrations" },
+  { id: "account",       icon: "👤", l: "Account" },
+  { id: "profile",       icon: "✏️", l: "Profile" },
+  { id: "skills",        icon: "🔧", l: "Skills" },
+  { id: "appearance",    icon: "🎨", l: "Appearance" },
+  { id: "notifications", icon: "🔔", l: "Notifications" },
+  { id: "privacy",       icon: "🔒", l: "Privacy" },
+  { id: "integrations",  icon: "🔗", l: "Integrations" },
 ];
 
-/* ─── Integration platform definitions ───────────────────────────────────── */
 const PLATFORMS = [
   {
-    key:         "github",
-    icon:        "GH",
-    l:           "GitHub",
-    d:           "Import repos & show contribution stats",
-    color:       "#6e40c9",
+    key: "github",
+    icon: "GH",
+    l: "GitHub",
+    d: "Import repos & show contribution stats",
+    color: "#6e40c9",
     placeholder: "https://github.com/yourusername",
-    domains:     ["github.com"],
+    domains: ["github.com"],
   },
   {
-    key:         "twitter",
-    icon:        "𝕏",
-    l:           "Twitter / X",
-    d:           "Share your matches and projects",
-    color:       "#1d9bf0",
+    key: "twitter",
+    icon: "𝕏",
+    l: "Twitter / X",
+    d: "Share your matches and projects",
+    color: "#1d9bf0",
     placeholder: "https://twitter.com/yourhandle",
-    domains:     ["twitter.com", "x.com"],
+    domains: ["twitter.com", "x.com"],
   },
   {
-    key:         "linkedin",
-    icon:        "in",
-    l:           "LinkedIn",
-    d:           "Import your professional background",
-    color:       "#0a66c2",
+    key: "linkedin",
+    icon: "in",
+    l: "LinkedIn",
+    d: "Import your professional background",
+    color: "#0a66c2",
     placeholder: "https://linkedin.com/in/yourprofile",
-    domains:     ["linkedin.com"],
+    domains: ["linkedin.com"],
   },
 ];
 
-/* ─── URL validator ───────────────────────────────────────────────────────── */
+/* ─── Validators ─────────────────────────────────────────────────────────── */
 function validatePlatformUrl(val, domains) {
   if (!val.trim()) return "Please enter a URL.";
   let u;
@@ -98,6 +94,75 @@ function validatePlatformUrl(val, domains) {
   if (!domains.includes(host)) return `URL must be from ${domains.join(" or ")}.`;
   return "";
 }
+
+function validateEmail(email) {
+  if (!email.trim()) return "Email is required.";
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!re.test(email.trim())) return "Enter a valid email address.";
+  return "";
+}
+
+function validatePassword(password) {
+  if (!password) return ""; // empty = not changing
+  if (password.length < 8) return "Password must be at least 8 characters.";
+  if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter.";
+  if (!/[0-9]/.test(password)) return "Password must contain at least one number.";
+  return "";
+}
+
+function validateName(name) {
+  if (!name.trim()) return "Full name is required.";
+  if (name.trim().length < 2) return "Name must be at least 2 characters.";
+  return "";
+}
+
+function validateHandle(handle) {
+  if (!handle.trim()) return "Username is required.";
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(handle.trim()))
+    return "Username must be 3–20 characters: letters, numbers, underscores only.";
+  return "";
+}
+
+function validateBio(bio) {
+  if (bio && bio.length > 160) return "Bio must be 160 characters or fewer.";
+  return "";
+}
+
+/* ─── Shared UI helpers ───────────────────────────────────────────────────── */
+const FieldMsg = ({ error, success }) => {
+  if (error) return (
+    <div style={{ fontSize: 11, color: "#f87171", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+      ⚠ {error}
+    </div>
+  );
+  if (success) return (
+    <div style={{ fontSize: 11, color: "#4ade80", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+      ✓ {success}
+    </div>
+  );
+  return null;
+};
+
+const Banner = ({ error, success, onDismiss }) => {
+  if (!error && !success) return null;
+  const isErr = !!error;
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "10px 14px", borderRadius: 10, marginBottom: 18,
+      background: isErr ? "rgba(239,68,68,0.1)" : "rgba(74,222,128,0.1)",
+      border: `1px solid ${isErr ? "rgba(239,68,68,0.3)" : "rgba(74,222,128,0.3)"}`,
+      fontSize: 12, fontWeight: 600,
+      color: isErr ? "#f87171" : "#4ade80",
+    }}>
+      <span>{isErr ? `⚠ ${error}` : `✓ ${success}`}</span>
+      <button onClick={onDismiss} style={{
+        background: "transparent", border: "none", cursor: "pointer",
+        color: "inherit", fontSize: 14, lineHeight: 1, padding: 0,
+      }}>✕</button>
+    </div>
+  );
+};
 
 /* ══════════════════════════════════════════════════════════════════════════
    SETTINGS TAB
@@ -109,34 +174,44 @@ export default function SettingsTab({
   setCurrentUser: setCurrentUserProp,
   setDashPage,
 }) {
-  /* Allow the component to run standalone (no props required) */
-  const [_dark, _setDark]               = useState(false);
+  const [_dark, _setDark] = useState(false);
   const [_currentUser, _setCurrentUser] = useState({
     name: "Alex Chen", handle: "alexchen", bio: "Full-stack dev building cool things.",
-    location: "San Francisco", github: "alexchen", skillsHave: ["React","TypeScript","Node.js"],
-    skillsNeed: ["Rust","ML/AI"], lookingFor: "Collaborator",
+    location: "San Francisco", github: "alexchen", skillsHave: ["React", "TypeScript", "Node.js"],
+    skillsNeed: ["Rust", "ML/AI"], lookingFor: "Collaborator",
   });
 
-  const dark         = darkProp         ?? _dark;
-  const setDark      = setDarkProp      ?? _setDark;
-  const currentUser  = currentUserProp  ?? _currentUser;
+  const dark = darkProp ?? _dark;
+  const setDark = setDarkProp ?? _setDark;
+  const currentUser = currentUserProp ?? _currentUser;
   const setCurrentUser = setCurrentUserProp ?? _setCurrentUser;
 
   const T = makeTheme(dark);
 
-  /* ── Per-tab state ── */
   const [settingsTab, setSettingsTab] = useState("account");
-  const [saved,       setSaved]       = useState(false);
-  const [formData,    setFormData]    = useState({ email: "you@example.com", password: "" });
 
-  const [notifPrefs,  setNotifPrefs]  = useState({
+  /* ── Per-tab banner state ── */
+  const [bannerErr, setBannerErr] = useState("");
+  const [bannerOk, setBannerOk] = useState("");
+
+  /* ── Account form state — kept LOCAL so inputs are stable ── */
+  const [email, setEmail] = useState("you@example.com");
+  const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
+
+  /* ── Profile errors ── */
+  const [profileErrors, setProfileErrors] = useState({ name: "", handle: "", bio: "" });
+
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const [notifPrefs, setNotifPrefs] = useState({
     match: true, connect: true, message: true, digest: false, views: false,
   });
   const [privacyPrefs, setPrivacyPrefs] = useState({
     publicProfile: true, onlineStatus: true, discoverable: true, showLocation: false,
   });
 
-  /* ── Integrations state (updated shape) ── */
   const [integrations, setIntegrations] = useState({
     github:   { connected: false, connecting: false, url: "", inputVal: "", error: "" },
     twitter:  { connected: false, connecting: false, url: "", inputVal: "", error: "" },
@@ -146,37 +221,225 @@ export default function SettingsTab({
   const updInt = (key, patch) =>
     setIntegrations(p => ({ ...p, [key]: { ...p[key], ...patch } }));
 
-  /* Integration handlers */
-  const intOpen       = (key) => updInt(key, { connecting: true,  inputVal: "", error: "" });
-  const intCancel     = (key) => updInt(key, { connecting: false, inputVal: "", error: "" });
-  const intConfirm    = (key, domains) => {
-    const s   = integrations[key];
+  /* ── Banner helpers ── */
+  const showErr = (msg) => { setBannerErr(msg); setBannerOk(""); };
+  const showOk  = (msg) => { setBannerOk(msg);  setBannerErr(""); };
+  const clearBanner = () => { setBannerErr(""); setBannerOk(""); };
+
+  /* ── Flash "Saved!" briefly then revert ── */
+  const flashSaved = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  /* ── Clear banners / errors when switching tabs ── */
+  const switchTab = (id) => {
+    setSettingsTab(id);
+    clearBanner();
+    setFieldErrors({ email: "", password: "" });
+    setProfileErrors({ name: "", handle: "", bio: "" });
+    setSaved(false);
+  };
+
+  /* ── Simulate async save (demo) ── */
+  const fakeApiCall = () =>
+    new Promise((res) => setTimeout(res, 700));
+
+  /* ────────────────────────────────────────────────────────────────────────
+     SAVE HANDLERS
+  ──────────────────────────────────────────────────────────────────────── */
+
+  /* ACCOUNT — validate first, abort if any error */
+  const handleAccountUpdate = async () => {
+    const emailErr = validateEmail(email);
+    const passErr  = validatePassword(password);
+    setFieldErrors({ email: emailErr, password: passErr });
+    if (emailErr || passErr) return; // ← hard stop
+
+    setLoading(true);
+    clearBanner();
+    try {
+      const res = await fetch("/api/settings/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newEmail: email, newPassword: password }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showErr(data.message || `Error ${res.status}: Failed to update account.`);
+      } else {
+        showOk("Account updated successfully.");
+        flashSaved();
+      }
+    } catch {
+      showErr("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* PROFILE — validate all fields, abort if any error */
+  const handleProfileUpdate = async () => {
+    const nameErr   = validateName(currentUser.name);
+    const handleErr = validateHandle(currentUser.handle);
+    const bioErr    = validateBio(currentUser.bio);
+    setProfileErrors({ name: nameErr, handle: handleErr, bio: bioErr });
+    if (nameErr || handleErr || bioErr) return; // ← hard stop
+
+    setLoading(true);
+    clearBanner();
+    try {
+      const res = await fetch("/api/settings/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName:    currentUser.name,
+          handle:      currentUser.handle,
+          bio:         currentUser.bio,
+          location:    currentUser.location,
+          github:      currentUser.github,
+          looking_for: currentUser.lookingFor,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showErr(data.message || `Error ${res.status}: Failed to update profile.`);
+      } else {
+        showOk("Profile saved successfully.");
+        flashSaved();
+        setDashPage?.("profile");
+      }
+    } catch {
+      showErr("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* SKILLS — validate at least one skill selected */
+  const handleSkillsUpdate = async () => {
+    if (!currentUser.skillsHave?.length) {
+      showErr("Please select at least one skill you have.");
+      return; // ← hard stop
+    }
+
+    setLoading(true);
+    clearBanner();
+    try {
+      const res = await fetch("/api/settings/skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skillHave: currentUser.skillsHave,
+          skillNeed: currentUser.skillsNeed,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showErr(data.message || `Error ${res.status}: Failed to update skills.`);
+      } else {
+        showOk("Skills updated. Match scores are being recalculated.");
+        flashSaved();
+      }
+    } catch {
+      showErr("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* APPEARANCE — purely local, no API call. Toggles theme directly. */
+  const handleAppearanceToggle = (newDark) => {
+    setDark(newDark);
+    // No API call — appearance is a local preference only.
+  };
+
+  /* NOTIFICATIONS — demo only, no real API */
+  const handleNotificationsUpdate = async () => {
+    setLoading(true);
+    clearBanner();
+    await fakeApiCall(); // simulated delay
+    showOk("Notification preferences saved.");
+    flashSaved();
+    setLoading(false);
+  };
+
+  /* PRIVACY — real API */
+  const handlePrivacyUpdate = async () => {
+    setLoading(true);
+    clearBanner();
+    try {
+      const res = await fetch("/api/settings/privacy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ privacyPreferences: privacyPrefs }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showErr(data.message || `Error ${res.status}: Failed to save privacy settings.`);
+      } else {
+        showOk("Privacy settings saved.");
+        flashSaved();
+      }
+    } catch {
+      showErr("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* INTEGRATIONS */
+  const handleIntegrationUpdate = async () => {
+    setLoading(true);
+    clearBanner();
+    try {
+      const res = await fetch("/api/settings/integration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          github:   integrations.github.url,
+          x:        integrations.twitter.url,
+          linkedin: integrations.linkedin.url,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showErr(data.message || `Error ${res.status}: Failed to save integrations.`);
+      } else {
+        showOk("Integrations saved.");
+        flashSaved();
+      }
+    } catch {
+      showErr("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* Integration UI helpers */
+  const intOpen      = (key)         => updInt(key, { connecting: true, inputVal: "", error: "" });
+  const intCancel    = (key)         => updInt(key, { connecting: false, inputVal: "", error: "" });
+  const intConfirm   = (key, domains) => {
+    const s = integrations[key];
     const err = validatePlatformUrl(s.inputVal, domains);
     if (err) { updInt(key, { error: err }); return; }
-    updInt(key, { connected: true, connecting: false, url: s.inputVal.trim() });
+    updInt(key, { connected: true, connecting: false, url: s.inputVal.trim(), error: "" });
   };
   const intDisconnect = (key) =>
     updInt(key, { connected: false, url: "", inputVal: "", error: "" });
 
-  /* ── Helpers ── */
-  const upd = (k, v) => setFormData(p => ({ ...p, [k]: v }));
-
+  /* ── Profile completion score ── */
   const profileCompletion = (() => {
     let s = 0;
-    if (currentUser.name)                   s += 15;
-    if (currentUser.bio?.length > 20)       s += 15;
-    if (currentUser.location)               s += 10;
+    if (currentUser.name)              s += 15;
+    if (currentUser.bio?.length > 20)  s += 15;
+    if (currentUser.location)          s += 10;
     if (currentUser.skillsHave?.length >= 2) s += 20;
     if (currentUser.skillsNeed?.length >= 1) s += 15;
-    if (currentUser.lookingFor)             s += 15;
-    if (currentUser.github)                 s += 10;
+    if (currentUser.lookingFor)        s += 15;
+    if (currentUser.github)            s += 10;
     return s;
   })();
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   /* ── Sub-components ── */
   const Toggle = ({ on, onToggle }) => (
@@ -199,37 +462,50 @@ export default function SettingsTab({
     </button>
   );
 
-  const Field = ({ label, id, type = "text", placeholder, value, onChange, prefix }) => (
-    <div style={{ marginBottom: 18 }}>
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>
+  /**
+   * Field component — uses value/onChange directly; no internal state so
+   * the parent drives the value and there's no focus/cursor-jump issue.
+   */
+  const Field = ({ label, id, type = "text", placeholder, value, onChange, prefix, error }) => (
+    <div style={{ marginBottom: 16 }}>
+      <label
+        htmlFor={id}
+        style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}
+      >
         {label}
       </label>
       <div style={{ position: "relative" }}>
         {prefix && (
           <span style={{
             position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
-            fontSize: 13, color: T.text3, zIndex: 1,
+            fontSize: 13, color: T.text3, zIndex: 1, pointerEvents: "none",
           }}>{prefix}</span>
         )}
         <input
-          id={id} type={type} placeholder={placeholder} value={value}
+          id={id}
+          type={type}
+          placeholder={placeholder}
+          value={value}
           onChange={e => onChange(e.target.value)}
+          autoComplete={type === "password" ? "new-password" : "off"}
           style={{
-            background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text,
+            background: T.input,
+            border: `1px solid ${error ? "#f87171" : T.inputBorder}`,
+            color: T.text,
             borderRadius: 11, fontSize: 13, outline: "none",
-            padding: `10px ${prefix ? "14px 10px 38px" : "14px"}`,
+            padding: prefix ? "10px 14px 10px 38px" : "10px 14px",
             width: "100%", fontFamily: "inherit", boxSizing: "border-box",
             transition: "border-color 0.2s",
           }}
         />
       </div>
+      <FieldMsg error={error} />
     </div>
   );
 
-  /* ── Shared card / button styles ── */
   const cardStyle = {
     background: dark ? "rgba(255,255,255,0.03)" : "#ffffff",
-    border:     `1px solid ${T.border}`,
+    border: `1px solid ${T.border}`,
     borderRadius: 16,
   };
 
@@ -237,16 +513,14 @@ export default function SettingsTab({
     padding: "10px 22px",
     background: saved ? "rgba(34,197,94,0.15)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
     border: saved ? "1px solid rgba(34,197,94,0.35)" : "none",
-    color:  saved ? "#4ade80" : "white",
-    borderRadius: 11, cursor: "pointer", fontFamily: "inherit",
+    color: saved ? "#4ade80" : "white",
+    borderRadius: 11, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit",
     fontSize: 13, fontWeight: 700, transition: "all 0.3s",
     boxShadow: saved ? "none" : "0 4px 14px rgba(124,58,237,0.25)",
+    opacity: loading ? 0.7 : 1,
     ...extra,
   });
 
-  /* ══════════════════════════════════════════════════════════════════════
-     RENDER
-  ══════════════════════════════════════════════════════════════════════ */
   return (
     <div style={{
       maxWidth: 700, margin: "0 auto",
@@ -284,7 +558,7 @@ export default function SettingsTab({
           {SETTING_SECTIONS.map(s => (
             <button
               key={s.id}
-              onClick={() => setSettingsTab(s.id)}
+              onClick={() => switchTab(s.id)}
               style={{
                 display: "flex", alignItems: "center", gap: 11,
                 padding: "11px 13px", borderRadius: 13, cursor: "pointer",
@@ -305,36 +579,47 @@ export default function SettingsTab({
         </div>
 
         {/* ── Content panel ── */}
-        <div style={{ ...cardStyle, flex: 1, padding: 22 }} key={settingsTab}>
+        <div style={{ ...cardStyle, flex: 1, padding: 22 }}>
 
           {/* ══ ACCOUNT ══════════════════════════════════════════════════ */}
           {settingsTab === "account" && (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 18 }}>Account Settings</h2>
-              <Field label="Email Address" id="s_email" type="email" value={formData.email} onChange={v => upd("email", v)} />
-              <Field label="New Password" id="s_pass" type="password" placeholder="Enter new password…" value={formData.password} onChange={v => upd("password", v)} />
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0 }}>Account Settings</h2>
+              <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
 
-              <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
-
-              {[
-                { l: "Two-factor auth",       d: "Add an extra layer of account security",          on: true  },
-                { l: "Login notifications",   d: "Get notified when you sign in on a new device",  on: false },
-              ].map((n, i) => (
-                <div key={i} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "13px 0", borderBottom: i === 0 ? `1px solid ${T.border}` : "none",
-                }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{n.l}</div>
-                    <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{n.d}</div>
-                  </div>
-                  <Toggle on={n.on} onToggle={() => {}} />
+              {/* FIX: email/password use their own local state vars, not formData object,
+                  so onChange only updates the relevant piece of state. This prevents
+                  the stale-closure / full-re-render input-focus loss bug. */}
+              <Field
+                label="Email Address"
+                id="s_email"
+                type="email"
+                value={email}
+                onChange={v => {
+                  setEmail(v);
+                  if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: "" }));
+                }}
+                error={fieldErrors.email}
+              />
+              <Field
+                label="New Password"
+                id="s_pass"
+                type="password"
+                placeholder="Leave blank to keep current password"
+                value={password}
+                onChange={v => {
+                  setPassword(v);
+                  if (fieldErrors.password) setFieldErrors(p => ({ ...p, password: "" }));
+                }}
+                error={fieldErrors.password}
+              />
+              {!fieldErrors.password && password && (
+                <div style={{ fontSize: 11, color: T.text3, marginBottom: 12, marginLeft: 2 }}>
+                  Tip: 8+ chars, one uppercase letter, one number.
                 </div>
-              ))}
-
-              <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
-              <button onClick={handleSave} style={primaryBtn()}>
-                {saved ? "✓ Saved!" : "Save Changes"}
+              )}
+              <button onClick={handleAccountUpdate} disabled={loading} style={primaryBtn({ marginTop: 4 })}>
+                {loading ? "Saving…" : saved ? "✓ Saved!" : "Save Changes"}
               </button>
             </>
           )}
@@ -342,30 +627,76 @@ export default function SettingsTab({
           {/* ══ PROFILE ══════════════════════════════════════════════════ */}
           {settingsTab === "profile" && (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 18 }}>Edit Profile</h2>
-              <Field label="Full Name" id="s_name" value={currentUser.name} onChange={v => setCurrentUser(p => ({ ...p, name: v }))} />
-              <Field label="Username" id="s_handle" value={currentUser.handle} onChange={v => setCurrentUser(p => ({ ...p, handle: v }))} prefix="@" />
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 18 }}>Edit Profile</h2>
+              <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
+
+              <Field
+                label="Full Name"
+                id="s_name"
+                value={currentUser.name}
+                onChange={v => {
+                  setCurrentUser(p => ({ ...p, name: v }));
+                  if (profileErrors.name) setProfileErrors(p => ({ ...p, name: "" }));
+                }}
+                error={profileErrors.name}
+              />
+              <Field
+                label="Username"
+                id="s_handle"
+                value={currentUser.handle}
+                onChange={v => {
+                  setCurrentUser(p => ({ ...p, handle: v }));
+                  if (profileErrors.handle) setProfileErrors(p => ({ ...p, handle: "" }));
+                }}
+                prefix="@"
+                error={profileErrors.handle}
+              />
 
               <div style={{ marginBottom: 18 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>Bio</label>
+                <label
+                  htmlFor="s_bio"
+                  style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}
+                >
+                  Bio
+                </label>
                 <textarea
-                  rows={3} value={currentUser.bio}
-                  onChange={e => setCurrentUser(p => ({ ...p, bio: e.target.value }))}
+                  id="s_bio"
+                  rows={3}
+                  value={currentUser.bio}
+                  onChange={e => {
+                    setCurrentUser(p => ({ ...p, bio: e.target.value }));
+                    if (profileErrors.bio) setProfileErrors(p => ({ ...p, bio: "" }));
+                  }}
                   style={{
-                    background: T.input, border: `1px solid ${T.inputBorder}`,
+                    background: T.input,
+                    border: `1px solid ${profileErrors.bio ? "#f87171" : T.inputBorder}`,
                     color: T.text, borderRadius: 11, fontSize: 13, outline: "none",
                     padding: "10px 14px", width: "100%", fontFamily: "inherit",
                     resize: "vertical", boxSizing: "border-box",
                   }}
                 />
-                <div style={{ fontSize: 10, color: T.text3, marginTop: 4, textAlign: "right" }}>
-                  {currentUser.bio?.length ?? 0}/160 chars
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                  <FieldMsg error={profileErrors.bio} />
+                  <span style={{ fontSize: 10, color: (currentUser.bio?.length ?? 0) > 160 ? "#f87171" : T.text3, marginLeft: "auto" }}>
+                    {currentUser.bio?.length ?? 0}/160 chars
+                  </span>
                 </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <Field label="Location" id="s_loc" value={currentUser.location || ""} placeholder="City, Country" onChange={v => setCurrentUser(p => ({ ...p, location: v }))} />
-                <Field label="GitHub" id="s_github" value={currentUser.github || ""} placeholder="username" onChange={v => setCurrentUser(p => ({ ...p, github: v }))} prefix="github.com/" />
+                <Field
+                  label="Location" id="s_loc"
+                  value={currentUser.location || ""}
+                  placeholder="City, Country"
+                  onChange={v => setCurrentUser(p => ({ ...p, location: v }))}
+                />
+                <Field
+                  label="GitHub" id="s_github"
+                  value={currentUser.github || ""}
+                  placeholder="username"
+                  onChange={v => setCurrentUser(p => ({ ...p, github: v }))}
+                  prefix="github.com/"
+                />
               </div>
 
               <div style={{ marginBottom: 18 }}>
@@ -392,11 +723,8 @@ export default function SettingsTab({
                 </div>
               </div>
 
-              <button
-                onClick={() => { handleSave(); setDashPage?.("profile"); }}
-                style={primaryBtn()}
-              >
-                {saved ? "✓ Saved!" : "Save & View Profile →"}
+              <button onClick={handleProfileUpdate} disabled={loading} style={primaryBtn()}>
+                {loading ? "Saving…" : saved ? "✓ Saved!" : "Save"}
               </button>
             </>
           )}
@@ -404,10 +732,11 @@ export default function SettingsTab({
           {/* ══ SKILLS ════════════════════════════════════════════════════ */}
           {settingsTab === "skills" && (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 6 }}>Your Skills</h2>
-              <p style={{ fontSize: 12, color: T.text3, marginBottom: 22 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 6 }}>Your Skills</h2>
+              <p style={{ fontSize: 12, color: T.text3, marginBottom: 16 }}>
                 Updating skills recalculates all match scores in real-time.
               </p>
+              <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
 
               {/* Skills Have */}
               <div style={{ marginBottom: 24 }}>
@@ -422,12 +751,7 @@ export default function SettingsTab({
                     <span
                       key={s}
                       onClick={() => setCurrentUser(p => ({ ...p, skillsHave: p.skillsHave.filter(x => x !== s) }))}
-                      style={{
-                        padding: "5px 11px", borderRadius: 99, fontSize: 11, fontWeight: 600,
-                        background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`,
-                        color: T.skillHaveText, cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 6,
-                      }}
+                      style={{ padding: "5px 11px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                     >
                       {s} <span style={{ opacity: 0.6, fontSize: 10 }}>✕</span>
                     </span>
@@ -439,13 +763,7 @@ export default function SettingsTab({
                       key={s}
                       disabled={(currentUser.skillsHave?.length ?? 0) >= 6}
                       onClick={() => setCurrentUser(p => ({ ...p, skillsHave: [...p.skillsHave, s] }))}
-                      style={{
-                        padding: "5px 12px", borderRadius: 99, fontSize: 11, fontWeight: 600,
-                        cursor: (currentUser.skillsHave?.length ?? 0) < 6 ? "pointer" : "not-allowed",
-                        border: `1px solid ${T.border}`, background: "transparent", color: T.text3,
-                        transition: "all 0.15s", fontFamily: "inherit",
-                        opacity: (currentUser.skillsHave?.length ?? 0) >= 6 ? 0.4 : 1,
-                      }}
+                      style={{ padding: "5px 12px", borderRadius: 99, fontSize: 11, fontWeight: 600, cursor: (currentUser.skillsHave?.length ?? 0) < 6 ? "pointer" : "not-allowed", border: `1px solid ${T.border}`, background: "transparent", color: T.text3, transition: "all 0.15s", fontFamily: "inherit", opacity: (currentUser.skillsHave?.length ?? 0) >= 6 ? 0.4 : 1 }}
                     >
                       {s}
                     </button>
@@ -468,12 +786,7 @@ export default function SettingsTab({
                     <span
                       key={s}
                       onClick={() => setCurrentUser(p => ({ ...p, skillsNeed: p.skillsNeed.filter(x => x !== s) }))}
-                      style={{
-                        padding: "5px 11px", borderRadius: 99, fontSize: 11, fontWeight: 600,
-                        background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`,
-                        color: T.skillNeedText, cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 6,
-                      }}
+                      style={{ padding: "5px 11px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                     >
                       {s} <span style={{ opacity: 0.6, fontSize: 10 }}>✕</span>
                     </span>
@@ -485,100 +798,95 @@ export default function SettingsTab({
                       key={s}
                       disabled={(currentUser.skillsNeed?.length ?? 0) >= 6}
                       onClick={() => setCurrentUser(p => ({ ...p, skillsNeed: [...p.skillsNeed, s] }))}
-                      style={{
-                        padding: "5px 12px", borderRadius: 99, fontSize: 11, fontWeight: 600,
-                        cursor: (currentUser.skillsNeed?.length ?? 0) < 6 ? "pointer" : "not-allowed",
-                        border: `1px solid ${T.border}`, background: "transparent", color: T.text3,
-                        transition: "all 0.15s", fontFamily: "inherit",
-                        opacity: (currentUser.skillsNeed?.length ?? 0) >= 6 ? 0.4 : 1,
-                      }}
+                      style={{ padding: "5px 12px", borderRadius: 99, fontSize: 11, fontWeight: 600, cursor: (currentUser.skillsNeed?.length ?? 0) < 6 ? "pointer" : "not-allowed", border: `1px solid ${T.border}`, background: "transparent", color: T.text3, transition: "all 0.15s", fontFamily: "inherit", opacity: (currentUser.skillsNeed?.length ?? 0) >= 6 ? 0.4 : 1 }}
                     >
                       {s}
                     </button>
                   ))}
                 </div>
-               
               </div>
-               <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
-              <button onClick={handleSave} style={primaryBtn()}>
-                {saved ? "✓ Saved!" : "Save Changes"}
+              <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
+              <button onClick={handleSkillsUpdate} disabled={loading} style={primaryBtn()}>
+                {loading ? "Saving…" : saved ? "✓ Saved!" : "Save Changes"}
               </button>
             </>
           )}
 
-          {/* ══ APPEARANCE ════════════════════════════════════════════════ */}
+          {/* ══ APPEARANCE ════════════════════════════════════════════════
+              FIX: purely local — no API call. Toggling dark/light directly
+              updates the theme via setDark(). ══════════════════════════ */}
           {settingsTab === "appearance" && (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 18 }}>Appearance</h2>
-              <div style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "14px 0", borderBottom: `1px solid ${T.border}`, marginBottom: 20,
-              }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 18 }}>Appearance</h2>
+              {/* No banner needed — changes are instant, no save required */}
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: `1px solid ${T.border}`, marginBottom: 20 }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Dark Mode</div>
                   <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>Easier on the eyes at night</div>
                 </div>
-                <Toggle on={dark} onToggle={() => setDark(p => !p)} />
+                <Toggle
+                  on={dark}
+                  onToggle={() => handleAppearanceToggle(!dark)}
+                />
               </div>
 
               <div style={{ fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 12 }}>Theme</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {[
-                  { l: "Dark",  bg: "#060608", card: "rgba(255,255,255,0.04)", text: "#e2e2ef", accent: "#7c3aed" },
-                  { l: "Light", bg: "#f5f5f9", card: "#ffffff",                text: "#1a1a2e", accent: "#7c3aed" },
-                ].map(theme => (
-                  <div
-                    key={theme.l}
-                    onClick={() => setDark(theme.l === "Dark")}
-                    style={{
-                      borderRadius: 14, background: theme.bg,
-                      border: `2px solid ${(dark && theme.l === "Dark") || (!dark && theme.l === "Light") ? "#7c3aed" : T.border}`,
-                      cursor: "pointer", overflow: "hidden", transition: "border-color 0.2s",
-                    }}
-                  >
-                    <div style={{ padding: 12 }}>
-                      <div style={{ height: 6, width: "60%", borderRadius: 3, background: theme.accent, marginBottom: 8 }} />
-                      <div style={{ display: "flex", gap: 6 }}>
-                        {[0, 1].map(i => (
-                          <div key={i} style={{
-                            flex: 1, height: 40, borderRadius: 8, background: theme.card,
-                            border: `1px solid rgba(${theme.l === "Dark" ? "255,255,255,0.07" : "0,0,0,0.07"})`,
-                          }} />
-                        ))}
+                  { l: "Dark",  isDark: true,  bg: "#060608", card: "rgba(255,255,255,0.04)", text: "#e2e2ef", accent: "#7c3aed" },
+                  { l: "Light", isDark: false, bg: "#f5f5f9", card: "#ffffff",               text: "#1a1a2e", accent: "#7c3aed" },
+                ].map(theme => {
+                  const isActive = dark === theme.isDark;
+                  return (
+                    <div
+                      key={theme.l}
+                      onClick={() => handleAppearanceToggle(theme.isDark)}
+                      style={{ borderRadius: 14, background: theme.bg, border: `2px solid ${isActive ? "#7c3aed" : T.border}`, cursor: "pointer", overflow: "hidden", transition: "border-color 0.2s" }}
+                    >
+                      <div style={{ padding: 12 }}>
+                        <div style={{ height: 6, width: "60%", borderRadius: 3, background: theme.accent, marginBottom: 8 }} />
+                        <div style={{ display: "flex", gap: 6 }}>
+                          {[0, 1].map(i => (
+                            <div key={i} style={{ flex: 1, height: 40, borderRadius: 8, background: theme.card, border: `1px solid rgba(${theme.isDark ? "255,255,255,0.07" : "0,0,0,0.07"})` }} />
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ padding: "8px 12px", borderTop: `1px solid rgba(${theme.isDark ? "255,255,255,0.06" : "0,0,0,0.06"})`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{theme.l}</span>
+                        {isActive && <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700 }}>✓ Active</span>}
                       </div>
                     </div>
-                    <div style={{
-                      padding: "8px 12px",
-                      borderTop: `1px solid rgba(${theme.l === "Dark" ? "255,255,255,0.06" : "0,0,0,0.06"})`,
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                    }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{theme.l}</span>
-                      {(dark && theme.l === "Dark") || (!dark && theme.l === "Light")
-                        ? <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700 }}>✓ Active</span>
-                        : null}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+
+              <div style={{ marginTop: 16, fontSize: 11, color: T.text3 }}>
+                Changes apply instantly — no save needed.
               </div>
             </>
           )}
 
-          {/* ══ NOTIFICATIONS ════════════════════════════════════════════ */}
+          {/* ══ NOTIFICATIONS — DEMO ONLY ════════════════════════════════
+              FIX: no real API call; uses fakeApiCall() to simulate a save. */}
           {settingsTab === "notifications" && (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 18 }}>Notification Preferences</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 4 }}>Notification Preferences</h2>
+              <div style={{ fontSize: 11, color: T.text3, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.25)", padding: "2px 8px", borderRadius: 99, fontWeight: 600, fontSize: 10 }}>
+                  DEMO
+                </span>
+                Preferences are saved locally for preview purposes.
+              </div>
+              <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
               {[
                 { key: "match",   l: "New match found",     d: "When AI finds a high-scoring match" },
-                { key: "connect", l: "Connection requests",  d: "When someone wants to connect" },
-                { key: "message", l: "Messages",             d: "When you receive a new message" },
-                { key: "digest",  l: "Weekly digest",        d: "Summary of your top matches" },
-                { key: "views",   l: "Profile views",        d: "When someone views your profile" },
+                { key: "connect", l: "Connection requests", d: "When someone wants to connect" },
+                { key: "message", l: "Messages",            d: "When you receive a new message" },
+                { key: "digest",  l: "Weekly digest",       d: "Summary of your top matches" },
+                { key: "views",   l: "Profile views",       d: "When someone views your profile" },
               ].map((n, i, arr) => (
-                <div key={n.key} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "14px 0",
-                  borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none",
-                }}>
+                <div key={n.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{n.l}</div>
                     <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{n.d}</div>
@@ -587,8 +895,8 @@ export default function SettingsTab({
                 </div>
               ))}
               <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
-              <button onClick={handleSave} style={primaryBtn()}>
-                {saved ? "✓ Saved!" : "Save Preferences"}
+              <button onClick={handleNotificationsUpdate} disabled={loading} style={primaryBtn()}>
+                {loading ? "Saving…" : saved ? "✓ Saved!" : "Save Preferences"}
               </button>
             </>
           )}
@@ -596,18 +904,15 @@ export default function SettingsTab({
           {/* ══ PRIVACY ══════════════════════════════════════════════════ */}
           {settingsTab === "privacy" && (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 18 }}>Privacy</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 18 }}>Privacy</h2>
+              <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
               {[
-                { key: "publicProfile", l: "Public profile",     d: "Anyone can see your profile" },
+                { key: "publicProfile", l: "Public profile",      d: "Anyone can see your profile" },
                 { key: "onlineStatus",  l: "Show online status",  d: "Let others see when you're active" },
                 { key: "discoverable",  l: "Discoverable",        d: "Appear in match results" },
                 { key: "showLocation",  l: "Show location",       d: "Display your city on your profile" },
               ].map((n, i, arr) => (
-                <div key={n.key} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "14px 0",
-                  borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none",
-                }}>
+                <div key={n.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{n.l}</div>
                     <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{n.d}</div>
@@ -616,94 +921,39 @@ export default function SettingsTab({
                 </div>
               ))}
               <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
-              <button onClick={handleSave} style={primaryBtn()}>
-                {saved ? "✓ Saved!" : "Save Changes"}
+              <button onClick={handlePrivacyUpdate} disabled={loading} style={primaryBtn()}>
+                {loading ? "Saving…" : saved ? "✓ Saved!" : "Save Changes"}
               </button>
-
-              <div style={{ height: 1, background: T.border, margin: "20px 0" }} />
-
-              <div style={{
-                background: "rgba(239,68,68,0.06)",
-                border: "1px solid rgba(239,68,68,0.2)",
-                borderRadius: 14, padding: "16px 18px",
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#f87171", marginBottom: 4 }}>Danger Zone</div>
-                <div style={{ fontSize: 12, color: T.text2, marginBottom: 14 }}>
-                  These actions are permanent and cannot be undone.
-                </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {["Sign out", "Delete account"].map(label => (
-                    <button
-                      key={label}
-                      style={{
-                        padding: "8px 16px", background: "transparent",
-                        border: "1px solid rgba(239,68,68,0.3)", color: "#f87171",
-                        borderRadius: 10, cursor: "pointer", fontFamily: "inherit",
-                        fontSize: 12, fontWeight: 600,
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                
-              </div>
             </>
           )}
 
-          {/* ══ INTEGRATIONS ══════════════════════════════════════════════
-              Updated: Connect → enter & validate URL → Connect / Cancel
-              After connecting: shows URL + green badge + Disconnect button
-          ══════════════════════════════════════════════════════════════ */}
+          {/* ══ INTEGRATIONS ══════════════════════════════════════════════ */}
           {settingsTab === "integrations" && (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 6 }}>
-                Connected Accounts
-              </h2>
-              <p style={{ fontSize: 12, color: T.text3, marginBottom: 22 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 6 }}>Connected Accounts</h2>
+              <p style={{ fontSize: 12, color: T.text3, marginBottom: 16 }}>
                 Link your accounts to import data and share your work.
               </p>
+              <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
 
               {PLATFORMS.map(int => {
                 const s = integrations[int.key];
-                const liveError   = s.inputVal ? validatePlatformUrl(s.inputVal, int.domains) : "";
+                const liveError  = s.inputVal ? validatePlatformUrl(s.inputVal, int.domains) : "";
                 const isValidLive = s.inputVal && !liveError;
 
                 return (
-                  <div
-                    key={int.key}
-                    style={{
-                      border: `1px solid ${s.connecting ? (dark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.14)") : T.border}`,
-                      borderRadius: 14, padding: "16px 18px", marginBottom: 10,
-                      background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
-                      transition: "border-color 0.2s",
-                    }}
-                  >
-                    {/* ── Top row ── */}
+                  <div key={int.key} style={{ border: `1px solid ${s.connecting ? (dark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.14)") : T.border}`, borderRadius: 14, padding: "16px 18px", marginBottom: 10, background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)", transition: "border-color 0.2s" }}>
+
+                    {/* Top row */}
                     <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                      {/* Icon */}
-                      <div style={{
-                        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                        background: s.connected ? `${int.color}22` : dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-                        border: `1px solid ${s.connected ? `${int.color}44` : T.border}`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 13, fontWeight: 700,
-                        color: s.connected ? int.color : T.text3,
-                        transition: "all 0.2s",
-                      }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: s.connected ? `${int.color}22` : dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${s.connected ? `${int.color}44` : T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: s.connected ? int.color : T.text3, transition: "all 0.2s" }}>
                         {int.icon}
                       </div>
-
-                      {/* Label + status */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{int.l}</div>
                         <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{int.d}</div>
                         {s.connected && (
-                          <div style={{
-                            fontSize: 10, color: T.text3, marginTop: 3,
-                            fontFamily: "monospace", opacity: 0.7,
-                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>
+                          <div style={{ fontSize: 10, color: T.text3, marginTop: 3, fontFamily: "monospace", opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {s.url}
                           </div>
                         )}
@@ -713,64 +963,25 @@ export default function SettingsTab({
                           </div>
                         )}
                       </div>
-
-                      {/* Action button */}
                       {s.connected ? (
-                        <button
-                          onClick={() => intDisconnect(int.key)}
-                          style={{
-                            padding: "7px 16px", background: "transparent",
-                            border: "1px solid rgba(239,68,68,0.3)", color: "#f87171",
-                            borderRadius: 10, cursor: "pointer", fontFamily: "inherit",
-                            fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "all 0.2s",
-                          }}
-                        >
+                        <button onClick={() => intDisconnect(int.key)} style={{ padding: "7px 16px", background: "transparent", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "all 0.2s" }}>
                           Disconnect
                         </button>
                       ) : s.connecting ? (
-                        /* Cancel shown in top row for quick escape */
-                        <button
-                          onClick={() => intCancel(int.key)}
-                          style={{
-                            padding: "7px 14px",
-                            background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-                            border: `1px solid ${T.border}`, color: T.text2,
-                            borderRadius: 10, cursor: "pointer", fontFamily: "inherit",
-                            fontSize: 12, flexShrink: 0,
-                          }}
-                        >
+                        <button onClick={() => intCancel(int.key)} style={{ padding: "7px 14px", background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12, flexShrink: 0 }}>
                           ✕ Cancel
                         </button>
                       ) : (
-                        <button
-                          onClick={() => intOpen(int.key)}
-                          style={{
-                            padding: "7px 16px",
-                            background: "linear-gradient(135deg,#7c3aed,#a855f7)",
-                            border: "none", color: "white",
-                            borderRadius: 10, cursor: "pointer", fontFamily: "inherit",
-                            fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "all 0.2s",
-                            boxShadow: "0 2px 8px rgba(124,58,237,0.25)",
-                          }}
-                        >
+                        <button onClick={() => intOpen(int.key)} style={{ padding: "7px 16px", background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "all 0.2s", boxShadow: "0 2px 8px rgba(124,58,237,0.25)" }}>
                           Connect
                         </button>
                       )}
                     </div>
 
-                    {/* ── URL input form (expands when connecting) ── */}
+                    {/* URL input */}
                     {s.connecting && (
-                      <div style={{
-                        marginTop: 14, paddingTop: 14,
-                        borderTop: `1px solid ${T.border}`,
-                      }}>
-                        <label style={{
-                          display: "block", fontSize: 11, fontWeight: 600,
-                          color: T.text2, marginBottom: 6,
-                        }}>
-                          Platform URL
-                        </label>
-
+                      <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.border}` }}>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: T.text2, marginBottom: 6 }}>Platform URL</label>
                         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                           <div style={{ flex: 1 }}>
                             <input
@@ -783,68 +994,16 @@ export default function SettingsTab({
                                 if (e.key === "Enter")  intConfirm(int.key, int.domains);
                                 if (e.key === "Escape") intCancel(int.key);
                               }}
-                              style={{
-                                width: "100%", padding: "9px 12px", boxSizing: "border-box",
-                                background: T.input,
-                                border: `1px solid ${
-                                  s.error      ? "#f87171"
-                                  : isValidLive ? "#4ade80"
-                                  : T.inputBorder
-                                }`,
-                                color: T.text, borderRadius: 10,
-                                fontSize: 12, fontFamily: "inherit", outline: "none",
-                                transition: "border-color 0.2s",
-                              }}
+                              style={{ width: "100%", padding: "9px 12px", boxSizing: "border-box", background: T.input, border: `1px solid ${s.error ? "#f87171" : isValidLive ? "#4ade80" : T.inputBorder}`, color: T.text, borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", transition: "border-color 0.2s" }}
                             />
-
-                            {s.error && (
-                              <div style={{
-                                fontSize: 11, color: "#f87171", marginTop: 5,
-                                display: "flex", alignItems: "center", gap: 4,
-                              }}>
-                                ⚠ {s.error}
-                              </div>
-                            )}
-                            {!s.error && isValidLive && (
-                              <div style={{
-                                fontSize: 11, color: "#4ade80", marginTop: 5,
-                                display: "flex", alignItems: "center", gap: 4,
-                              }}>
-                                ✓ Looks good
-                              </div>
-                            )}
-                            {!s.error && !isValidLive && s.inputVal && (
-                              <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>
-                                e.g. {int.placeholder}
-                              </div>
-                            )}
+                            {s.error     && <div style={{ fontSize: 11, color: "#f87171", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>⚠ {s.error}</div>}
+                            {!s.error && isValidLive  && <div style={{ fontSize: 11, color: "#4ade80", marginTop: 5 }}>✓ Looks good</div>}
+                            {!s.error && !isValidLive && s.inputVal && <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>e.g. {int.placeholder}</div>}
                           </div>
-
-                          {/* Confirm */}
-                          <button
-                            onClick={() => intConfirm(int.key, int.domains)}
-                            style={{
-                              padding: "9px 16px", flexShrink: 0,
-                              background: "linear-gradient(135deg,#7c3aed,#a855f7)",
-                              border: "none", color: "white",
-                              borderRadius: 10, cursor: "pointer",
-                              fontFamily: "inherit", fontSize: 12, fontWeight: 700,
-                              boxShadow: "0 2px 8px rgba(124,58,237,0.2)",
-                            }}
-                          >
+                          <button onClick={() => intConfirm(int.key, int.domains)} style={{ padding: "9px 16px", flexShrink: 0, background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, boxShadow: "0 2px 8px rgba(124,58,237,0.2)" }}>
                             Connect
                           </button>
-
-                          {/* Cancel */}
-                          <button
-                            onClick={() => intCancel(int.key)}
-                            style={{
-                              padding: "9px 14px", flexShrink: 0, background: "transparent",
-                              border: `1px solid ${T.border}`, color: T.text2,
-                              borderRadius: 10, cursor: "pointer",
-                              fontFamily: "inherit", fontSize: 12,
-                            }}
-                          >
+                          <button onClick={() => intCancel(int.key)} style={{ padding: "9px 14px", flexShrink: 0, background: "transparent", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12 }}>
                             Cancel
                           </button>
                         </div>
@@ -853,11 +1012,17 @@ export default function SettingsTab({
                   </div>
                 );
               })}
+
+              {Object.values(integrations).some(i => i.connected) && (
+                <button onClick={handleIntegrationUpdate} disabled={loading} style={primaryBtn({ marginTop: 6 })}>
+                  {loading ? "Saving…" : saved ? "✓ Saved!" : "Save Integrations"}
+                </button>
+              )}
             </>
           )}
 
-        </div>{/* /content panel */}
-      </div>{/* /flex row */}
+        </div>
+      </div>
     </div>
   );
 }

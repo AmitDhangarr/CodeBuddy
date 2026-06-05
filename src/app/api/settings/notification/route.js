@@ -1,41 +1,44 @@
-const { NextResponse } = require("next/server");
+import { NextResponse } from "next/server";
 import { supabase } from "../../../../lib/supabaseClient.js";
 import getUser from "../../../../utils/getuser.js";
-
 export async function POST(request) {
   try {
+    const body = await request.json();
+    console.log(body);
     const { userEmail } = await getUser();
     const {
-      newMatchFound,
-      connectionRequest,
-      messages,
-      weeklyDigest,
-      profileViews,
-    } = await request.json();
-
-    const {data,error} = await supabase.from("notifications",).update({
-      newMatchFound:newMatchFound,
-      connectionRequest:connectionRequest,
-      messages:messages,
-      weeklyDigest:weeklyDigest,
-      profileViews:profileViews
-    }).eq("email",userEmail);
-
-    if(!data){
-     return NextResponse.json({
-      success:true,
-      messages:"ecountered error while updating the Notifications"
-     });
-
-     return NextResponse.json({
-      success:true,
-      message:"notification settings have been saved"
-     })
+      match,
+      connect,
+      message,
+      digest,
+      views,
+    } = body.preferences ?? body;
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        notif_match: match,
+        notif_connect: connect,
+        notif_message: message,
+        notif_digest: digest,
+        notif_views: views,
+      })
+      .eq("email", userEmail);
+    if (error) {
+      console.error("Notifications update error:", error);
+      return NextResponse.json({
+        success: false,
+        message: "Error while updating notification preferences.",
+      }, { status: 500 });
     }
-  } catch (error) {
     return NextResponse.json({
-      success:false,
-      message:"something went wrong please try again later"
-     })
+      success: true,
+      message: "Notification preferences saved.",
+    });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({
+      success: false,
+      message: "Something went wrong. Please try again later.",
+    }, { status: 500 });
   }
 }

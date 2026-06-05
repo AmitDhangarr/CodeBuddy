@@ -1,58 +1,55 @@
-const { NextResponse } = require("next/server");
+import { NextResponse } from "next/server";
 import { supabase } from "../../../../lib/supabaseClient.js";
 import bcrypt from "bcryptjs";
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { email, password, twoStep, loginNotification } = body;
-
-    const isAccountExits = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("email", email)
-      .single();
-
-    if (!isAccountExits) {
+    console.log(body);
+    const { newEmail, newPassword } = body;
+    if (!newEmail && !newPassword) {
       return NextResponse.json({
         success: false,
-        message: "user does not exists",
-      });
+        message: "No fields to update.",
+      }, { status: 400 });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const updatedPassword = await supabase
+    const updatePayload = {};
+    if (newEmail) {
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", newEmail)
+        .maybeSingle();
+      if (existing) {
+        return NextResponse.json({
+          success: false,
+          message: "This email is already in use.",
+        }, { status: 409 });
+      }
+      updatePayload.email = newEmail;
+    }
+    if (newPassword) {
+      updatePayload.password = await bcrypt.hash(newPassword, 10);
+    }
+    const { error } = await supabase
       .from("profiles")
-      .update({ password: hashedPassword })
-      .eq("email", email)
-      .single();
-
-    if (!updatedPassword) {
+      .update(updatePayload)
+      .eq("email", newEmail);
+    if (error) {
+      console.error("Account update error:", error);
       return NextResponse.json({
         success: false,
-        message: "something went wrong while updating password",
-      });
-    }
-
-    const { data: notification, error: notificationErr } = await supabase
-      .from("notifications")
-      .update({ twoStep: twoStep, loginNotification: loginNotification })
-      .single();
-
-    if (notificationErr) {
-      return NextResponse.json({
-        success: true,
-        message: "notification settings are not updated encountered ",
-      });
+        message: "Something went wrong while updating account.",
+      }, { status: 500 });
     }
     return NextResponse.json({
       success: true,
-      message: "password has been updated successfully",
+      message: "Account updated successfully.",
     });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({
       success: false,
-      error: error,
-    });
+      message: "Something went wrong. Please try again later.",
+    }, { status: 500 });
   }
 }

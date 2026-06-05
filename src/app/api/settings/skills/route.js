@@ -1,35 +1,35 @@
-const { NextResponse } = require("next/server");
+import { NextResponse } from "next/server";
 import { supabase } from "../../../../lib/supabaseClient.js";
 import getUser from "../../../../utils/getuser.js";
-
 export async function POST(request) {
   try {
-    const { skillHave, skillNeed } = await request.json();
+    const body = await request.json();
+    console.log(body);
+    const { skillHave, skillNeed } = body;
     const { userEmail } = await getUser();
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("profiles")
       .update({
-        skillhave: skillHave,
-        skillneed: skillNeed,
+        skills_have: skillHave,
+        skills_need: skillNeed,
       })
-      .eq("email", getUser)
-      .single();
-
-    if (!data) {
+      .eq("email", userEmail);
+    if (error) {
+      console.error("Skills update error:", error);
       return NextResponse.json({
-        success: true,
-        message: "error while updating the skillsHave and skillNeed",
-      });
+        success: false,
+        message: "Error while updating skills.",
+      }, { status: 500 });
     }
-
     return NextResponse.json({
       success: true,
-      message: "skillsHave and SkillNeed has been updated",
+      message: "Skills updated successfully.",
     });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({
       success: false,
-      message: "Something went wrong , try again later",
-    });
+      message: "Something went wrong. Try again later.",
+    }, { status: 500 });
   }
 }
