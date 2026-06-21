@@ -1,5 +1,13 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import {
+  validateEmail,
+  validatePassword,
+  validateName,
+  validateHandle,
+  validateBio,
+  validatePlatformUrl,
+} from "../../../lib/validation";
 
 const SKILLS_ALL = [
   "React", "Vue", "Angular", "TypeScript", "JavaScript", "Python", "Rust", "Go", "Swift",
@@ -45,13 +53,13 @@ function makeTheme(dark) {
 }
 
 const SETTING_SECTIONS = [
-  { id: "account",       icon: "👤", l: "Account" },
-  { id: "profile",       icon: "✏️", l: "Profile" },
-  { id: "skills",        icon: "🔧", l: "Skills" },
-  { id: "appearance",    icon: "🎨", l: "Appearance" },
+  { id: "account", icon: "👤", l: "Account" },
+  { id: "profile", icon: "✏️", l: "Profile" },
+  { id: "skills", icon: "🔧", l: "Skills" },
+  { id: "appearance", icon: "🎨", l: "Appearance" },
   { id: "notifications", icon: "🔔", l: "Notifications" },
-  { id: "privacy",       icon: "🔒", l: "Privacy" },
-  { id: "integrations",  icon: "🔗", l: "Integrations" },
+  { id: "privacy", icon: "🔒", l: "Privacy" },
+  { id: "integrations", icon: "🔗", l: "Integrations" },
 ];
 
 const PLATFORMS = [
@@ -83,50 +91,6 @@ const PLATFORMS = [
     domains: ["linkedin.com"],
   },
 ];
-
-/* ─── Validators ─────────────────────────────────────────────────────────── */
-function validatePlatformUrl(val, domains) {
-  if (!val.trim()) return "Please enter a URL.";
-  let u;
-  try { u = new URL(val.trim()); } catch { return "Enter a valid URL starting with https://"; }
-  if (!["http:", "https:"].includes(u.protocol)) return "URL must start with https://";
-  const host = u.hostname.replace(/^www\./, "");
-  if (!domains.includes(host)) return `URL must be from ${domains.join(" or ")}.`;
-  return "";
-}
-
-function validateEmail(email) {
-  if (!email.trim()) return "Email is required.";
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!re.test(email.trim())) return "Enter a valid email address.";
-  return "";
-}
-
-function validatePassword(password) {
-  if (!password) return ""; // empty = not changing
-  if (password.length < 8) return "Password must be at least 8 characters.";
-  if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter.";
-  if (!/[0-9]/.test(password)) return "Password must contain at least one number.";
-  return "";
-}
-
-function validateName(name) {
-  if (!name.trim()) return "Full name is required.";
-  if (name.trim().length < 2) return "Name must be at least 2 characters.";
-  return "";
-}
-
-function validateHandle(handle) {
-  if (!handle.trim()) return "Username is required.";
-  if (!/^[a-zA-Z0-9_]{3,20}$/.test(handle.trim()))
-    return "Username must be 3–20 characters: letters, numbers, underscores only.";
-  return "";
-}
-
-function validateBio(bio) {
-  if (bio && bio.length > 160) return "Bio must be 160 characters or fewer.";
-  return "";
-}
 
 /* ─── Shared UI helpers ───────────────────────────────────────────────────── */
 const FieldMsg = ({ error, success }) => {
@@ -195,9 +159,18 @@ export default function SettingsTab({
   const [bannerOk, setBannerOk] = useState("");
 
   /* ── Account form state — kept LOCAL so inputs are stable ── */
-  const [email, setEmail] = useState("you@example.com");
+  const [email, setEmail] = useState("");
+  const [originalEmail, setOriginalEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
+
+  useEffect(() => {
+    const userEmail = currentUserProp?.email ?? currentUser?.email;
+    if (userEmail) {
+      setEmail(userEmail);
+      setOriginalEmail(userEmail);
+    }
+  }, [currentUserProp?.email, currentUser?.email]);
 
   /* ── Profile errors ── */
   const [profileErrors, setProfileErrors] = useState({ name: "", handle: "", bio: "" });
@@ -213,8 +186,8 @@ export default function SettingsTab({
   });
 
   const [integrations, setIntegrations] = useState({
-    github:   { connected: false, connecting: false, url: "", inputVal: "", error: "" },
-    twitter:  { connected: false, connecting: false, url: "", inputVal: "", error: "" },
+    github: { connected: false, connecting: false, url: "", inputVal: "", error: "" },
+    twitter: { connected: false, connecting: false, url: "", inputVal: "", error: "" },
     linkedin: { connected: false, connecting: false, url: "", inputVal: "", error: "" },
   });
 
@@ -223,7 +196,7 @@ export default function SettingsTab({
 
   /* ── Banner helpers ── */
   const showErr = (msg) => { setBannerErr(msg); setBannerOk(""); };
-  const showOk  = (msg) => { setBannerOk(msg);  setBannerErr(""); };
+  const showOk = (msg) => { setBannerOk(msg); setBannerErr(""); };
   const clearBanner = () => { setBannerErr(""); setBannerOk(""); };
 
   /* ── Flash "Saved!" briefly then revert ── */
@@ -251,23 +224,34 @@ export default function SettingsTab({
 
   /* ACCOUNT — validate first, abort if any error */
   const handleAccountUpdate = async () => {
-    const emailErr = validateEmail(email);
-    const passErr  = validatePassword(password);
+    const emailChanged = email.trim() !== originalEmail;
+    const emailErr = emailChanged ? validateEmail(email) : "";
+    const passErr = password ? validatePassword(password, { required: true }) : "";
     setFieldErrors({ email: emailErr, password: passErr });
-    if (emailErr || passErr) return; // ← hard stop
+    if (emailErr || passErr) return;
+    if (!emailChanged && !password) {
+      showErr("No changes to save.");
+      return;
+    }
 
     setLoading(true);
     clearBanner();
     try {
+      const payload = {};
+      if (emailChanged) payload.newEmail = email.trim();
+      if (password) payload.newPassword = password;
+
       const res = await fetch("/api/settings/account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newEmail: email, newPassword: password }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         showErr(data.message || `Error ${res.status}: Failed to update account.`);
       } else {
+        if (emailChanged) setOriginalEmail(email.trim());
+        setPassword("");
         showOk("Account updated successfully.");
         flashSaved();
       }
@@ -280,9 +264,9 @@ export default function SettingsTab({
 
   /* PROFILE — validate all fields, abort if any error */
   const handleProfileUpdate = async () => {
-    const nameErr   = validateName(currentUser.name);
+    const nameErr = validateName(currentUser.name);
     const handleErr = validateHandle(currentUser.handle);
-    const bioErr    = validateBio(currentUser.bio);
+    const bioErr = validateBio(currentUser.bio);
     setProfileErrors({ name: nameErr, handle: handleErr, bio: bioErr });
     if (nameErr || handleErr || bioErr) return; // ← hard stop
 
@@ -293,11 +277,11 @@ export default function SettingsTab({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName:    currentUser.name,
-          handle:      currentUser.handle,
-          bio:         currentUser.bio,
-          location:    currentUser.location,
-          github:      currentUser.github,
+          fullName: currentUser.name,
+          handle: currentUser.handle,
+          bio: currentUser.bio,
+          location: currentUser.location,
+          github: currentUser.github,
           looking_for: currentUser.lookingFor,
         }),
       });
@@ -397,8 +381,8 @@ export default function SettingsTab({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          github:   integrations.github.url,
-          x:        integrations.twitter.url,
+          github: integrations.github.url,
+          x: integrations.twitter.url,
           linkedin: integrations.linkedin.url,
         }),
       });
@@ -417,9 +401,9 @@ export default function SettingsTab({
   };
 
   /* Integration UI helpers */
-  const intOpen      = (key)         => updInt(key, { connecting: true, inputVal: "", error: "" });
-  const intCancel    = (key)         => updInt(key, { connecting: false, inputVal: "", error: "" });
-  const intConfirm   = (key, domains) => {
+  const intOpen = (key) => updInt(key, { connecting: true, inputVal: "", error: "" });
+  const intCancel = (key) => updInt(key, { connecting: false, inputVal: "", error: "" });
+  const intConfirm = (key, domains) => {
     const s = integrations[key];
     const err = validatePlatformUrl(s.inputVal, domains);
     if (err) { updInt(key, { error: err }); return; }
@@ -431,13 +415,13 @@ export default function SettingsTab({
   /* ── Profile completion score ── */
   const profileCompletion = (() => {
     let s = 0;
-    if (currentUser.name)              s += 15;
-    if (currentUser.bio?.length > 20)  s += 15;
-    if (currentUser.location)          s += 10;
+    if (currentUser.name) s += 15;
+    if (currentUser.bio?.length > 20) s += 15;
+    if (currentUser.location) s += 10;
     if (currentUser.skillsHave?.length >= 2) s += 20;
     if (currentUser.skillsNeed?.length >= 1) s += 15;
-    if (currentUser.lookingFor)        s += 15;
-    if (currentUser.github)            s += 10;
+    if (currentUser.lookingFor) s += 15;
+    if (currentUser.github) s += 10;
     return s;
   })();
 
@@ -524,7 +508,7 @@ export default function SettingsTab({
   return (
     <div style={{
       maxWidth: 700, margin: "0 auto",
-      fontFamily: "'Inter',system-ui,sans-serif",
+      fontFamily: "'Instrument Sans',sans-serif",
       color: T.text,
     }}>
 
@@ -834,8 +818,8 @@ export default function SettingsTab({
               <div style={{ fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 12 }}>Theme</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {[
-                  { l: "Dark",  isDark: true,  bg: "#060608", card: "rgba(255,255,255,0.04)", text: "#e2e2ef", accent: "#7c3aed" },
-                  { l: "Light", isDark: false, bg: "#f5f5f9", card: "#ffffff",               text: "#1a1a2e", accent: "#7c3aed" },
+                  { l: "Dark", isDark: true, bg: "#060608", card: "rgba(255,255,255,0.04)", text: "#e2e2ef", accent: "#7c3aed" },
+                  { l: "Light", isDark: false, bg: "#f5f5f9", card: "#ffffff", text: "#1a1a2e", accent: "#7c3aed" },
                 ].map(theme => {
                   const isActive = dark === theme.isDark;
                   return (
@@ -880,11 +864,11 @@ export default function SettingsTab({
               </div>
               <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
               {[
-                { key: "match",   l: "New match found",     d: "When AI finds a high-scoring match" },
+                { key: "match", l: "New match found", d: "When AI finds a high-scoring match" },
                 { key: "connect", l: "Connection requests", d: "When someone wants to connect" },
-                { key: "message", l: "Messages",            d: "When you receive a new message" },
-                { key: "digest",  l: "Weekly digest",       d: "Summary of your top matches" },
-                { key: "views",   l: "Profile views",       d: "When someone views your profile" },
+                { key: "message", l: "Messages", d: "When you receive a new message" },
+                { key: "digest", l: "Weekly digest", d: "Summary of your top matches" },
+                { key: "views", l: "Profile views", d: "When someone views your profile" },
               ].map((n, i, arr) => (
                 <div key={n.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" }}>
                   <div>
@@ -907,10 +891,10 @@ export default function SettingsTab({
               <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 18 }}>Privacy</h2>
               <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
               {[
-                { key: "publicProfile", l: "Public profile",      d: "Anyone can see your profile" },
-                { key: "onlineStatus",  l: "Show online status",  d: "Let others see when you're active" },
-                { key: "discoverable",  l: "Discoverable",        d: "Appear in match results" },
-                { key: "showLocation",  l: "Show location",       d: "Display your city on your profile" },
+                { key: "publicProfile", l: "Public profile", d: "Anyone can see your profile" },
+                { key: "onlineStatus", l: "Show online status", d: "Let others see when you're active" },
+                { key: "discoverable", l: "Discoverable", d: "Appear in match results" },
+                { key: "showLocation", l: "Show location", d: "Display your city on your profile" },
               ].map((n, i, arr) => (
                 <div key={n.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" }}>
                   <div>
@@ -938,7 +922,7 @@ export default function SettingsTab({
 
               {PLATFORMS.map(int => {
                 const s = integrations[int.key];
-                const liveError  = s.inputVal ? validatePlatformUrl(s.inputVal, int.domains) : "";
+                const liveError = s.inputVal ? validatePlatformUrl(s.inputVal, int.domains) : "";
                 const isValidLive = s.inputVal && !liveError;
 
                 return (
@@ -991,13 +975,13 @@ export default function SettingsTab({
                               value={s.inputVal}
                               onChange={e => updInt(int.key, { inputVal: e.target.value, error: "" })}
                               onKeyDown={e => {
-                                if (e.key === "Enter")  intConfirm(int.key, int.domains);
+                                if (e.key === "Enter") intConfirm(int.key, int.domains);
                                 if (e.key === "Escape") intCancel(int.key);
                               }}
                               style={{ width: "100%", padding: "9px 12px", boxSizing: "border-box", background: T.input, border: `1px solid ${s.error ? "#f87171" : isValidLive ? "#4ade80" : T.inputBorder}`, color: T.text, borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", transition: "border-color 0.2s" }}
                             />
-                            {s.error     && <div style={{ fontSize: 11, color: "#f87171", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>⚠ {s.error}</div>}
-                            {!s.error && isValidLive  && <div style={{ fontSize: 11, color: "#4ade80", marginTop: 5 }}>✓ Looks good</div>}
+                            {s.error && <div style={{ fontSize: 11, color: "#f87171", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>⚠ {s.error}</div>}
+                            {!s.error && isValidLive && <div style={{ fontSize: 11, color: "#4ade80", marginTop: 5 }}>✓ Looks good</div>}
                             {!s.error && !isValidLive && s.inputVal && <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>e.g. {int.placeholder}</div>}
                           </div>
                           <button onClick={() => intConfirm(int.key, int.domains)} style={{ padding: "9px 16px", flexShrink: 0, background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, boxShadow: "0 2px 8px rgba(124,58,237,0.2)" }}>
@@ -1015,7 +999,7 @@ export default function SettingsTab({
 
               {Object.values(integrations).some(i => i.connected) && (
                 <button onClick={handleIntegrationUpdate} disabled={loading} style={primaryBtn({ marginTop: 6 })}>
-                  {loading ? "Saving…" : saved ? "✓ Saved!" : "Save Integrations"}
+                  {loading ? "Saving" : saved ? "Saved" : "Save Integrations"}
                 </button>
               )}
             </>

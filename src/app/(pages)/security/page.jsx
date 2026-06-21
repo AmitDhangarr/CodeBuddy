@@ -2,11 +2,18 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useThemeStore } from "../../../../store/themeprovider";
+
+// 🔗 Set your API endpoint here. The report form POSTs JSON to this URL:
+// { type, description, email, submittedAt }
+const VULN_REPORT_API_URL = "https://your-api.com/api/security-reports";
+
 export default function SecurityPage() {
  const { dark, toggleDark } = useThemeStore();
   const [reportExpanded, setReportExpanded] = useState(false);
   const [formState, setFormState] = useState({ type: "", description: "", email: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState("idle"); // idle | submitting | error
+  const [submitError, setSubmitError] = useState("");
 
   const T = dark ? {
     bg: "#07070f", bg2: "#0d0d1a",
@@ -46,9 +53,10 @@ export default function SecurityPage() {
     .btn-icon:hover{border-color:${T.border2};color:${T.text}}
     .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:11px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 6px 24px rgba(124,58,237,0.28)}
     .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.42)}
+    .btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none}
     .section-block{padding:32px 0;border-bottom:1px solid ${T.border}}
     .section-block:last-child{border-bottom:none}
-    .nav-link{font-size:14px;color:${T.text3};cursor:pointer;padding:8px 12px;border-radius:10px;transition:all 0.2s;text-decoration:none;display:block;border-left:2px solid transparent}
+    .nav-link{font-size:14px;color:${T.text3};cursor:pointer;padding:8px 12px;border-radius:10px;transition:all 0.2s;text-decoration:none;display:block;border-left:2px solid transparent;background:none;border-top:none;border-right:none;border-bottom:none;width:100%;text-align:left;font-family:inherit}
     .nav-link:hover{color:${T.text};background:${T.surfaceA};border-left-color:rgba(124,58,237,0.3)}
     .sec-input{width:100%;background:${T.input};border:1px solid ${T.inputBorder};border-radius:10px;padding:11px 14px;color:${T.text};font-family:'Instrument Sans',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;resize:vertical}
     .sec-input:focus{border-color:rgba(124,58,237,0.5)}
@@ -65,7 +73,35 @@ export default function SecurityPage() {
     </svg>
   );
 
-  const handleSubmit = (e) => { e.preventDefault(); setSubmitted(true); };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (submitStatus === "submitting") return;
+    setSubmitStatus("submitting");
+    setSubmitError("");
+    try {
+      const res = await fetch(VULN_REPORT_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: formState.type,
+          description: formState.description,
+          email: formState.email,
+          submittedAt: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+      setSubmitted(true);
+      setSubmitStatus("idle");
+    } catch (err) {
+      setSubmitStatus("error");
+      setSubmitError(err.message || "Something went wrong. Please try again or email us directly.");
+    }
+  };
+
+  const scrollToSection = (id) => (e) => {
+    e.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const pillars = [
     { icon: "🔐", title: "Encryption at Rest", desc: "All user data, profile information, and messages are encrypted at rest using AES-256. Database access is restricted and audited." },
@@ -74,6 +110,13 @@ export default function SecurityPage() {
     { icon: "🧱", title: "Infrastructure", desc: "Hosted on Supabase (Postgres) and Vercel with automatic patching, DDoS protection, and isolated compute environments." },
     { icon: "👁", title: "Access Controls", desc: "Role-based access control limits who on our team can access what. All internal access is logged and reviewed quarterly." },
     { icon: "🚨", title: "Incident Response", desc: "We maintain a written incident response plan. Material breaches are disclosed to affected users within 72 hours of discovery." },
+  ];
+
+  const sidebarLinks = [
+    ["🏛", "Security Pillars", "pillars"],
+    ["🔍", "Vulnerability Disclosure", "disclosure"],
+    ["📋", "Responsible Disclosure", "guidelines"],
+    ["📬", "Report a Vulnerability", "report"],
   ];
 
   return (
@@ -118,20 +161,22 @@ export default function SecurityPage() {
 
           <div className="sidebar" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.text3, letterSpacing: "1px", textTransform: "uppercase", marginBottom: 12 }}>On this page</div>
-            {[["🏛", "Security Pillars"], ["🔍", "Vulnerability Disclosure"], ["📋", "Responsible Disclosure"], ["📬", "Report a Vulnerability"]].map(([icon, label]) => (
-              <a key={label} href="#" className="nav-link">
+            {sidebarLinks.map(([icon, label, id]) => (
+              <a key={label} href={`#${id}`} className="nav-link" onClick={scrollToSection(id)}>
                 <span style={{ marginRight: 8 }}>{icon}</span>{label}
               </a>
             ))}
             <div style={{ marginTop: 24, padding: "14px 16px", background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 12 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", marginBottom: 6 }}>🔒 Secure contact</div>
-              <p style={{ fontSize: 11, color: T.text3, lineHeight: 1.55 }}>security@codebuddy.dev</p>
+              <p style={{ fontSize: 11, color: T.text3, lineHeight: 1.55 }}>
+                <a href="mailto:security@codebuddy.dev" style={{ color: "inherit", textDecoration: "none" }}>security@codebuddy.dev</a>
+              </p>
             </div>
           </div>
 
           <div>
             {/* Pillars */}
-            <div className="section-block fade-up">
+            <div id="pillars" className="section-block fade-up" style={{ scrollMarginTop: 80 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <span style={{ fontSize: 22 }}>🏛</span>
                 <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 400, color: T.text, letterSpacing: "-0.5px" }}>Security Pillars</h2>
@@ -149,7 +194,7 @@ export default function SecurityPage() {
             </div>
 
             {/* Vulnerability Disclosure */}
-            <div className="section-block fade-up" style={{ animationDelay: "0.1s" }}>
+            <div id="disclosure" className="section-block fade-up" style={{ animationDelay: "0.1s", scrollMarginTop: 80 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <span style={{ fontSize: 22 }}>🔍</span>
                 <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 400, color: T.text, letterSpacing: "-0.5px" }}>Vulnerability Disclosure</h2>
@@ -162,7 +207,7 @@ export default function SecurityPage() {
             </div>
 
             {/* Responsible Disclosure */}
-            <div className="section-block fade-up" style={{ animationDelay: "0.14s" }}>
+            <div id="guidelines" className="section-block fade-up" style={{ animationDelay: "0.14s", scrollMarginTop: 80 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <span style={{ fontSize: 22 }}>📋</span>
                 <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 400, color: T.text, letterSpacing: "-0.5px" }}>Responsible Disclosure Guidelines</h2>
@@ -186,7 +231,7 @@ export default function SecurityPage() {
             </div>
 
             {/* Report Form */}
-            <div className="section-block fade-up" style={{ animationDelay: "0.18s" }}>
+            <div id="report" className="section-block fade-up" style={{ animationDelay: "0.18s", scrollMarginTop: 80 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <span style={{ fontSize: 22 }}>📬</span>
                 <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 400, color: T.text, letterSpacing: "-0.5px" }}>Report a Vulnerability</h2>
@@ -212,8 +257,17 @@ export default function SecurityPage() {
                     <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Your Email (optional, for follow-up)</label>
                     <input className="sec-input" type="email" placeholder="researcher@example.com" value={formState.email} onChange={e => setFormState(p => ({ ...p, email: e.target.value }))} />
                   </div>
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <button type="submit" className="btn-primary" style={{ padding: "11px 24px" }}>Submit report →</button>
+
+                  {submitStatus === "error" && (
+                    <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 10, padding: "9px 12px" }}>
+                      {submitError}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <button type="submit" className="btn-primary" style={{ padding: "11px 24px" }} disabled={submitStatus === "submitting"}>
+                      {submitStatus === "submitting" ? "Submitting..." : "Submit report →"}
+                    </button>
                     <span style={{ fontSize: 11, color: T.text3 }}>Or email directly: security@codebuddy.dev</span>
                   </div>
                 </form>

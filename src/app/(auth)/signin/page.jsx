@@ -4,6 +4,8 @@ import { supabase } from "../../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useThemeStore } from "../../../../store/themeprovider";
+import { validateLoginForm, validateSignupForm } from "../../../lib/validation";
+import { useSignupStore } from "../../../../store/UsesignupStore";
 // ─── Theme constants (stable, outside component) ─────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
@@ -170,7 +172,9 @@ function Signin() {
   const [authError, setAuthError] = useState(null); // global auth error (wrong password, etc.)
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [cardShake, setCardShake] = useState(false);
+  const updateForm = useSignupStore((state) => state.updateForm);
 
   const cardRef = useRef(null);
   const T = dark ? DARK : LIGHT;
@@ -228,20 +232,35 @@ function Signin() {
   };
 
   const validateAuth = () => {
-    const e = {};
-    if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) e.email = "Valid email required";
-    if (formData.password.length < 8) e.password = "Min 8 characters";
-    if (authTab === "signup" && formData.password !== formData.confirm) e.confirm = "Passwords don't match";
+    const e =
+      authTab === "signup"
+        ? validateSignupForm({ ...formData, termsAccepted })
+        : validateLoginForm(formData);
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleAuth = async () => {
+  const handleAuth = async (e) => {
+    e?.preventDefault?.();
     if (!validateAuth()) return;
+
+    if (authTab === "signup") {
+      updateForm({
+        email: formData.email,
+        password: formData.password,
+        confirm: formData.confirm,
+      });
+      router.push("/onboarding");
+      return;
+    }
+
     setSubmitting(true);
     setAuthError(null);
 
-    const result = await handleSubmission(formData);
+    const result = await handleSubmission({
+      email: formData.email.trim(),
+      password: formData.password,
+    });
 
     // ✅ response body says success: true → redirect to dashboard
     if (result?.success === true) {
@@ -399,7 +418,7 @@ function Signin() {
                 </div>
               )}
 
-              {/* Fields */}
+              <form onSubmit={handleAuth} noValidate>
               <Field
                 label="Email" id="email" type="email" placeholder="you@example.com"
                 value={formData.email} onChange={v => upd("email", v)} error={errors.email} T={T}
@@ -408,7 +427,7 @@ function Signin() {
                 label="Password" id="password" type="password" placeholder="••••••••"
                 value={formData.password} onChange={v => upd("password", v)}
                 error={errors.password && errors.password.trim() ? errors.password : undefined}
-                hint={authTab === "signup" ? "Min 8 characters" : undefined}
+                hint={authTab === "signup" ? "Min 8 chars, 1 uppercase, 1 number" : undefined}
                 T={T}
                 showToggle={true}
                 showPassword={showPassword}
@@ -436,15 +455,30 @@ function Signin() {
               {authTab === "signup" && (
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: "clamp(11px,3vw,12px)", color: T.text2 }}>
-                    <input type="checkbox" style={{ marginTop: 2, accentColor: "#7c3aed" }} />
-                    <span>I agree to the <span style={{ color: "#a78bfa" }}>Terms</span> and <span style={{ color: "#a78bfa" }}>Privacy Policy</span></span>
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(ev) => {
+                        setTermsAccepted(ev.target.checked);
+                        setErrors((p) => { const n = { ...p }; delete n.terms; return n; });
+                      }}
+                      style={{ marginTop: 2, accentColor: "#7c3aed" }}
+                    />
+                    <span>
+                      I agree to the{" "}
+                      <Link href="/terms" style={{ color: "#a78bfa" }}>Terms</Link>
+                      {" "}and{" "}
+                      <Link href="/privacypolicy" style={{ color: "#a78bfa" }}>Privacy Policy</Link>
+                    </span>
                   </label>
+                  <ErrMsg msg={errors.terms} />
                 </div>
               )}
 
-              <button className="btn-primary" style={{ width: "100%", padding: 12 }} onClick={handleAuth} disabled={submitting}>
+              <button type="submit" className="btn-primary" style={{ width: "100%", padding: 12 }} disabled={submitting}>
                 {submitting ? <span className="spin">⌛</span> : authTab === "signin" ? "Sign in →" : "Create account →"}
               </button>
+              </form>
             </div>
           </div>
 

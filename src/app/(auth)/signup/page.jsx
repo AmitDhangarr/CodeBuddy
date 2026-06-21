@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { useSignupStore } from "../../../../store/UsesignupStore";
 import { supabase } from "../../../lib/supabaseClient";
 import { useThemeStore } from "../../../../store/themeprovider";
+import { validateSignupForm, validateLoginForm } from "../../../lib/validation";
 // ─── Theme constants (stable, outside component) ─────────────────────────────
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
@@ -154,6 +155,8 @@ function SignUp() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [authError, setAuthError] = useState(null);
 
   const T = dark ? DARK : LIGHT;
 
@@ -163,20 +166,52 @@ function SignUp() {
   }, []);
 
   const validateAuth = () => {
-    const e = {};
-    if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) e.email = "Valid email required";
-    if (formData.password.length < 8) e.password = "Min 8 characters";
-    if (authTab === "signup" && formData.password !== formData.confirm) e.confirm = "Passwords don't match";
+    const e =
+      authTab === "signup"
+        ? validateSignupForm({ ...formData, termsAccepted })
+        : validateLoginForm(formData);
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleAuth = () => {
+  const handleAuth = async (e) => {
+    e?.preventDefault?.();
     if (!validateAuth()) return;
+    setAuthError(null);
+
+    if (authTab === "signup") {
+      setSubmitting(true);
+      updateForm({
+        email: formData.email.trim(),
+        password: formData.password,
+        confirm: formData.confirm,
+      });
+      router.push("/onboarding");
+      setTimeout(() => setSubmitting(false), 1000);
+      return;
+    }
+
     setSubmitting(true);
-    updateForm({ email: formData.email, password: formData.password, confirm: formData.confirm });
-    router.push("/onboarding");
-    setTimeout(() => setSubmitting(false), 1000);
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password,
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        router.push("/dashboard");
+      } else {
+        setAuthError(data?.message || "Sign in failed. Please try again.");
+      }
+    } catch {
+      setAuthError("Network error. Please check your connection.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ── Tab switch with smooth slide ──────────────────────────────────────────
@@ -301,6 +336,13 @@ function SignUp() {
                 <div style={{ flex: 1, height: 1, background: T.border }} />
               </div>
 
+              {authError && (
+                <div style={{ fontSize: 12, color: "#f87171", marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)" }}>
+                  {authError}
+                </div>
+              )}
+
+              <form onSubmit={handleAuth} noValidate>
               <Field
                 label="Email" id="email" type="email" placeholder="you@example.com"
                 value={formData.email} onChange={v => upd("email", v)} error={errors.email} T={T}
@@ -308,7 +350,7 @@ function SignUp() {
               <Field
                 label="Password" id="password" type="password" placeholder="••••••••"
                 value={formData.password} onChange={v => upd("password", v)}
-                error={errors.password} hint={authTab === "signup" ? "Min 8 characters" : undefined}
+                error={errors.password} hint={authTab === "signup" ? "Min 8 chars, 1 uppercase, 1 number" : undefined}
                 T={T}
                 showToggle={true}
                 showPassword={showPassword}
@@ -327,24 +369,39 @@ function SignUp() {
 
               {authTab === "signin" && (
                 <div style={{ textAlign: "right", marginTop: -10, marginBottom: 16 }}>
-                  <button style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 12, fontFamily: "inherit" }}>
+                  <Link href="/forgot_password" style={{ color: "#7c3aed", fontSize: 12, textDecoration: "none" }}>
                     Forgot password?
-                  </button>
+                  </Link>
                 </div>
               )}
 
               {authTab === "signup" && (
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: "clamp(11px,3vw,12px)", color: T.text2 }}>
-                    <input type="checkbox" style={{ marginTop: 2, accentColor: "#7c3aed" }} />
-                    <span>I agree to the <span style={{ color: "#a78bfa" }}>Terms</span> and <span style={{ color: "#a78bfa" }}>Privacy Policy</span></span>
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(ev) => {
+                        setTermsAccepted(ev.target.checked);
+                        setErrors((p) => { const n = { ...p }; delete n.terms; return n; });
+                      }}
+                      style={{ marginTop: 2, accentColor: "#7c3aed" }}
+                    />
+                    <span>
+                      I agree to the{" "}
+                      <Link href="/terms" style={{ color: "#a78bfa" }}>Terms</Link>
+                      {" "}and{" "}
+                      <Link href="/privacypolicy" style={{ color: "#a78bfa" }}>Privacy Policy</Link>
+                    </span>
                   </label>
+                  <ErrMsg msg={errors.terms} />
                 </div>
               )}
 
-              <button className="btn-primary" style={{ width: "100%", padding: 12 }} onClick={handleAuth} disabled={submitting}>
+              <button type="submit" className="btn-primary" style={{ width: "100%", padding: 12 }} disabled={submitting}>
                 {submitting ? <span className="spin">⌛</span> : authTab === "signin" ? "Sign in →" : "Create account →"}
               </button>
+              </form>
             </div>
           </div>
 

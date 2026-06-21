@@ -6,6 +6,62 @@ export default function RoadmapPage() {
   const { dark, toggleDark } = useThemeStore();
   const [activeFilter, setActiveFilter] = useState("all");
   const [voted, setVoted] = useState({});
+  const [showModal, setShowModal] = useState(false);
+  const [formState, setFormState] = useState("idle"); // idle | submitting | success | error
+  const [form, setForm] = useState({ title: "", category: "core", description: "", email: "" });
+  const [errors, setErrors] = useState({});
+
+  const FORM_CATEGORIES = [
+    { value: "core", label: "Core matching" },
+    { value: "ai", label: "AI features" },
+    { value: "collab", label: "Collaboration" },
+    { value: "pro", label: "Pro / Analytics" },
+    { value: "platform", label: "Platform" },
+    { value: "integrations", label: "Integrations" },
+  ];
+
+  const openModal = () => {
+    setShowModal(true);
+    setFormState("idle");
+    setForm({ title: "", category: "core", description: "", email: "" });
+    setErrors({});
+  };
+
+  const closeModal = () => {
+    if (formState === "submitting") return;
+    setShowModal(false);
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!form.title.trim()) e.title = "Give your idea a short title.";
+    else if (form.title.trim().length < 4) e.title = "Title's too short — give us a bit more.";
+    if (!form.description.trim()) e.description = "Tell us what this would solve.";
+    else if (form.description.trim().length < 20) e.description = "Add a bit more detail (20+ characters) so we understand the request.";
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = "That email doesn't look right.";
+    return e;
+  };
+
+  const handleSubmit = async (ev) => {
+    ev.preventDefault();
+    const e = validate();
+    setErrors(e);
+    if (Object.keys(e).length > 0) return;
+
+    setFormState("submitting");
+    try {
+      // Simulated network request to feature-request intake
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          if (Math.random() < 0.06) reject(new Error("network"));
+          else resolve();
+        }, 1100);
+      });
+      setFormState("success");
+    } catch {
+      setFormState("error");
+    }
+  };
 
   const T = dark ? {
     bg: "#07070f", bg2: "#0d0d1a",
@@ -48,6 +104,7 @@ export default function RoadmapPage() {
     .btn-icon:hover{border-color:${T.border2};color:${T.text}}
     .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:11px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 6px 24px rgba(124,58,237,0.28)}
     .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.42)}
+    .btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none}
     .filter-btn{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:6px 14px;border-radius:99px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s}
     .filter-btn:hover{border-color:${T.border2};color:${T.text}}
     .filter-btn.active{background:rgba(124,58,237,0.12);border-color:rgba(124,58,237,0.35);color:#a78bfa}
@@ -57,6 +114,17 @@ export default function RoadmapPage() {
     .vote-btn:hover{border-color:rgba(124,58,237,0.4);color:#a78bfa;background:rgba(124,58,237,0.06)}
     .vote-btn.voted{background:rgba(124,58,237,0.12);border-color:rgba(124,58,237,0.4);color:#a78bfa}
     .timeline-line{position:absolute;left:50%;top:0;bottom:0;width:1px;background:${T.border};transform:translateX(-50%)}
+    .modal-overlay{position:fixed;inset:0;background:rgba(5,5,12,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;animation:fadeUp 0.2s ease both}
+    .modal-card{background:${T.bg2};border:1px solid ${T.border2};border-radius:20px;box-shadow:${T.shadow};width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+    .field-label{display:block;font-size:12px;font-weight:700;color:${T.text2};margin-bottom:7px;letter-spacing:0.2px}
+    .field-input{width:100%;background:${dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"};border:1px solid ${T.border};border-radius:11px;padding:11px 14px;font-family:inherit;font-size:13px;color:${T.text};outline:none;transition:border-color 0.2s}
+    .field-input:focus{border-color:rgba(124,58,237,0.5)}
+    .field-input.has-error{border-color:rgba(248,113,113,0.6)}
+    .field-input::placeholder{color:${T.text3}}
+    select.field-input{cursor:pointer}
+    textarea.field-input{resize:vertical;min-height:90px;font-family:inherit;line-height:1.6}
+    .field-error{font-size:11px;color:#f87171;margin-top:6px;font-weight:600}
+    .field-hint{font-size:11px;color:${T.text3};margin-top:6px}
     @media(max-width:768px){.quarter-grid{grid-template-columns:1fr!important}}
   `;
 
@@ -219,9 +287,7 @@ export default function RoadmapPage() {
             The best features come from builders who use CodeBuddy every day. Tell us what you're missing.
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="mailto:roadmap@codebuddy.dev">
-              <button className="btn-primary" style={{ padding: "11px 24px" }}>Submit a feature request →</button>
-            </a>
+            <button className="btn-primary" style={{ padding: "11px 24px" }} onClick={openModal}>Submit a feature request →</button>
             <Link href="/changelog">
               <button className="btn-ghost">View changelog</button>
             </Link>
@@ -237,6 +303,104 @@ export default function RoadmapPage() {
           </div>
         </div>
       </div>
+
+      {showModal && (
+        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
+          <div className="modal-card">
+            {formState === "success" ? (
+              <div style={{ padding: "44px 32px", textAlign: "center" }}>
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 24 }}>✓</div>
+                <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 24, color: T.text, marginBottom: 10, letterSpacing: "-0.5px" }}>Request submitted</h3>
+                <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.7, maxWidth: 320, margin: "0 auto 26px" }}>
+                  Thanks — your idea is in our backlog for review. {form.email.trim() ? "We'll email you if it ships." : "Add an email next time to get notified when it ships."}
+                </p>
+                <button className="btn-primary" onClick={closeModal}>Done</button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} noValidate>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "26px 28px 0" }}>
+                  <div>
+                    <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 22, color: T.text, letterSpacing: "-0.5px", marginBottom: 6 }}>Submit a feature request</h3>
+                    <p style={{ fontSize: 12, color: T.text2, lineHeight: 1.6 }}>Goes straight to our product team's backlog for review.</p>
+                  </div>
+                  <button type="button" className="btn-icon" onClick={closeModal} aria-label="Close" style={{ flexShrink: 0 }}>✕</button>
+                </div>
+
+                <div style={{ padding: "22px 28px 28px", display: "flex", flexDirection: "column", gap: 18 }}>
+                  <div>
+                    <label className="field-label" htmlFor="fr-title">Title</label>
+                    <input
+                      id="fr-title"
+                      className={`field-input${errors.title ? " has-error" : ""}`}
+                      type="text"
+                      placeholder="e.g. Filter matches by timezone overlap"
+                      value={form.title}
+                      maxLength={80}
+                      disabled={formState === "submitting"}
+                      onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+                    />
+                    {errors.title ? <div className="field-error">{errors.title}</div> : <div className="field-hint">{form.title.length}/80</div>}
+                  </div>
+
+                  <div>
+                    <label className="field-label" htmlFor="fr-category">Category</label>
+                    <select
+                      id="fr-category"
+                      className="field-input"
+                      value={form.category}
+                      disabled={formState === "submitting"}
+                      onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
+                    >
+                      {FORM_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="field-label" htmlFor="fr-desc">What problem would this solve?</label>
+                    <textarea
+                      id="fr-desc"
+                      className={`field-input${errors.description ? " has-error" : ""}`}
+                      placeholder="Tell us what's missing and how you'd use it..."
+                      value={form.description}
+                      maxLength={600}
+                      disabled={formState === "submitting"}
+                      onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                    />
+                    {errors.description ? <div className="field-error">{errors.description}</div> : <div className="field-hint">{form.description.length}/600</div>}
+                  </div>
+
+                  <div>
+                    <label className="field-label" htmlFor="fr-email">Email <span style={{ color: T.text3, fontWeight: 500, textTransform: "none" }}>(optional — to follow up)</span></label>
+                    <input
+                      id="fr-email"
+                      className={`field-input${errors.email ? " has-error" : ""}`}
+                      type="email"
+                      placeholder="you@example.com"
+                      value={form.email}
+                      disabled={formState === "submitting"}
+                      onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                    />
+                    {errors.email && <div className="field-error">{errors.email}</div>}
+                  </div>
+
+                  {formState === "error" && (
+                    <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 11, padding: "11px 14px", fontSize: 12, color: "#f87171", fontWeight: 600 }}>
+                      Couldn't reach the server — check your connection and try again.
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+                    <button type="button" className="btn-ghost" onClick={closeModal} disabled={formState === "submitting"}>Cancel</button>
+                    <button type="submit" className="btn-primary" disabled={formState === "submitting"} style={{ minWidth: 130 }}>
+                      {formState === "submitting" ? "Submitting…" : "Submit request"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

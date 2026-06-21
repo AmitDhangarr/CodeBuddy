@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabaseClient";
 import bcrypt from "bcryptjs";
+import {
+  validateEmail,
+  validatePassword,
+  validateName,
+  validateHandle,
+  validateBio,
+  validateGithubUrl,
+  validatePincode,
+} from "../../../lib/validation";
 
 export async function POST(request) {
   const body = await request.json();
@@ -21,30 +30,28 @@ export async function POST(request) {
     } = body;
 
     // ── 1. Validate required fields ────────────────────────────
-    if (!email || !password || !name || !handle) {
-      return NextResponse.json(
-        { success: false, error: "Missing required fields." },
-        { status: 400 }
-      );
-    }
+    const emailErr = validateEmail(email);
+    const passErr = validatePassword(password, { required: true });
+    const nameErr = validateName(name);
+    const handleErr = validateHandle(handle);
+    const bioErr = validateBio(bio);
+    const pinErr = location?.pincode ? validatePincode(location.pincode) : "";
+    const githubErr = validateGithubUrl(projects?.[0]?.githubUrl, { required: true });
 
-    if (!location?.state) {
-      return NextResponse.json(
-        { success: false, error: "Location state is required." },
-        { status: 400 }
-      );
-    }
+    const validationError =
+      emailErr ||
+      passErr ||
+      nameErr ||
+      handleErr ||
+      bioErr ||
+      pinErr ||
+      (!location?.state ? "Location state is required." : "") ||
+      (!projects?.[0]?.name?.trim() ? "At least one project name is required." : "") ||
+      githubErr;
 
-    if (!projects?.length || !projects[0]?.name || !projects[0]?.githubUrl) {
+    if (validationError) {
       return NextResponse.json(
-        { success: false, error: "At least one project with name and GitHub URL is required." },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json(
-        { success: false, error: "Password must be at least 8 characters." },
+        { success: false, error: validationError },
         { status: 400 }
       );
     }

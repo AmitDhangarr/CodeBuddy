@@ -32,10 +32,171 @@ const BENEFITS = [
 
 const DEPTS = ["All", "Engineering", "Design", "Growth", "Community"];
 
+// 🔗 Set your API endpoint here. The form POSTs JSON to this URL:
+// { name, email, phone, portfolio, message, role, department, type: "job" | "general", jobId, submittedAt }
+const APPLICATION_API_URL = "https://your-api.com/api/applications";
+
+function ApplicationForm({ job, T, dark, onClose }) {
+  const [form, setForm] = useState({ name: "", email: "", phone: "", portfolio: "", message: "" });
+  const [status, setStatus] = useState("idle"); // idle | submitting | success | error
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const isGeneral = !job;
+  const isValid = form.name.trim() && /\S+@\S+\.\S+/.test(form.email);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!isValid || status === "submitting") return;
+    setStatus("submitting");
+    setErrorMsg("");
+    try {
+      const res = await fetch(APPLICATION_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          portfolio: form.portfolio,
+          message: form.message,
+          role: job ? job.title : "General Application",
+          department: job ? job.dept : "General",
+          type: isGeneral ? "general" : "job",
+          jobId: job ? job.id : null,
+          submittedAt: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+      setStatus("success");
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(err.message || "Something went wrong. Please try again.");
+    }
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "10px 13px",
+    borderRadius: 10,
+    border: `1px solid ${T.border2}`,
+    background: dark ? "rgba(255,255,255,0.03)" : "#fff",
+    color: T.text,
+    fontFamily: "inherit",
+    fontSize: 13,
+    outline: "none",
+  };
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: T.text2, marginBottom: 6, display: "block", letterSpacing: "0.3px" };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.55)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        animation: "fadeIn 0.2s ease both",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto",
+          background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: 20,
+          padding: "clamp(22px,5vw,32px)", position: "relative",
+          boxShadow: "0 30px 80px rgba(0,0,0,0.4)",
+        }}
+        className="fade-up"
+      >
+        <button
+          onClick={onClose}
+          className="btn-icon"
+          style={{ position: "absolute", top: 16, right: 16, width: 30, height: 30 }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
+        {status === "success" ? (
+          <div style={{ textAlign: "center", padding: "30px 6px" }}>
+            <div style={{ fontSize: 34, marginBottom: 12 }}>🎉</div>
+            <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 24, color: T.text, marginBottom: 8 }}>
+              Application sent!
+            </h3>
+            <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.6, marginBottom: 22 }}>
+              Thanks for applying{job ? ` to ${job.title}` : ""}. We read every application and will be in touch soon.
+            </p>
+            <button className="btn-primary" onClick={onClose}>Done</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>
+                {isGeneral ? "General Application" : job.dept}
+              </div>
+              <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,26px)", color: T.text, letterSpacing: "-0.5px", lineHeight: 1.15 }}>
+                {isGeneral ? "Tell us about yourself" : job.title}
+              </h3>
+            </div>
+
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Full name *</label>
+                <input style={inputStyle} type="text" value={form.name} onChange={update("name")} placeholder="Jane Doe" required />
+              </div>
+              <div>
+                <label style={labelStyle}>Email *</label>
+                <input style={inputStyle} type="email" value={form.email} onChange={update("email")} placeholder="jane@example.com" required />
+              </div>
+              <div>
+                <label style={labelStyle}>Phone</label>
+                <input style={inputStyle} type="tel" value={form.phone} onChange={update("phone")} placeholder="+91 98765 43210" />
+              </div>
+              <div>
+                <label style={labelStyle}>Portfolio / Resume / LinkedIn URL</label>
+                <input style={inputStyle} type="url" value={form.portfolio} onChange={update("portfolio")} placeholder="https://..." />
+              </div>
+              <div>
+                <label style={labelStyle}>Why are you a great fit?</label>
+                <textarea
+                  style={{ ...inputStyle, resize: "vertical", minHeight: 90, fontFamily: "inherit" }}
+                  value={form.message}
+                  onChange={update("message")}
+                  placeholder="Tell us a bit about yourself and why you're interested..."
+                />
+              </div>
+
+              {status === "error" && (
+                <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 10, padding: "9px 12px" }}>
+                  {errorMsg}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={!isValid || status === "submitting"}
+                style={{
+                  marginTop: 6,
+                  opacity: !isValid || status === "submitting" ? 0.6 : 1,
+                  cursor: !isValid || status === "submitting" ? "not-allowed" : "pointer",
+                }}
+              >
+                {status === "submitting" ? "Submitting..." : "Submit application →"}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Careers() {
   const { dark, toggleDark } = useThemeStore();
   const [activeDept, setActiveDept] = useState("All");
   const [openJob, setOpenJob] = useState(null);
+  const [applyTarget, setApplyTarget] = useState(null); // job object, or { general: true }, or null
 
   const T = dark ? {
     bg: "#07070f", bg2: "#0d0d1a",
@@ -114,6 +275,15 @@ export default function Careers() {
   return (
     <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
       <style>{css}</style>
+
+      {applyTarget && (
+        <ApplicationForm
+          job={applyTarget.general ? null : applyTarget}
+          T={T}
+          dark={dark}
+          onClose={() => setApplyTarget(null)}
+        />
+      )}
 
       {/* Ambient */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
@@ -227,7 +397,13 @@ export default function Careers() {
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
                       {job.skills.map(s => <span key={s} className="skill-chip">{s}</span>)}
                     </div>
-                    <button className="btn-primary" style={{ padding: "10px 22px", fontSize: 13 }}>Apply for this role →</button>
+                    <button
+                      className="btn-primary"
+                      style={{ padding: "10px 22px", fontSize: 13 }}
+                      onClick={(e) => { e.stopPropagation(); setApplyTarget(job); }}
+                    >
+                      Apply for this role →
+                    </button>
                   </div>
                 )}
               </div>
@@ -253,9 +429,13 @@ export default function Careers() {
               <p style={{ fontSize: 13, color: T.text2, marginBottom: 28, maxWidth: 400, margin: "0 auto 28px", lineHeight: 1.68 }}>
                 We occasionally hire for roles we haven't posted yet. If you're exceptional and care deeply about developer tools, send us a note.
               </p>
-              <a href="mailto:careers@codebuddy.dev">
-                <button className="btn-primary" style={{ padding: "13px 28px", fontSize: 14 }}>Say hello →</button>
-              </a>
+              <button
+                className="btn-primary"
+                style={{ padding: "13px 28px", fontSize: 14 }}
+                onClick={() => setApplyTarget({ general: true })}
+              >
+                Say hello →
+              </button>
               <p style={{ marginTop: 16, fontSize: 11, color: T.text3 }}>careers@codebuddy.dev · We reply to everyone</p>
             </div>
           </div>

@@ -6,6 +6,12 @@ export async function POST(request) {
     const body = await request.json();
     console.log(body);
     const { skillHave, skillNeed } = body;
+    if (!Array.isArray(skillHave) || skillHave.length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Please select at least one skill you have." },
+        { status: 400 }
+      );
+    }
     const { userEmail } = await getUser();
     const { error } = await supabase
       .from("profiles")

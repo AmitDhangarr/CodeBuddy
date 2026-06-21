@@ -3,18 +3,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSignupStore } from "../../../../store/UsesignupStore";
 import { useThemeStore } from "../../../../store/themeprovider";
-// ─── Helpers ───────────────────────────────────────────────────────────────
+import {
+  validateHandle,
+  validateBio,
+  validatePincode,
+  validateGithubUrl,
+  LIMITS,
+} from "../../../lib/validation";
 
 const hsl  = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
 const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
 
-// ── GitHub URL validator ────────────────────────────────────────────────────
-function validateGithubUrl(url) {
-  if (!url || !url.trim()) return null; // optional on non-primary cards, enforced separately
-  const trimmed = url.trim();
-  const pattern = /^(https?:\/\/)?(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/;
-  if (!pattern.test(trimmed)) return "Enter a valid GitHub repo URL (e.g. github.com/user/repo)";
-  return null;
+function getGithubValidationError(url, { required = false } = {}) {
+  const err = validateGithubUrl(url, { required });
+  return err || null;
 }
 
 // ─── India locations ───────────────────────────────────────────────────────
@@ -154,7 +156,7 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
   // ── live GitHub URL validation on blur ──────────────────────────────────
   const handleGithubBlur = () => {
     if (!project.githubUrl.trim()) return; // empty allowed unless isFirst
-    const err = validateGithubUrl(project.githubUrl);
+    const err = getGithubValidationError(project.githubUrl);
     if (err) onChange({ ...project, _githubErr: err });
     else onChange({ ...project, _githubErr: null });
   };
@@ -542,8 +544,13 @@ function OnBoarding() {
   const handleOnboardNext = () => {
     const e = {};
 
-    if (onboardStep === 0 && !formData.name.trim())            e.name       = "Name required";
-    if (onboardStep === 0 && !formData.handle.trim())          e.handle     = "Handle required";
+    if (onboardStep === 0) {
+      if (!formData.name.trim()) e.name = "Name required";
+      const handleErr = validateHandle(formData.handle);
+      if (handleErr) e.handle = handleErr;
+      const bioErr = validateBio(formData.bio);
+      if (bioErr) e.bio = bioErr;
+    }
     if (onboardStep === 1 && !formData.role)                   e.role       = "Select a role";
     if (onboardStep === 2 && formData.skillsHave.length === 0) e.skillsHave = "Add at least one skill";
     if (onboardStep === 3 && formData.skillsNeed.length === 0) e.skillsNeed = "Add at least one skill";
@@ -551,6 +558,8 @@ function OnBoarding() {
     // Location step (index 4)
     if (onboardStep === 4) {
       if (!formData.state) e.state = "Select a state";
+      const pinErr = validatePincode(formData.pincode);
+      if (pinErr) e.pincode = pinErr;
     }
 
     // Projects step (index 5) — first project mandatory
@@ -562,14 +571,13 @@ function OnBoarding() {
       if (!first.githubUrl.trim()) {
         e["proj_0_githubUrl"] = "GitHub URL required";
       } else {
-        const urlErr = validateGithubUrl(first.githubUrl);
+        const urlErr = getGithubValidationError(first.githubUrl, { required: true });
         if (urlErr) e["proj_0_githubUrl"] = urlErr;
       }
 
-      // Validate GitHub URLs on additional projects (if filled in)
       formData.projects.slice(1).forEach((proj, idx) => {
         if (proj.githubUrl.trim()) {
-          const urlErr = validateGithubUrl(proj.githubUrl);
+          const urlErr = getGithubValidationError(proj.githubUrl);
           if (urlErr) e[`proj_${idx + 1}_githubUrl`] = urlErr;
         }
       });
@@ -678,7 +686,18 @@ function OnBoarding() {
               <Field label="Username" id="handle" placeholder="aanya.dev" value={formData.handle} onChange={v => upd("handle", v)} error={errors.handle} prefix="@" T={T} clrErr={clrErr} required />
               <div style={{ marginBottom: 18 }}>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>Short bio <span style={{ color: T.text3, fontWeight: 400 }}>(optional)</span></label>
-                <textarea className="input" rows={3} placeholder="I build SaaS tools and love clean TypeScript..." value={formData.bio} onChange={e => upd("bio", e.target.value)} />
+                <textarea
+                  id="bio"
+                  className="input"
+                  rows={3}
+                  maxLength={LIMITS.BIO_MAX}
+                  placeholder="I build SaaS tools and love clean TypeScript..."
+                  value={formData.bio}
+                  onChange={e => upd("bio", e.target.value)}
+                  style={{ borderColor: errors.bio ? "rgba(248,113,113,0.5)" : undefined }}
+                />
+                {errors.bio && <div style={{ fontSize: 11, color: "#f87171", marginTop: 5 }}>⚠ {errors.bio}</div>}
+                <div style={{ fontSize: 10, color: T.text3, marginTop: 4, textAlign: "right" }}>{formData.bio.length}/{LIMITS.BIO_MAX}</div>
               </div>
             </>
           )}
@@ -861,8 +880,9 @@ function OnBoarding() {
                   placeholder="e.g. 110001"
                   value={formData.pincode}
                   onChange={e => upd("pincode", e.target.value.replace(/\D/g, ""))}
-                  style={{ maxWidth: 160 }}
+                  style={{ maxWidth: 160, borderColor: errors.pincode ? "rgba(248,113,113,0.5)" : undefined }}
                 />
+                {errors.pincode && <div style={{ fontSize: 11, color: "#f87171", marginTop: 5 }}>⚠ {errors.pincode}</div>}
               </div>
 
               <label className="toggle-wrap" style={{ display: "flex" }}>

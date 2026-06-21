@@ -1,6 +1,7 @@
 "use client";
-import { useState, useCallback, useEffect, useRef } from "react";
-import UserFullProfile from "../../../components/userProfile.jsx";
+export const dynamic = "force-dynamic";
+import { useState, useCallback, useEffect, useRef } from "react"; 
+import { createPortal } from "react-dom";
 import { calculateMatchScore } from "../shared";
 import {
   SKILLS_ALL,
@@ -10,7 +11,6 @@ import {
 
 const PROFILES_PER_PAGE = 9;
 
-// Maps frontend action to the status string your /api/connection/response expects
 const ACTION_TO_STATUS = {
   disconnect: "declined",
   cancel:     "declined",
@@ -58,7 +58,6 @@ function normalizeProfile(profile) {
   };
 }
 
-// ── Status button config ──────────────────────────────────────────────────────
 function getStatusConfig(connectionStatus) {
   switch (connectionStatus) {
     case "accepted":
@@ -112,40 +111,6 @@ function StatusButton({ connectionStatus, onClick, style: extraStyle = {}, size 
   );
 }
 
-// ── Block button (three-dot menu) ─────────────────────────────────────────────
-function BlockMenu({ u, onBlock, T, dark }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", transition: "all 0.2s" }}
-      >⋯</button>
-      {open && (
-        <div style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, background: dark ? "#1a1a2e" : "#fff", border: `1px solid ${T.border}`, borderRadius: 12, padding: "6px", zIndex: 50, minWidth: 140, boxShadow: "0 8px 30px rgba(0,0,0,0.2)" }}>
-          <button
-            onClick={() => { onBlock(u); setOpen(false); }}
-            style={{ display: "block", width: "100%", padding: "8px 12px", background: "transparent", border: "none", color: "#f87171", cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, textAlign: "left", borderRadius: 8, transition: "background 0.15s" }}
-            onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-          >
-            {u.connectionStatus === "blocked" ? "↩ Unblock" : "⊘ Block"}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Resizable AI insight box ──────────────────────────────────────────────────
 function ResizableAIBox({ text, dark, T }) {
   const [height, setHeight] = useState(80);
   const [dragging, setDragging] = useState(false);
@@ -181,7 +146,6 @@ function ResizableAIBox({ text, dark, T }) {
   );
 }
 
-// ── Pagination controls ───────────────────────────────────────────────────────
 function Pagination({ page, totalPages, onChange, T, dark }) {
   if (totalPages <= 1) return null;
   const pages = [];
@@ -192,107 +156,23 @@ function Pagination({ page, totalPages, onChange, T, dark }) {
 
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 32, paddingBottom: 8 }}>
-      <button onClick={() => onChange(page - 1)} disabled={page === 1} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${T.border}`, background: "transparent", color: page === 1 ? T.text3 : T.text2, cursor: page === 1 ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, opacity: page === 1 ? 0.4 : 1, transition: "all 0.2s" }}>← Prev</button>
+      <button onClick={() => onChange(page - 1)} disabled={page === 1} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${T?.border}`, background: "transparent", color: page === 1 ? T?.text3 : T?.text2, cursor: page === 1 ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, opacity: page === 1 ? 0.4 : 1, transition: "all 0.2s" }}>← Prev</button>
       {pages.map((p, i) =>
         p === "…"
-          ? <span key={`ellipsis-${i}`} style={{ color: T.text3, padding: "0 4px", fontSize: 13 }}>…</span>
-          : <button key={p} onClick={() => onChange(p)} style={{ width: 36, height: 36, borderRadius: 10, border: p === page ? "1px solid rgba(124,58,237,0.5)" : `1px solid ${T.border}`, background: p === page ? (dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.1)") : "transparent", color: p === page ? "#a78bfa" : T.text2, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: p === page ? 700 : 500, transition: "all 0.2s" }}>{p}</button>
+          ? <span key={`ellipsis-${i}`} style={{ color: T?.text3, padding: "0 4px", fontSize: 13 }}>…</span>
+          : <button key={p} onClick={() => onChange(p)} style={{ width: 36, height: 36, borderRadius: 10, border: p === page ? "1px solid rgba(124,58,237,0.5)" : `1px solid ${T?.border}`, background: p === page ? (dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.1)") : "transparent", color: p === page ? "#a78bfa" : T?.text2, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: p === page ? 700 : 500, transition: "all 0.2s" }}>{p}</button>
       )}
-      <button onClick={() => onChange(page + 1)} disabled={page === totalPages} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${T.border}`, background: "transparent", color: page === totalPages ? T.text3 : T.text2, cursor: page === totalPages ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, opacity: page === totalPages ? 0.4 : 1, transition: "all 0.2s" }}>Next →</button>
-      <span style={{ marginLeft: 8, fontSize: 11, color: T.text3 }}>Page {page} of {totalPages}</span>
+      <button onClick={() => onChange(page + 1)} disabled={page === totalPages} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${T?.border}`, background: "transparent", color: page === totalPages ? T?.text3 : T?.text2, cursor: page === totalPages ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, opacity: page === totalPages ? 0.4 : 1, transition: "all 0.2s" }}>Next →</button>
+      <span style={{ marginLeft: 8, fontSize: 11, color: T?.text3 }}>Page {page} of {totalPages}</span>
     </div>
   );
 }
 
-// ── Full Profile Modal ────────────────────────────────────────────────────────
-function FullProfileModal({ user, onClose, T, dark, onConnect, onFavourite, onMessage, onBlock, scoreColor }) {
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
-
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "fadeIn 0.2s ease" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: dark ? "#0e0e18" : "#fff", border: `1px solid ${T.border}`, borderRadius: 24, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", position: "relative", animation: "slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 30px 80px rgba(0,0,0,0.4)" }}>
-        <div style={{ height: 90, borderRadius: "24px 24px 0 0", overflow: "hidden", background: `linear-gradient(135deg, hsl(${user.hue},60%,${dark ? "15%" : "88%"}), hsl(${(user.hue + 60) % 360},50%,${dark ? "10%" : "92%"}))`, position: "relative" }}>
-          <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 70% 50%, ${hsla(user.hue, 80, 60, 0.2)}, transparent 70%)` }} />
-          <button onClick={onClose} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: dark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.6)", border: "none", cursor: "pointer", fontSize: 16, color: T.text, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>✕</button>
-        </div>
-        <div style={{ padding: "0 28px 28px" }}>
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-end", marginTop: -28, marginBottom: 20 }}>
-            <div style={{ border: `3px solid ${dark ? "#0e0e18" : "#fff"}`, borderRadius: 18, flexShrink: 0 }}>
-              <Avatar u={user} size={64} radius={15} T={T} dark={dark} />
-            </div>
-            <div style={{ flex: 1, paddingBottom: 4 }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: T.text, fontFamily: "'Instrument Serif',serif", lineHeight: 1.2 }}>{user.name}</div>
-              <div style={{ fontSize: 12, color: T.text3, marginTop: 2 }}>@{user.handle} · {user.role}</div>
-            </div>
-            <div style={{ textAlign: "right", paddingBottom: 4 }}>
-              <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 34, color: scoreColor(user.matchScore), lineHeight: 1 }}>{user.matchScore}%</div>
-              <div style={{ fontSize: 10, color: T.text3 }}>match</div>
-            </div>
-          </div>
-          <div style={{ height: 4, background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.07)", borderRadius: 99, overflow: "hidden", marginBottom: 20 }}>
-            <div style={{ height: "100%", width: `${user.matchScore}%`, background: `linear-gradient(90deg,hsl(${user.hue},70%,45%),hsl(${user.hue},80%,65%))`, borderRadius: 99 }} />
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
-            <span style={{ fontSize: 11, color: user.online ? "#4ade80" : T.text3, fontWeight: 600 }}>
-              <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: user.online ? "#22c55e" : "#555570", marginRight: 5, boxShadow: user.online ? "0 0 6px #22c55e" : "none" }} />
-              {user.online ? "Online now" : "Offline"}
-            </span>
-            <span style={{ fontSize: 11, color: T.text3 }}>📍 {user.location || "Location not set"}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 99, background: hsla(user.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(user.hue, 70, 60, 0.25)}`, color: hsl(user.hue) }}>Seeking {user.lookingFor}</span>
-          </div>
-          <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.7, marginBottom: 20 }}>{user.bio}</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 1, marginBottom: 20, background: T.border, borderRadius: 14, overflow: "hidden" }}>
-            {[{ v: user.projects, l: "Projects" }, { v: user.followers, l: "Followers" }, { v: user.matchScore + "%", l: "Match Score" }].map((s, i) => (
-              <div key={i} style={{ background: dark ? "#0e0e18" : "#fff", padding: "14px 0", textAlign: "center" }}>
-                <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 24, color: T.text }}>{s.v}</div>
-                <div style={{ fontSize: 11, color: T.text3, marginTop: 3 }}>{s.l}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-            <div style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderRadius: 14, padding: 14 }}>
-              <Lbl T={T}>Skills</Lbl>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {user.skillsHave.map(s => <span key={s} style={{ padding: "4px 10px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}
-              </div>
-            </div>
-            <div style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderRadius: 14, padding: 14 }}>
-              <Lbl T={T}>Needs</Lbl>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {user.skillsNeed.map(s => <span key={s} style={{ padding: "4px 10px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
-              </div>
-            </div>
-          </div>
-          {user.connectionStatus && (
-            <div style={{ padding: "10px 14px", borderRadius: 12, marginBottom: 16, background: user.connectionStatus === "accepted" ? "rgba(74,222,128,0.06)" : user.connectionStatus === "pending" ? "rgba(245,158,11,0.06)" : "rgba(239,68,68,0.06)", border: `1px solid ${user.connectionStatus === "accepted" ? "rgba(74,222,128,0.2)" : user.connectionStatus === "pending" ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.2)"}`, fontSize: 12, color: user.connectionStatus === "accepted" ? "#4ade80" : user.connectionStatus === "pending" ? "#f59e0b" : "#f87171", fontWeight: 600 }}>
-              {user.connectionStatus === "accepted" ? "✓ You are connected with this builder" : user.connectionStatus === "pending" ? "⏳ Connection request sent — awaiting response" : "⊘ This user is blocked"}
-            </div>
-          )}
-          <div style={{ display: "flex", gap: 8 }}>
-            <StatusButton connectionStatus={user.connectionStatus} onClick={() => onConnect(user)} extraStyle={{ flex: 1 }} />
-            <button onClick={() => onFavourite(user)} style={{ padding: "8px 14px", background: "transparent", border: `1px solid ${user.isFavourited ? "rgba(248,113,113,0.3)" : T.border}`, color: user.isFavourited ? "#f87171" : T.text3, borderRadius: 11, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>{user.isFavourited ? "♥" : "♡"}</button>
-            <button onClick={() => { onMessage(user); onClose(); }} style={{ padding: "8px 16px", background: "transparent", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 11, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>💬 Message</button>
-            <button onClick={() => onBlock(user)} style={{ padding: "8px 12px", background: "transparent", border: `1px solid ${user.connectionStatus === "blocked" ? "rgba(239,68,68,0.4)" : T.border}`, color: user.connectionStatus === "blocked" ? "#f87171" : T.text3, borderRadius: 11, cursor: "pointer", fontSize: 13, transition: "all 0.2s" }}>⊘</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+/* simplified — no longer needs to sync a quickView/fullView popup */
+function syncUser(id, patch, setProfiles) {
+  setProfiles(p => p.map(u => u.id === id ? { ...u, ...patch } : u));
 }
 
-// ── Helper: update a user across profiles + open modals ──────────────────────
-// Keeps all three in sync with one call instead of repeating the same three lines everywhere
-function syncUser(id, patch, setProfiles, setQuickView, setFullView) {
-  const apply = u => u.id === id ? { ...u, ...patch } : u;
-  setProfiles(p => p.map(apply));
-  setQuickView(v => v?.id === id ? { ...v, ...patch } : v);
-  setFullView(v => v?.id === id ? { ...v, ...patch } : v);
-}
-
-// ── Calls /api/connection/response to persist a status change ─────────────────
 async function callConnectionResponse(receiverId, status) {
   const res = await fetch("/api/connection/response", {
     method: "POST",
@@ -306,13 +186,230 @@ async function callConnectionResponse(receiverId, status) {
   return json;
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── View Profile Confirm Modal ──────────────────────────────────────────────
+// Rendered through a portal straight into document.body so it always
+// positions correctly relative to the real viewport — independent of any
+// parent's transform/animation/scroll container. It anchors itself next to
+// the button that was clicked (via `anchor`, a getBoundingClientRect() snapshot)
+// rather than jumping to the dead-center of the page.
+const MODAL_WIDTH = 380;
+const MODAL_MAX_HEIGHT = 480;
+const MODAL_MARGIN = 16; // gap from viewport edges and from the anchor button
+const ANIM_MS = 220; // must match the CSS animation durations below
+
+function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConnect }) {
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState(null);
+  const [renderedUser, setRenderedUser] = useState(null);   // kept during close animation
+  const [renderedAnchor, setRenderedAnchor] = useState(null); // snapshot so it doesn't null out mid-exit
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef(null);
+  const cardRef = useRef(null);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Keep rendering the last user/anchor while the close animation plays,
+  // instead of unmounting (or re-centering) instantly the moment `user`
+  // becomes null.
+  useEffect(() => {
+    if (user) {
+      setRenderedUser(user);
+      setRenderedAnchor(anchor);
+      setClosing(false);
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    } else if (renderedUser) {
+      setClosing(true);
+      closeTimer.current = setTimeout(() => {
+        setRenderedUser(null);
+        setRenderedAnchor(null);
+        setClosing(false);
+      }, ANIM_MS);
+    }
+    return () => { if (closeTimer.current) clearTimeout(closeTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Lock background scroll while modal is open or closing
+  useEffect(() => {
+    if (!renderedUser) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, [renderedUser]);
+
+  // Compute a position next to the clicked button, clamped so the card
+  // never overflows the viewport. Runs after mount so we can measure the
+  // card's real height (it varies with content).
+  useEffect(() => {
+    if (!renderedUser || !renderedAnchor) { setPos(null); return; }
+
+    const compute = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const cardH = Math.min(cardRef.current?.offsetHeight ?? 320, MODAL_MAX_HEIGHT);
+      const cardW = MODAL_WIDTH;
+
+      // Prefer placing it just below the button; flip above if no room.
+      let top = renderedAnchor.buttonRect.bottom + MODAL_MARGIN;
+      if (top + cardH > vh - MODAL_MARGIN) {
+        top = renderedAnchor.buttonRect.top - cardH - MODAL_MARGIN;
+      }
+      top = Math.max(MODAL_MARGIN, Math.min(top, Math.max(MODAL_MARGIN, vh - cardH - MODAL_MARGIN)));
+
+      // Center horizontally on the button, clamped within the viewport.
+      let left = renderedAnchor.x - cardW / 2;
+      left = Math.max(MODAL_MARGIN, Math.min(left, Math.max(MODAL_MARGIN, vw - cardW - MODAL_MARGIN)));
+
+      setPos({ top, left });
+    };
+
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, [renderedUser, renderedAnchor]);
+
+  if (!renderedUser || !mounted) return null;
+
+  const user_ = renderedUser;
+
+  // Fallback to centered if we have no anchor (e.g. triggered without a click event)
+  const usingAnchor = !!renderedAnchor && !!pos;
+  const anim = closing
+    ? (usingAnchor ? "popOut" : "modalOut")
+    : (usingAnchor ? "popIn" : "modalIn");
+
+  const modal = (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        top: 0, left: 0, right: 0, bottom: 0,
+        width: "100vw", height: "100vh",
+        zIndex: 10000,
+        background: "rgba(0,0,0,0.45)",
+        animation: `${closing ? "overlayOut" : "overlayIn"} ${ANIM_MS}ms ease both`,
+      }}
+    >
+      <div
+        ref={cardRef}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "fixed",
+          ...(usingAnchor
+            ? { top: pos.top, left: pos.left }
+            : { top: "50%", left: "50%" }),
+          transformOrigin: usingAnchor ? "top center" : "center center",
+          background: dark ? "#0d0d1a" : "#fff",
+          border: `1px solid ${T?.border}`,
+          borderRadius: 20,
+          padding: "28px 26px",
+          width: MODAL_WIDTH,
+          maxWidth: `calc(100vw - ${MODAL_MARGIN * 2}px)`,
+          maxHeight: `min(${MODAL_MAX_HEIGHT}px, calc(100vh - ${MODAL_MARGIN * 2}px))`,
+          overflowY: "auto",
+          boxSizing: "border-box",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
+          animation: `${anim} ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1) both`,
+          textAlign: "center",
+          visibility: usingAnchor || !anchor ? "visible" : "hidden", // avoid a flash at (0,0) before pos is computed
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, flexShrink: 0 }}>
+          <Avatar u={user_} size={64} radius={18} T={T} dark={dark} />
+        </div>
+
+        <div
+          style={{
+            fontSize: 18, fontWeight: 700, color: T?.text, marginBottom: 4,
+            width: "100%", wordBreak: "break-word", overflowWrap: "break-word",
+          }}
+        >
+          {user_.name}
+        </div>
+        <div
+          style={{
+            fontSize: 13, color: hsl(user_.hue), fontWeight: 500, marginBottom: 16,
+            width: "100%", wordBreak: "break-word", overflowWrap: "break-word",
+          }}
+        >
+          {user_.role}
+        </div>
+
+        <p
+          style={{
+            fontSize: 14, color: T?.text2, lineHeight: 1.6, marginBottom: 22,
+            width: "100%", wordBreak: "break-word", overflowWrap: "break-word",
+          }}
+        >
+          Do you want to know more about <strong style={{ color: T?.text }}>{user_.name}</strong>?
+        </p>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", width: "100%" }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: "1 1 90px", minWidth: 0, padding: "11px 12px", borderRadius: 12,
+              border: `1px solid ${T?.border}`, background: "transparent",
+              color: T?.text3, cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif",
+              fontSize: 13, fontWeight: 600, transition: "all 0.2s", whiteSpace: "nowrap",
+              overflow: "hidden", textOverflow: "ellipsis",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConnect(user_)}
+            style={{
+              flex: "1 1 90px", minWidth: 0, padding: "11px 12px", borderRadius: 12,
+              border: `1px solid ${T?.border}`, background: "transparent",
+              color: T?.text2, cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif",
+              fontSize: 13, fontWeight: 700, transition: "all 0.2s", whiteSpace: "nowrap",
+              overflow: "hidden", textOverflow: "ellipsis",
+            }}
+          >
+            Connect
+          </button>
+          <button
+            onClick={() => onLearnMore(user_)}
+            style={{
+              flex: "1 1 90px", minWidth: 0, padding: "11px 12px", borderRadius: 12,
+              border: "none", cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif",
+              fontSize: 13, fontWeight: 700, color: "white",
+              background: "linear-gradient(135deg,#7c3aed,#a855f7)",
+              boxShadow: "0 4px 14px rgba(124,58,237,0.28)",
+              transition: "all 0.2s", whiteSpace: "nowrap",
+              overflow: "hidden", textOverflow: "ellipsis",
+            }}
+          >
+            Learn More
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes overlayIn  { from { opacity:0; } to { opacity:1; } }
+        @keyframes overlayOut { from { opacity:1; } to { opacity:0; } }
+        @keyframes modalIn    { from { opacity:0; transform:translate(-50%,-50%) scale(0.92); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+        @keyframes modalOut   { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.92); } }
+        @keyframes popIn      { from { opacity:0; transform:scale(0.9) translateY(-10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        @keyframes popOut     { from { opacity:1; transform:scale(1) translateY(0); } to { opacity:0; transform:scale(0.9) translateY(-10px); } }
+      `}</style>
+    </div>
+  );
+
+  return createPortal(modal, document.body);
+}
+
 export default function DiscoverTab({
   T, dark,
   currentUser,
   connected, onSeedConnected,
   liked, setLiked, onSeedLiked,
   onMessage,
+  onViewProfile, // parent decides how to navigate to a real profile page — called with the user's id
 }) {
   const [filterSkill, setFilterSkill]   = useState("All");
   const [filterLooking, setFilterLooking] = useState("All");
@@ -321,14 +418,14 @@ export default function DiscoverTab({
   const [sortBy, setSortBy]             = useState("match");
   const [aiLoading, setAiLoading]       = useState(null);
   const [aiText, setAiText]             = useState({});
-  const [quickView, setQuickView]       = useState(null);
-  const [fullView, setFullView]         = useState(null);
   const [view, setView]                 = useState("grid");
   const [profiles, setProfiles]         = useState([]);
   const [loading, setLoading]           = useState(true);
   const [fetchError, setFetchError]     = useState(null);
   const [page, setPage]                 = useState(1);
-  const [toast, setToast]               = useState(null); // { msg, type }
+  const [toast, setToast]               = useState(null);
+  const [confirmUser, setConfirmUser]   = useState(null); // user pending the "view profile" confirm modal
+  const [confirmAnchor, setConfirmAnchor] = useState(null); // viewport position of the button that opened the modal
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -365,20 +462,14 @@ export default function DiscoverTab({
 
   useEffect(() => { setPage(1); }, [filterSkill, filterLooking, filterOnline, searchQ, sortBy]);
 
-  // ── Connect / Disconnect / Cancel ──────────────────────────────────────────
-  // New request    → POST /api/connection        (existing logic, status becomes "pending")
-  // Disconnect     → POST /api/connection/response  { status: "declined" }
-  // Cancel pending → POST /api/connection/response  { status: "declined" }
   const handleConnect = async (user) => {
     if (user.connectionStatus === "blocked") return;
 
     const prev = user.connectionStatus;
 
-    // If already connected or pending → we're reversing it (disconnect / cancel)
     if (prev === "accepted" || prev === "pending") {
       const action = prev === "accepted" ? "disconnect" : "cancel";
-      // Optimistic update
-      syncUser(user.id, { connectionStatus: null }, setProfiles, setQuickView, setFullView);
+      syncUser(user.id, { connectionStatus: null }, setProfiles);
       try {
         await callConnectionResponse(user.id, ACTION_TO_STATUS[action]);
         showToast(
@@ -388,15 +479,13 @@ export default function DiscoverTab({
           "info"
         );
       } catch (err) {
-        // Roll back on failure
-        syncUser(user.id, { connectionStatus: prev }, setProfiles, setQuickView, setFullView);
+        syncUser(user.id, { connectionStatus: prev }, setProfiles);
         showToast(err.message || "Something went wrong.", "warn");
       }
       return;
     }
 
-    // No existing connection → send a new request via /api/connection
-    syncUser(user.id, { connectionStatus: "pending" }, setProfiles, setQuickView, setFullView);
+    syncUser(user.id, { connectionStatus: "pending" }, setProfiles);
     try {
       const res = await fetch("/api/connection", {
         method: "POST",
@@ -405,22 +494,21 @@ export default function DiscoverTab({
       });
       const json = await res.json();
       const status = json.action === "added" ? "pending" : null;
-      syncUser(user.id, { connectionStatus: status }, setProfiles, setQuickView, setFullView);
+      syncUser(user.id, { connectionStatus: status }, setProfiles);
       if (status === "pending") showToast(`Request sent to ${user.name}!`);
     } catch {
-      syncUser(user.id, { connectionStatus: prev }, setProfiles, setQuickView, setFullView);
+      syncUser(user.id, { connectionStatus: prev }, setProfiles);
       showToast("Failed to send request.", "warn");
     }
   };
 
-  // ── Block / Unblock ────────────────────────────────────────────────────────
   const handleBlock = async (user) => {
-    const isBlocked = user.connectionStatus === "blocked";
+    const prevStatus = user.connectionStatus;
+    const isBlocked = prevStatus === "blocked";
     const next = isBlocked ? null : "blocked";
     const status = isBlocked ? ACTION_TO_STATUS.unblock : ACTION_TO_STATUS.block;
 
-    // Optimistic update
-    syncUser(user.id, { connectionStatus: next }, setProfiles, setQuickView, setFullView);
+    syncUser(user.id, { connectionStatus: next }, setProfiles);
 
     try {
       await callConnectionResponse(user.id, status);
@@ -429,16 +517,14 @@ export default function DiscoverTab({
         isBlocked ? "success" : "warn"
       );
     } catch (err) {
-      // Roll back
-      syncUser(user.id, { connectionStatus: user.connectionStatus }, setProfiles, setQuickView, setFullView);
+      syncUser(user.id, { connectionStatus: prevStatus }, setProfiles);
       showToast(err.message || "Something went wrong.", "warn");
     }
   };
 
-  // ── Favourite ──────────────────────────────────────────────────────────────
   const handleFavourite = async (user) => {
     const wasFav = user.isFavourited;
-    syncUser(user.id, { isFavourited: !wasFav }, setProfiles, setQuickView, setFullView);
+    syncUser(user.id, { isFavourited: !wasFav }, setProfiles);
     setLiked(p => ({ ...p, [user.id]: !wasFav }));
     try {
       const res = await fetch("/api/favourites", {
@@ -448,13 +534,43 @@ export default function DiscoverTab({
       });
       const json = await res.json();
       const newFav = json.action === "added";
-      syncUser(user.id, { isFavourited: newFav }, setProfiles, setQuickView, setFullView);
+      syncUser(user.id, { isFavourited: newFav }, setProfiles);
       setLiked(p => ({ ...p, [user.id]: newFav }));
     } catch {
-      syncUser(user.id, { isFavourited: wasFav }, setProfiles, setQuickView, setFullView);
+      syncUser(user.id, { isFavourited: wasFav }, setProfiles);
       setLiked(p => ({ ...p, [user.id]: wasFav }));
     }
   };
+
+  // Opens the confirm modal anchored to wherever the "↗" button was clicked,
+  // instead of navigating immediately
+  const handleRequestViewProfile = useCallback((user, e) => {
+    if (e?.currentTarget) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setConfirmAnchor({
+        x: rect.left + rect.width / 2,
+        y: rect.top, // top of the button — modal will sit just above/below it
+        buttonRect: rect,
+      });
+    } else {
+      setConfirmAnchor(null);
+    }
+    setConfirmUser(user);
+  }, []);
+
+  // "Learn More" inside the modal — carries the user's id up to the parent
+  const handleLearnMore = useCallback((user) => {
+    setConfirmUser(null);
+    setConfirmAnchor(null);
+    onViewProfile?.(user.id);
+  }, [onViewProfile]);
+
+  // "Connect" inside the modal — reuses the existing connect flow
+  const handleModalConnect = useCallback((user) => {
+    setConfirmUser(null);
+    setConfirmAnchor(null);
+    handleConnect(user);
+  }, [handleConnect]);
 
   const rankedUsers = profiles
     .map(u => ({ ...u, matchScore: u.matchScore ?? 0 }))
@@ -515,9 +631,6 @@ export default function DiscoverTab({
     }
   }, [currentUser, aiLoading]);
 
-  const openQuickView = (u) => setQuickView(u);
-  const openFullView  = (u) => { setFullView(u); setQuickView(null); };
-
   return (
     <div className="fade-up">
       {/* Global toast */}
@@ -538,21 +651,16 @@ export default function DiscoverTab({
         </div>
       )}
 
-      {fullView && (
-        <UserFullProfile
-          user={fullView}
-          currentUser={currentUser}
-          T={T} dark={dark}
-          onClose={() => setFullView(null)}
-          onConnect={handleConnect}
-          onFavourite={handleFavourite}
-          onMessage={onMessage}
-          onBlock={handleBlock}
-          scoreColor={scoreColor}
-          calculateMatchScore={calculateMatchScore}
-          Avatar={Avatar} Lbl={Lbl} hsl={hsl} hsla={hsla}
-        />
-      )}
+      {/* View profile confirm modal */}
+      <ViewProfileModal
+        user={confirmUser}
+        anchor={confirmAnchor}
+        T={T}
+        dark={dark}
+        onClose={() => { setConfirmUser(null); setConfirmAnchor(null); }}
+        onLearnMore={handleLearnMore}
+        onConnect={handleModalConnect}
+      />
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20, gap: 14, flexWrap: "wrap" }}>
@@ -561,12 +669,12 @@ export default function DiscoverTab({
             <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e", marginRight: 7, verticalAlign: "middle" }} />
             Live Matching
           </div>
-          <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, letterSpacing: "-0.8px", lineHeight: 1.1 }}>Discover Builders</h1>
-          <p style={{ fontSize: 13, color: T.text3, marginTop: 4 }}>{filtered.length} builders ranked by your match score</p>
+          <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T?.text, letterSpacing: "-0.8px", lineHeight: 1.1 }}>Discover Builders</h1>
+          <p style={{ fontSize: 13, color: T?.text3, marginTop: 4 }}>{filtered.length} builders ranked by your match score</p>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {["grid", "list"].map(v => (
-            <button key={v} onClick={() => setView(v)} style={{ ...btn, padding: "7px 14px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: view === v ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)") : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T.border}`, color: view === v ? "#a78bfa" : T.text3 }}>
+            <button key={v} onClick={() => setView(v)} style={{ ...btn, padding: "7px 14px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: view === v ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)") : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T?.border}`, color: view === v ? "#a78bfa" : T?.text3 }}>
               {v === "grid" ? "⊞" : "☰"}
             </button>
           ))}
@@ -576,24 +684,24 @@ export default function DiscoverTab({
       {/* Filters */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20, alignItems: "center" }}>
         <div style={{ position: "relative", flex: "1 1 180px", minWidth: 140 }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T.text3, fontSize: 14, pointerEvents: "none" }}>🔍</span>
-          <input placeholder="Search name, role, skill…" value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text, borderRadius: 11, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "inherit" }} />
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T?.text3, fontSize: 14, pointerEvents: "none" }}>🔍</span>
+          <input aria-label="Search developers" placeholder="Search name, role, skill…" value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text, borderRadius: 11, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "inherit" }} />
         </div>
-        <select value={filterSkill} onChange={e => setFilterSkill(e.target.value)} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
+        <select aria-label="Filter by skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
           <option value="All">All Skills</option>
           {SKILLS_ALL.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={filterLooking} onChange={e => setFilterLooking(e.target.value)} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
+        <select aria-label="Filter by looking for" value={filterLooking} onChange={e => setFilterLooking(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
           <option value="All">All Roles</option>
           <option>Collaborator</option><option>Mentor</option><option>Mentee</option>
         </select>
-        <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
+        <select aria-label="Sort developers" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
           <option value="match">Sort: Match %</option>
           <option value="followers">Sort: Followers</option>
           <option value="projects">Sort: Projects</option>
           <option value="online">Sort: Online First</option>
         </select>
-        <button onClick={() => setFilterOnline(p => !p)} style={{ ...btn, padding: "7px 13px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: filterOnline ? (dark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)") : "transparent", border: `1px solid ${filterOnline ? "rgba(34,197,94,0.35)" : T.border}`, color: filterOnline ? "#4ade80" : T.text3 }}>
+        <button onClick={() => setFilterOnline(p => !p)} style={{ ...btn, padding: "7px 13px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: filterOnline ? (dark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)") : "transparent", border: `1px solid ${filterOnline ? "rgba(34,197,94,0.35)" : T?.border}`, color: filterOnline ? "#4ade80" : T?.text3 }}>
           ● Online only
         </button>
       </div>
@@ -606,29 +714,29 @@ export default function DiscoverTab({
           { v: String(profiles.filter(u => u.online).length), l: "Active now" },
           { v: `${Math.round(filtered.reduce((a, u) => a + u.matchScore, 0) / Math.max(filtered.length, 1))}%`, l: "Avg match" },
         ].map((s, i) => (
-          <div key={i} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 18px", display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 20, color: T.text }}>{s.v}</span>
-            <span style={{ fontSize: 11, color: T.text3 }}>{s.l}</span>
+          <div key={i} style={{ background: T?.card, border: `1px solid ${T?.border}`, borderRadius: 12, padding: "10px 18px", display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 20, color: T?.text }}>{s.v}</span>
+            <span style={{ fontSize: 11, color: T?.text3 }}>{s.l}</span>
           </div>
         ))}
       </div>
 
       {/* Content */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: T.text3 }}>
+        <div style={{ textAlign: "center", padding: "60px 20px", color: T?.text3 }}>
           <div style={{ fontSize: 28, marginBottom: 14, animation: "spin 1s linear infinite", display: "inline-block" }}>✦</div>
-          <div style={{ fontSize: 14, color: T.text2 }}>Finding your best matches…</div>
+          <div style={{ fontSize: 14, color: T?.text2 }}>Finding your best matches…</div>
         </div>
       ) : fetchError ? (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: T.text3 }}>
+        <div style={{ textAlign: "center", padding: "60px 20px", color: T?.text3 }}>
           <div style={{ fontSize: 40, marginBottom: 14 }}>⚠️</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: "#f87171", marginBottom: 6 }}>Failed to load profiles</div>
           <div style={{ fontSize: 13 }}>{fetchError}</div>
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: T.text3 }}>
+        <div style={{ textAlign: "center", padding: "60px 20px", color: T?.text3 }}>
           <div style={{ fontSize: 40, marginBottom: 14 }}>🔍</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: T.text2, marginBottom: 6 }}>No builders found</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: T?.text2, marginBottom: 6 }}>No builders found</div>
           <div style={{ fontSize: 13 }}>Try adjusting your filters</div>
         </div>
       ) : (
@@ -636,94 +744,15 @@ export default function DiscoverTab({
           <div style={{ display: "grid", gridTemplateColumns: view === "list" ? "1fr" : "repeat(auto-fill,minmax(300px,1fr))", gap: view === "list" ? 10 : 16, alignItems: "start" }}>
             {paginated.map((u, i) => (
               view === "list"
-                ? <ListCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} setQuickView={openQuickView} setProfiles={setProfiles} />
-                : <GridCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} setQuickView={openQuickView} onFavourite={handleFavourite} setProfiles={setProfiles} />
+                ? <ListCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} onViewProfile={handleRequestViewProfile} setProfiles={setProfiles} />
+                : <GridCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} onViewProfile={handleRequestViewProfile} onFavourite={handleFavourite} setProfiles={setProfiles} />
             ))}
           </div>
           <Pagination page={page} totalPages={totalPages} onChange={setPage} T={T} dark={dark} />
         </>
       )}
 
-      {/* Quick View Modal */}
-      {quickView && (
-        <div onClick={() => setQuickView(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: dark ? "#0e0e18" : "#fff", border: `1px solid ${T.border}`, borderRadius: 22, padding: 28, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.35)", animation: "slideUp 0.22s cubic-bezier(0.34,1.56,0.64,1)" }}>
-            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 18 }}>
-              <Avatar u={quickView} size={60} radius={16} T={T} dark={dark} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: T.text, fontFamily: "'Instrument Serif',serif" }}>{quickView.name}</div>
-                <div style={{ fontSize: 12, color: T.text3, marginTop: 2 }}>@{quickView.handle} · {quickView.role}</div>
-                <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>📍 {quickView.location || "Location not set"}</div>
-                <div style={{ fontSize: 11, color: quickView.online ? "#22c55e" : T.text3, marginTop: 4, fontWeight: 600 }}>
-                  <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: quickView.online ? "#22c55e" : "#555570", marginRight: 5 }} />
-                  {quickView.online ? "Online now" : "Away"}
-                </div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 30, color: scoreColor(quickView.matchScore), lineHeight: 1 }}>{quickView.matchScore}%</div>
-                <div style={{ fontSize: 10, color: T.text3 }}>match</div>
-              </div>
-            </div>
-
-            {/* Connection status banner inside quick view */}
-            {quickView.connectionStatus && (
-              <div style={{ padding: "8px 12px", borderRadius: 10, marginBottom: 14, fontSize: 12, fontWeight: 600, background: quickView.connectionStatus === "accepted" ? "rgba(74,222,128,0.06)" : quickView.connectionStatus === "pending" ? "rgba(245,158,11,0.06)" : "rgba(239,68,68,0.06)", border: `1px solid ${quickView.connectionStatus === "accepted" ? "rgba(74,222,128,0.2)" : quickView.connectionStatus === "pending" ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.2)"}`, color: quickView.connectionStatus === "accepted" ? "#4ade80" : quickView.connectionStatus === "pending" ? "#f59e0b" : "#f87171" }}>
-                {quickView.connectionStatus === "accepted" ? "✓ Connected" : quickView.connectionStatus === "pending" ? "⏳ Request sent" : "⊘ Blocked"}
-              </div>
-            )}
-
-            <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, marginBottom: 16 }}>{quickView.bio}</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-              <div style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderRadius: 12, padding: 12 }}>
-                <Lbl T={T}>Skills</Lbl>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {quickView.skillsHave.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}
-                </div>
-              </div>
-              <div style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderRadius: 12, padding: 12 }}>
-                <Lbl T={T}>Needs</Lbl>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {quickView.skillsNeed.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 18, marginBottom: 16, padding: "12px 0", borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}` }}>
-              {[{ v: quickView.projects, l: "Projects" }, { v: quickView.followers, l: "Followers" }, { v: quickView.matchScore + "%", l: "Match" }].map((s, i) => (
-                <div key={i} style={{ textAlign: "center", flex: 1 }}>
-                  <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 22, color: T.text }}>{s.v}</div>
-                  <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-              <StatusButton connectionStatus={quickView.connectionStatus} onClick={() => handleConnect(quickView)} />
-              <button onClick={() => { handleBlock(quickView); }} style={{ padding: "8px 12px", background: "transparent", border: `1px solid ${quickView.connectionStatus === "blocked" ? "rgba(239,68,68,0.4)" : T.border}`, color: quickView.connectionStatus === "blocked" ? "#f87171" : T.text3, borderRadius: 11, cursor: "pointer", fontSize: 13 }}>⊘</button>
-              <button onClick={() => { onMessage(quickView); setQuickView(null); }} style={{ padding: "8px 16px", borderRadius: 11, background: "transparent", border: `1px solid ${T.border}`, color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>💬 Message</button>
-            </div>
-            <button onClick={() => openFullView(quickView)} style={{ width: "100%", padding: "10px", borderRadius: 11, background: "transparent", border: `1px solid ${T.border}`, color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.4)"; e.currentTarget.style.color = "#a78bfa"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.text2; }}
-            >↗ See Full Profile</button>
-          </div>
-        </div>
-      )}
-
-      {/* Full Profile Modal */}
-      {fullView && (
-        <FullProfileModal
-          user={fullView}
-          onClose={() => setFullView(null)}
-          T={T} dark={dark}
-          onConnect={handleConnect}
-          onFavourite={handleFavourite}
-          onMessage={onMessage}
-          onBlock={handleBlock}
-          scoreColor={scoreColor}
-        />
-      )}
-
       <style>{`
-        @keyframes slideUp { from { opacity:0; transform:translateY(20px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
         @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
         @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
         @keyframes spin    { to { transform:rotate(360deg); } }
@@ -733,7 +762,7 @@ export default function DiscoverTab({
 }
 
 // ── Grid Card ─────────────────────────────────────────────────────────────────
-function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView, onFavourite }) {
+function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, onViewProfile, onFavourite }) {
   const isFav = u.isFavourited;
   return (
     <div className="card fade-up" style={{ padding: 20, position: "relative", overflow: "hidden", animationDelay: `${i * 0.06}s`, cursor: "default", display: "flex", flexDirection: "column" }}>
@@ -744,19 +773,19 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
           <div style={{ position: "absolute", bottom: -1, right: -1, width: 8, height: 8, borderRadius: "50%", background: u.online ? "#22c55e" : "#555570", border: `2px solid ${dark ? "#060608" : "#f5f5f9"}` }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{u.name}</div>
-          <div style={{ fontSize: 11, color: T.text3, marginTop: 1 }}>@{u.handle}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T?.text }}>{u.name}</div>
+          <div style={{ fontSize: 11, color: T?.text3, marginTop: 1 }}>@{u.handle}</div>
           <div style={{ fontSize: 11, color: hsl(u.hue), fontWeight: 500, marginTop: 2 }}>{u.role}</div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 24, color: scoreColor(u.matchScore), lineHeight: 1 }}>{u.matchScore}%</div>
-          <div style={{ fontSize: 9, color: T.text3, marginTop: 1 }}>match</div>
+          <div style={{ fontSize: 9, color: T?.text3, marginTop: 1 }}>match</div>
         </div>
       </div>
       <div style={{ height: 3, background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)", borderRadius: 99, overflow: "hidden", marginBottom: 12 }}>
         <div style={{ height: "100%", width: `${u.matchScore}%`, background: `linear-gradient(90deg,hsl(${u.hue},70%,45%),hsl(${u.hue},80%,65%))`, borderRadius: 99, transition: "width 1s" }} />
       </div>
-      <p style={{ fontSize: 12, color: T.text2, lineHeight: 1.55, marginBottom: 12 }}>{u.bio}</p>
+      <p style={{ fontSize: 12, color: T?.text2, lineHeight: 1.55, marginBottom: 12 }}>{u.bio}</p>
       <div style={{ marginBottom: 8 }}>
         <Lbl T={T}>Has</Lbl>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -770,33 +799,33 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
         </div>
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 11, color: T.text3 }}>📍 {u.location || "Location not set"}</span>
-        <span style={{ fontSize: 11, color: T.text3 }}>📁 {u.projects} projects</span>
-        <span style={{ fontSize: 11, color: T.text3 }}>★ {u.followers}</span>
+        <span style={{ fontSize: 11, color: T?.text3 }}>📍 {u.location || "Location not set"}</span>
+        <span style={{ fontSize: 11, color: T?.text3 }}>📁 {u.projects} projects</span>
+        <span style={{ fontSize: 11, color: T?.text3 }}>★ {u.followers}</span>
       </div>
       <div style={{ marginBottom: 12 }}>
         <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 99, background: hsla(u.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(u.hue, 70, 60, 0.25)}`, color: hsl(u.hue) }}>Seeking {u.lookingFor}</span>
       </div>
 
-
       {aiText[u.id] && <ResizableAIBox text={aiText[u.id]} dark={dark} T={T} />}
 
       <div style={{ display: "flex", gap: 6, marginTop: "auto" }}>
         <StatusButton connectionStatus={u.connectionStatus} onClick={() => onConnect(u)} />
-        <button onClick={() => onFavourite(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${isFav ? "rgba(248,113,113,0.3)" : T.border}`, color: isFav ? "#f87171" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>{isFav ? "♥" : "♡"}</button>
-        <button onClick={() => handleAI(u)} style={{ padding: "8px 10px", background: aiText[u.id] ? (dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)") : "transparent", border: `1px solid ${aiText[u.id] ? "rgba(124,58,237,0.3)" : T.border}`, color: aiText[u.id] ? "#a78bfa" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13, transition: "all 0.2s" }}>
+        <button onClick={() => onFavourite(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${isFav ? "rgba(248,113,113,0.3)" : T?.border}`, color: isFav ? "#f87171" : T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>{isFav ? "♥" : "♡"}</button>
+        <button onClick={() => handleAI(u)} style={{ padding: "8px 10px", background: aiText[u.id] ? (dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)") : "transparent", border: `1px solid ${aiText[u.id] ? "rgba(124,58,237,0.3)" : T?.border}`, color: aiText[u.id] ? "#a78bfa" : T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 13, transition: "all 0.2s" }}>
           {aiLoading === u.id ? <span style={{ display: "inline-block", animation: "spin 0.9s linear infinite" }}>✦</span> : "✦"}
         </button>
-        <button onClick={() => onMessage(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>💬</button>
-        <button onClick={() => onBlock(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>⊘</button>
-        <button onClick={() => setQuickView(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>↗</button>
+        <button onClick={() => onMessage(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>💬</button>
+        <button onClick={() => onBlock(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T?.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>⊘</button>
+        {/* "↗" opens the confirm modal — parent decides navigation once the user picks "Learn More" */}
+        <button onClick={(e) => onViewProfile?.(u, e)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>↗</button>
       </div>
     </div>
   );
 }
 
 // ── List Card ─────────────────────────────────────────────────────────────────
-function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, setQuickView }) {
+function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, onViewProfile }) {
   return (
     <div className="card fade-up" style={{ padding: "14px 18px", display: "flex", gap: 14, alignItems: "center", animationDelay: `${i * 0.04}s` }}>
       <div style={{ position: "relative", flexShrink: 0 }}>
@@ -805,7 +834,7 @@ function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{u.name}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: T?.text }}>{u.name}</span>
           <span style={{ fontSize: 11, color: hsl(u.hue), fontWeight: 600 }}>{u.role}</span>
           <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: hsla(u.hue, 70, 60, dark ? 0.1 : 0.07), border: `1px solid ${hsla(u.hue, 70, 60, 0.22)}`, color: hsl(u.hue) }}>{u.lookingFor}</span>
           {u.connectionStatus && (
@@ -819,18 +848,18 @@ function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
           {u.skillsNeed.slice(0, 2).map(s => <span key={s} style={{ padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
         </div>
         <div style={{ marginTop: 4 }}>
-          <span style={{ fontSize: 11, color: T.text3 }}>📍 {u.location || "Location not set"}</span>
+          <span style={{ fontSize: 11, color: T?.text3 }}>📍 {u.location || "Location not set"}</span>
         </div>
       </div>
       <div style={{ textAlign: "right", flexShrink: 0 }}>
         <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 22, color: scoreColor(u.matchScore), lineHeight: 1 }}>{u.matchScore}%</div>
-        <div style={{ fontSize: 10, color: T.text3 }}>match</div>
+        <div style={{ fontSize: 10, color: T?.text3 }}>match</div>
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <StatusButton connectionStatus={u.connectionStatus} onClick={() => onConnect(u)} size="small" extraStyle={{ flex: "none", padding: "6px 14px" }} />
-        <button onClick={() => onBlock(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>⊘</button>
-        <button onClick={() => onMessage(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>💬</button>
-        <button onClick={() => setQuickView(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>↗</button>
+        <button onClick={() => onBlock(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T?.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T?.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>⊘</button>
+        <button onClick={() => onMessage(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>💬</button>
+        <button onClick={(e) => onViewProfile?.(u, e)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>↗</button>
       </div>
     </div>
   );

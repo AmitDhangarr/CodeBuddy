@@ -12,13 +12,15 @@ const Logo = () => (
 const hsl = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
 const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
 
+// 🔗 Fill these in with real URLs. coverage[].url -> article link.
+// assets[].url -> direct file URL (pdf/zip/png/etc) to download.
 const COVERAGE = [
-  { outlet: "TechCrunch", date: "May 2026", headline: "CodeBuddy is the developer matchmaking platform India didn't know it needed", type: "Feature", typeHue: 259 },
-  { outlet: "YourStory", date: "Apr 2026", headline: "How a Bangalore startup solved the co-founder discovery problem for engineers", type: "Interview", typeHue: 158 },
-  { outlet: "The Ken", date: "Mar 2026", headline: "Inside CodeBuddy's AI matching engine: why it works when LinkedIn doesn't", type: "Deep Dive", typeHue: 38 },
-  { outlet: "Inc42", date: "Feb 2026", headline: "Seed-stage startup CodeBuddy hits 3,000 developers with zero paid marketing", type: "Profile", typeHue: 340 },
-  { outlet: "Product Hunt", date: "Jan 2026", headline: "#1 Product of the Day — 1,200 upvotes on launch", type: "Launch", typeHue: 200 },
-  { outlet: "Hacker News", date: "Dec 2025", headline: "Show HN: I built a platform to match developers by skill gaps — 847 projects shipped", type: "Community", typeHue: 290 },
+  { outlet: "TechCrunch", date: "May 2026", headline: "CodeBuddy is the developer matchmaking platform India didn't know it needed", type: "Feature", typeHue: 259, url: "https://techcrunch.com/" },
+  { outlet: "YourStory", date: "Apr 2026", headline: "How a Bangalore startup solved the co-founder discovery problem for engineers", type: "Interview", typeHue: 158, url: "https://yourstory.com/" },
+  { outlet: "The Ken", date: "Mar 2026", headline: "Inside CodeBuddy's AI matching engine: why it works when LinkedIn doesn't", type: "Deep Dive", typeHue: 38, url: "https://the-ken.com/" },
+  { outlet: "Inc42", date: "Feb 2026", headline: "Seed-stage startup CodeBuddy hits 3,000 developers with zero paid marketing", type: "Profile", typeHue: 340, url: "https://inc42.com/" },
+  { outlet: "Product Hunt", date: "Jan 2026", headline: "#1 Product of the Day — 1,200 upvotes on launch", type: "Launch", typeHue: 200, url: "https://www.producthunt.com/" },
+  { outlet: "Hacker News", date: "Dec 2025", headline: "Show HN: I built a platform to match developers by skill gaps — 847 projects shipped", type: "Community", typeHue: 290, url: "https://news.ycombinator.com/" },
 ];
 
 const STATS = [
@@ -29,10 +31,10 @@ const STATS = [
 ];
 
 const ASSETS = [
-  { name: "Logo Pack (SVG + PNG)", size: "2.4 MB", icon: "🎨", desc: "Dark, light, and icon-only variants in all standard sizes." },
-  { name: "Product Screenshots", size: "8.1 MB", icon: "📸", desc: "High-res screenshots of the matching dashboard, profile, and chat." },
-  { name: "Brand Guidelines", size: "1.1 MB", icon: "📐", desc: "Color palette, typography, usage rules, and do-not-use examples." },
-  { name: "Founder Photos", size: "4.7 MB", icon: "👥", desc: "Hi-res headshots of Vikram Anand and Nisha Kapoor." },
+  { name: "Logo Pack (SVG + PNG)", size: "2.4 MB", icon: "🎨", desc: "Dark, light, and icon-only variants in all standard sizes.", url: "https://your-cdn.com/assets/codebuddy-logo-pack.zip" },
+  { name: "Product Screenshots", size: "8.1 MB", icon: "📸", desc: "High-res screenshots of the matching dashboard, profile, and chat.", url: "https://your-cdn.com/assets/codebuddy-screenshots.zip" },
+  { name: "Brand Guidelines", size: "1.1 MB", icon: "📐", desc: "Color palette, typography, usage rules, and do-not-use examples.", url: "https://your-cdn.com/assets/codebuddy-brand-guidelines.pdf" },
+  { name: "Founder Photos", size: "4.7 MB", icon: "👥", desc: "Hi-res headshots of Vikram Anand and Nisha Kapoor.", url: "https://your-cdn.com/assets/codebuddy-founder-photos.zip" },
 ];
 
 const QUOTES = [
@@ -44,11 +46,35 @@ const QUOTES = [
 export default function Press() {
  const { dark, toggleDark } = useThemeStore();
   const [copied, setCopied] = useState(false);
+  const [downloadingIdx, setDownloadingIdx] = useState(null);
+  const [downloadError, setDownloadError] = useState(null);
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = async (asset, idx) => {
+    if (!asset.url || asset.url.startsWith("https://your-cdn.com")) {
+      setDownloadError(idx);
+      setTimeout(() => setDownloadError(null), 2500);
+      return;
+    }
+    setDownloadingIdx(idx);
+    try {
+      // Trigger a real file download via a temporary anchor.
+      const link = document.createElement("a");
+      link.href = asset.url;
+      link.download = asset.name;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      setTimeout(() => setDownloadingIdx(null), 600);
+    }
   };
 
   const T = dark ? {
@@ -82,12 +108,13 @@ export default function Press() {
     .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.42)}
     .btn-ghost{background:transparent;border:1px solid ${T.border};color:${T.text2};padding:9px 18px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s}
     .btn-ghost:hover{border-color:${T.border2};color:${T.text}}
+    .btn-ghost:disabled{opacity:0.55;cursor:wait}
     .btn-icon{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:8px;border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
     .btn-icon:hover{border-color:${T.border2};color:${T.text}}
     .landing-nav{background:${T.navBg};backdrop-filter:blur(28px);border-bottom:1px solid ${T.border}}
-    .coverage-card{background:${T.card};border:1px solid ${T.border};border-radius:18px;padding:22px;transition:all 0.28s;cursor:pointer}
+    .coverage-card{background:${T.card};border:1px solid ${T.border};border-radius:18px;padding:22px;transition:all 0.28s;cursor:pointer;text-decoration:none;display:block}
     .coverage-card:hover{background:${T.cardHover};border-color:${T.border2};transform:translateY(-2px);box-shadow:${T.shadow}}
-    .asset-card{background:${T.card};border:1px solid ${T.border};border-radius:16px;padding:20px;transition:all 0.25s;display:flex;align-items:center;gap:16px;cursor:pointer}
+    .asset-card{background:${T.card};border:1px solid ${T.border};border-radius:16px;padding:20px;transition:all 0.25s;display:flex;align-items:center;gap:16px}
     .asset-card:hover{background:${T.cardHover};border-color:rgba(124,58,237,0.28);box-shadow:${T.shadow}}
     .boilerplate-box{background:${T.card};border:1px solid ${T.border};border-radius:16px;padding:22px;font-size:13px;color:${T.text2};line-height:1.75;position:relative}
     .copy-btn{position:absolute;top:14px;right:14px;background:${T.surfaceA};border:1px solid ${T.surfaceBorder};color:#a78bfa;padding:5px 12px;border-radius:8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.15s}
@@ -210,7 +237,7 @@ export default function Press() {
           <SectionHead eyebrow="Coverage" title={<>CodeBuddy in<br /><span style={{ fontStyle: "italic", color: "#a78bfa" }}>the news</span></>} sub="Recent mentions and features across the developer and startup press." />
           <div className="coverage-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12 }}>
             {COVERAGE.map((c, i) => (
-              <div key={i} className="coverage-card fade-up" style={{ animationDelay: `${i * 0.07}s` }}>
+              <a key={i} href={c.url} target="_blank" rel="noopener noreferrer" className="coverage-card fade-up" style={{ animationDelay: `${i * 0.07}s` }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 14, fontWeight: 800, color: T.text, letterSpacing: "-0.3px" }}>{c.outlet}</span>
@@ -222,7 +249,7 @@ export default function Press() {
                 <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 4, color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>
                   Read article <span style={{ fontSize: 14 }}>→</span>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </section>
@@ -240,8 +267,18 @@ export default function Press() {
                   <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>{a.name}</div>
                   <div style={{ fontSize: 12, color: T.text2, marginBottom: 6 }}>{a.desc}</div>
                   <span style={{ fontSize: 11, color: T.text3 }}>{a.size}</span>
+                  {downloadError === i && (
+                    <div style={{ fontSize: 10, color: "#f87171", marginTop: 6 }}>Asset URL not configured yet</div>
+                  )}
                 </div>
-                <button className="btn-ghost" style={{ padding: "7px 14px", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>Download ↓</button>
+                <button
+                  className="btn-ghost"
+                  style={{ padding: "7px 14px", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}
+                  disabled={downloadingIdx === i}
+                  onClick={() => handleDownload(a, i)}
+                >
+                  {downloadingIdx === i ? "Downloading…" : "Download ↓"}
+                </button>
               </div>
             ))}
           </div>

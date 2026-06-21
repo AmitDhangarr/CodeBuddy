@@ -13,7 +13,7 @@ export async function POST(request) {
       contents: prompt,
     });
 
-    return NextResponse.json({ response: res.text });
+    return NextResponse.json({ response: res?.text });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
