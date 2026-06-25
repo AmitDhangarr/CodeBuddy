@@ -3,11 +3,18 @@ import { supabase } from "../../../../lib/supabaseClient";
 
 export async function POST(request) {
   try {
-    const { id } = await request.json();
+    const body = await request.json();
+    const { fullname, email, phone, link, cover_letter, role } = body;
     const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", id)
+      .from("job_application")
+      .insert({
+        fullname: fullname,
+        email: email,
+        phone: phone,
+        link: link,
+        cover_letter: cover_letter,
+        role: role,
+      })
       .single();
 
     if (error) {

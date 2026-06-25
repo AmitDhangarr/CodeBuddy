@@ -3,11 +3,15 @@ import { supabase } from "../../../../lib/supabaseClient";
 
 export async function POST(request) {
   try {
-    const { id } = await request.json();
+    const body = await request.json();
+    const { type, description, email } = body;
     const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", id)
+      .from("security_vulnerabilities")
+      .insert({
+        type: type,
+        description: description,
+        email: email,
+      })
       .single();
 
     if (error) {

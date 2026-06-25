@@ -6,7 +6,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const getPrompt = body.prompt;
-    const prompt = `Analyze this profile  based on this ${getPrompt} in just very short sentences  `;
+    const prompt = `provide me short insight of one sentence for ${getPrompt}`;
 
     const res = await getAIInsight.models.generateContent({
       model: "gemini-2.5-flash",

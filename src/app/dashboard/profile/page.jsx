@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { hsl, hsla, calculateMatchScore, Avatar, Lbl } from "../shared";
 import ProjectPage from "../../../components/projectpage";
 
@@ -26,11 +27,9 @@ const SKILL_SUGGESTIONS = [
   "Vue.js","Svelte","Docker","AWS","MongoDB","Redis","FastAPI","Prisma",
 ];
 
-/* ── GitHub URL validator ── */
 function validateGithubUrl(url) {
-  if (!url || !url.trim()) return null; // optional field
+  if (!url || !url.trim()) return null;
   const trimmed = url.trim();
-  // Accept github.com/user/repo or https://github.com/user/repo
   const pattern = /^(https?:\/\/)?(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/;
   if (!pattern.test(trimmed)) return "Enter a valid GitHub repo URL (e.g. github.com/user/repo)";
   return null;
@@ -41,22 +40,6 @@ function nameInitials(name = "") {
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0][0].toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function buildStreak(projects = [], connectionCount = 0) {
-  const base = (connectionCount % 4) + 1;
-  return Array.from({ length: 35 }, (_, i) => {
-    const projectBoost = projects.filter((_, pi) => (pi * 7 + base) % 35 === i).length;
-    return { day: i, count: Math.min(4, ((i * base + projectBoost * 2) % 5)) };
-  });
-}
-
-function buildWeekStreak(projects = [], connectionCount = 0) {
-  const base = (connectionCount % 4) + 1;
-  return ["M","T","W","T","F","S","S"].map((label, i) => ({
-    label,
-    count: Math.min(4, ((i * base + projects.length) % 5)),
-  }));
 }
 
 function mapProject(p) {
@@ -87,7 +70,6 @@ function resolveLocation(loc) {
   return [city, state ?? country].filter(Boolean).join(", ") || "Remote";
 }
 
-/* ── blank form state ── */
 const BLANK_FORM = {
   name:        "",
   description: "",
@@ -107,6 +89,8 @@ export default function ProfileTab({
   setDashPage,
   convos, setActiveConvo,
 }) {
+  const router = useRouter();
+
   const [profileTab,    setProfileTab]    = useState("projects");
   const [openProjectId, setOpenProjectId] = useState(null);
   const [showAddForm,   setShowAddForm]   = useState(false);
@@ -124,8 +108,6 @@ export default function ProfileTab({
   const [apiProfile,  setApiProfile]  = useState(null);
   const [projects,    setProjects]    = useState([]);
   const [connections, setConnections] = useState([]);
-  const [streak,      setStreak]      = useState([]);
-  const [weekStreak,  setWeekStreak]  = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -134,6 +116,8 @@ export default function ProfileTab({
       try {
         setLoading(true);
         setError(null);
+
+        // Fetch profile
         const res  = await fetch("/api/profile");
         const json = await res.json();
         if (!json.success || !json.profile) throw new Error(json.message ?? "Failed to load profile");
@@ -143,14 +127,6 @@ export default function ProfileTab({
 
         const mapped = (p.projects ?? []).map(mapProject).sort((a, b) => a.sort - b.sort);
         setProjects(mapped);
-
-        const accepted = [
-          ...(p.connections_from ?? []).filter(c => c.status === "accepted"),
-          ...(p.connections_to   ?? []).filter(c => c.status === "accepted"),
-        ];
-        setConnections(accepted);
-        setStreak(buildStreak(mapped, accepted.length));
-        setWeekStreak(buildWeekStreak(mapped, accepted.length));
 
         setCurrentUser(prev => ({
           ...prev,
@@ -164,6 +140,17 @@ export default function ProfileTab({
           location:   resolveLocation(p.locations),
           projects:   mapped.length,
         }));
+
+        // Fetch connections from dedicated endpoint
+        const connRes  = await fetch("/api/connections");
+        const connJson = await connRes.json();
+        if (connJson?.data) {
+          const connected = connJson.data.filter(
+            c => c.status === "connected" || c.status === "accepted"
+          );
+          setConnections(connected);
+        }
+
       } catch (err) {
         setError(err.message);
       } finally {
@@ -173,7 +160,6 @@ export default function ProfileTab({
     load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── validate form ── */
   function validateForm() {
     const e = {};
     if (!form.name.trim()) e.name = "Project name is required";
@@ -182,7 +168,6 @@ export default function ProfileTab({
     return e;
   }
 
-  /* ── submit new project ── */
   async function handleAddProject(ev) {
     ev.preventDefault();
     const e = validateForm();
@@ -191,7 +176,6 @@ export default function ProfileTab({
     setSaving(true);
     setSaveError(null);
 
-    // Normalise URL — ensure https:// prefix
     const rawUrl = form.github_url.trim();
     const normUrl = rawUrl && !rawUrl.startsWith("http")
       ? "https://" + rawUrl
@@ -245,7 +229,6 @@ export default function ProfileTab({
     setForm(f => ({ ...f, skills_used: f.skills_used.filter(x => x !== s) }));
   }
 
-  /* ── route to project page ── */
   if (openProjectId) {
     return (
       <ProjectPage
@@ -264,23 +247,6 @@ export default function ProfileTab({
   const profileViews     = apiProfile?.profile_views ?? 248;
   const initials         = nameInitials(currentUser.name);
 
-  const heatColor = (c) => {
-    if (c === 0) return dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
-    if (c === 1) return dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.12)";
-    if (c === 2) return dark ? "rgba(124,58,237,0.35)" : "rgba(124,58,237,0.25)";
-    if (c === 3) return dark ? "rgba(124,58,237,0.55)" : "rgba(124,58,237,0.42)";
-    return dark ? "rgba(124,58,237,0.78)" : "rgba(124,58,237,0.65)";
-  };
-
-  const currentStreak = (() => {
-    let max = 0, cur = 0;
-    [...streak].reverse().forEach(cell => {
-      if (cell.count > 0) { cur++; max = Math.max(max, cur); }
-      else cur = 0;
-    });
-    return max;
-  })();
-
   const Sk = ({ w = "100%", h = 14, r = 8, mb = 0 }) => (
     <div style={{
       width: w, height: h, borderRadius: r, marginBottom: mb,
@@ -289,7 +255,6 @@ export default function ProfileTab({
     }} />
   );
 
-  /* shared input style */
   const inp = (hasErr) => ({
     width: "100%", borderRadius: 10, padding: "9px 12px",
     background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
@@ -324,6 +289,8 @@ export default function ProfileTab({
         .skill-tag-rm:hover { opacity:.7; }
         .state-chip-btn:hover { border-color:rgba(124,58,237,.4) !important; color:${T.text} !important; }
         .skill-quick-btn:hover { border-color:rgba(124,58,237,.35) !important; background:rgba(124,58,237,.07) !important; color:${T.text} !important; }
+        .conn-card:hover { border-color:${T.border2} !important; }
+        .conn-card { transition: border-color .2s; }
       `}</style>
 
       {/* error banner */}
@@ -471,75 +438,47 @@ export default function ProfileTab({
         </div>
       </div>
 
-      {/* ══ WEEK STREAK BARS ══ */}
+      {/* ══ ANALYTICS OVERVIEW ══ */}
       <div className="card-flat" style={{ padding:16, marginBottom:14 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-          <Lbl T={T}>This Week's Activity</Lbl>
-          <span style={{ fontSize:11, color:T.text3 }}>
-            {loading ? "—" : `${weekStreak.filter(d => d.count > 0).length} / 7 active days`}
-          </span>
-        </div>
-        <div style={{ display:"flex", gap:8, alignItems:"flex-end", height:48 }}>
-          {loading
-            ? Array.from({ length:7 }).map((_,i) => (
-                <div key={i} style={{ flex:1, borderRadius:6, background: dark ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.05)", animation:"pulse 1.6s ease-in-out infinite", animationDelay:`${i*60}ms`, height:"100%" }} />
-              ))
-            : weekStreak.map((d,i) => (
-                <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, height:"100%" }}>
-                  <div style={{ flex:1, width:"100%", background: dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.04)", borderRadius:6, overflow:"hidden", display:"flex", alignItems:"flex-end" }}>
-                    <div style={{
-                      width:"100%",
-                      height:`${[0,25,50,75,100][d.count]}%`,
-                      background: d.count === 0 ? "transparent" : "linear-gradient(180deg,#a855f7,#7c3aed)",
-                      borderRadius:4,
-                      transition:"height .5s cubic-bezier(.34,1.56,.64,1)",
-                      transitionDelay:`${i*60}ms`,
-                    }} />
-                  </div>
-                  <span style={{ fontSize:9, color:T.text3, fontWeight:700 }}>{d.label}</span>
-                </div>
-              ))
-          }
-        </div>
-      </div>
-
-      {/* ══ 5-WEEK HEATMAP ══ */}
-      <div className="card-flat" style={{ padding:16, marginBottom:14 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-          <Lbl T={T}>Activity streak (last 5 weeks)</Lbl>
-          <div style={{ display:"flex", gap:14 }}>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:18, color:"#a78bfa" }}>{loading ? "—" : currentStreak}</div>
-              <div style={{ fontSize:10, color:T.text3 }}>day streak</div>
+        <Lbl T={T}>Activity Overview</Lbl>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginTop:12 }}>
+          {[
+            {
+              icon:"🤝", label:"Connections", value: loading ? "—" : String(totalConnections),
+              sub:"accepted", color:"#4ade80", bg:"rgba(34,197,94,.08)", border:"rgba(34,197,94,.2)",
+            },
+            {
+              icon:"🗂", label:"Projects", value: loading ? "—" : String(projects.length),
+              sub:"total", color:"#a78bfa", bg:"rgba(124,58,237,.08)", border:"rgba(124,58,237,.2)",
+            },
+            {
+              icon:"★", label:"Stars", value: loading ? "—" : String(totalStars),
+              sub:"across projects", color:"#fbbf24", bg:"rgba(245,158,11,.08)", border:"rgba(245,158,11,.2)",
+            },
+            {
+              icon:"👁", label:"Profile Views", value: loading ? "—" : String(profileViews),
+              sub:"all time", color:"#60a5fa", bg:"rgba(59,130,246,.08)", border:"rgba(59,130,246,.2)",
+            },
+            {
+              icon:"🛠", label:"Skills", value: loading ? "—" : String((currentUser.skillsHave ?? []).length),
+              sub:"have listed", color:"#34d399", bg:"rgba(52,211,153,.08)", border:"rgba(52,211,153,.2)",
+            },
+            {
+              icon:"🔍", label:"Seeking", value: loading ? "—" : String((currentUser.skillsNeed ?? []).length),
+              sub:"skills needed", color:"#f472b6", bg:"rgba(244,114,182,.08)", border:"rgba(244,114,182,.2)",
+            },
+          ].map((item, i) => (
+            <div key={i} style={{
+              padding:"12px 14px", borderRadius:12,
+              background:item.bg, border:`1px solid ${item.border}`,
+              display:"flex", flexDirection:"column", gap:4,
+            }}>
+              <div style={{ fontSize:18 }}>{item.icon}</div>
+              <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:22, color:item.color, lineHeight:1 }}>{item.value}</div>
+              <div style={{ fontSize:11, fontWeight:700, color:T.text }}>{item.label}</div>
+              <div style={{ fontSize:10, color:T.text3 }}>{item.sub}</div>
             </div>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:18, color:T.text }}>{loading ? "—" : streak.filter(c => c.count > 0).length}</div>
-              <div style={{ fontSize:10, color:T.text3 }}>active days</div>
-            </div>
-          </div>
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:4 }}>
-          {["M","T","W","T","F","S","S"].map((d,i) => (
-            <div key={i} style={{ fontSize:9, color:T.text3, textAlign:"center" }}>{d}</div>
           ))}
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
-          {loading
-            ? Array.from({ length:35 }).map((_,i) => (
-                <div key={i} style={{ height:14, borderRadius:3, background: dark ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.05)", animation:"pulse 1.6s ease-in-out infinite", animationDelay:`${i*30}ms` }} />
-              ))
-            : streak.map((cell,i) => (
-                <div key={i} title={`${cell.count} contribution${cell.count!==1?"s":""}`}
-                  style={{ height:14, borderRadius:3, background:heatColor(cell.count), cursor:"default" }} />
-              ))
-          }
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:10, justifyContent:"flex-end" }}>
-          <span style={{ fontSize:10, color:T.text3 }}>Less</span>
-          {[0,1,2,3,4].map(c => (
-            <div key={c} style={{ width:10, height:10, borderRadius:2, background:heatColor(c) }} />
-          ))}
-          <span style={{ fontSize:10, color:T.text3 }}>More</span>
         </div>
       </div>
 
@@ -623,26 +562,22 @@ export default function ProfileTab({
                 ))
             }
 
-            {/* ══ ADD PROJECT FORM (onboarding-style) ══ */}
+            {/* ══ ADD PROJECT FORM ══ */}
             {showAddForm && (
               <div className="add-form" style={{
                 borderRadius:16, border:`1px solid rgba(124,58,237,.3)`,
                 background: dark ? "rgba(124,58,237,.06)" : "rgba(124,58,237,.03)",
                 overflow:"hidden",
               }}>
-                {/* Header */}
                 <div style={{
-                  padding:"14px 20px",
-                  borderBottom:`1px solid ${T.border}`,
+                  padding:"14px 20px", borderBottom:`1px solid ${T.border}`,
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{
-                      fontSize:10, fontWeight:700, padding:"2px 9px", borderRadius:99,
-                      background:"rgba(124,58,237,.15)", border:"1px solid rgba(124,58,237,.3)",
-                      color:"#c4a8ff", textTransform:"uppercase", letterSpacing:".8px",
-                    }}>★ New Project</span>
-                  </div>
+                  <span style={{
+                    fontSize:10, fontWeight:700, padding:"2px 9px", borderRadius:99,
+                    background:"rgba(124,58,237,.15)", border:"1px solid rgba(124,58,237,.3)",
+                    color:"#c4a8ff", textTransform:"uppercase", letterSpacing:".8px",
+                  }}>★ New Project</span>
                   <button onClick={() => { setShowAddForm(false); setForm(BLANK_FORM); setSaveError(null); setFormErrors({}); }} style={{
                     background:"transparent", border:"none", color:T.text3,
                     cursor:"pointer", fontSize:20, lineHeight:1, padding:0,
@@ -650,16 +585,13 @@ export default function ProfileTab({
                 </div>
 
                 <form onSubmit={handleAddProject} style={{ padding:"20px 20px 18px", display:"flex", flexDirection:"column", gap:16 }}>
-
-                  {/* Name + State row */}
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 160px", gap:10 }}>
                     <div>
                       <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>
                         Project Name <span style={{ color:"#f87171" }}>*</span>
                       </label>
                       <input
-                        required
-                        className="pp-inp"
+                        required className="pp-inp"
                         placeholder="AI Chat Engine"
                         value={form.name}
                         onChange={e => {
@@ -671,14 +603,9 @@ export default function ProfileTab({
                       {formErrors.name && <div style={{ fontSize:11, color:"#f87171", marginTop:4 }}>⚠ {formErrors.name}</div>}
                     </div>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>
-                        ⭐ Stars
-                      </label>
+                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>⭐ Stars</label>
                       <input
-                        className="pp-inp"
-                        type="number"
-                        min="0"
-                        placeholder="0"
+                        className="pp-inp" type="number" min="0" placeholder="0"
                         value={form.stars}
                         onChange={e => setForm(f => ({ ...f, stars: e.target.value }))}
                         style={inp(false)}
@@ -686,11 +613,8 @@ export default function ProfileTab({
                     </div>
                   </div>
 
-                  {/* Description */}
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>
-                      Short Description
-                    </label>
+                    <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>Short Description</label>
                     <textarea
                       className="pp-inp"
                       placeholder="What does this project do? Who is it for?"
@@ -701,12 +625,9 @@ export default function ProfileTab({
                     />
                   </div>
 
-                  {/* GitHub URL + Branch */}
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 110px", gap:10 }}>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>
-                        GitHub URL
-                      </label>
+                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>GitHub URL</label>
                       <div style={{ position:"relative" }}>
                         <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", fontSize:12 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill={T.text3}>
@@ -727,12 +648,9 @@ export default function ProfileTab({
                       {formErrors.github_url && <div style={{ fontSize:11, color:"#f87171", marginTop:4 }}>⚠ {formErrors.github_url}</div>}
                     </div>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>
-                        Branch
-                      </label>
+                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>Branch</label>
                       <input
-                        className="pp-inp"
-                        placeholder="main"
+                        className="pp-inp" placeholder="main"
                         value={form.branch}
                         onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
                         style={inp(false)}
@@ -740,19 +658,14 @@ export default function ProfileTab({
                     </div>
                   </div>
 
-                  {/* State chips */}
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:8, textTransform:"uppercase" }}>
-                      State
-                    </label>
+                    <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:8, textTransform:"uppercase" }}>State</label>
                     <div style={{ display:"flex", gap:6 }}>
                       {PROJECT_STATES.map(s => {
                         const sc = stateColors[s] ?? stateColors.Building;
                         const on = form.state === s;
                         return (
-                          <button
-                            key={s} type="button"
-                            className="state-chip-btn"
+                          <button key={s} type="button" className="state-chip-btn"
                             onClick={() => setForm(f => ({ ...f, state: s }))}
                             style={{
                               padding:"6px 16px", borderRadius:99, fontSize:11, fontWeight:700,
@@ -760,20 +673,16 @@ export default function ProfileTab({
                               background: on ? sc.bg : "transparent",
                               border: on ? `1px solid ${sc.border}` : `1px solid ${T.border}`,
                               color: on ? sc.color : T.text3,
-                            }}
-                          >{s}</button>
+                            }}>{s}</button>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Skills Used */}
                   <div>
                     <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>
                       Skills Used <span style={{ color:T.text3, fontWeight:400, textTransform:"none" }}>({form.skills_used.length}/8)</span>
                     </label>
-
-                    {/* Selected tags */}
                     {form.skills_used.length > 0 && (
                       <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:8 }}>
                         {form.skills_used.map(s => (
@@ -791,64 +700,44 @@ export default function ProfileTab({
                         ))}
                       </div>
                     )}
-
-                    {/* Search + custom input */}
                     <div style={{ display:"flex", gap:6 }}>
                       <input
                         className="pp-inp"
                         placeholder="Search or type a skill, then press Enter…"
                         value={skillInput || skillSearch}
-                        onChange={e => {
-                          setSkillInput(e.target.value);
-                          setSkillSearch(e.target.value);
-                        }}
-                        onKeyDown={e => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            if (skillInput.trim()) addSkill(skillInput);
-                          }
-                        }}
+                        onChange={e => { setSkillInput(e.target.value); setSkillSearch(e.target.value); }}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (skillInput.trim()) addSkill(skillInput); } }}
                         style={{ ...inp(false), flex:1 }}
                       />
                     </div>
-
-                    {/* Filtered suggestion chips */}
                     <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:8, maxHeight:100, overflowY:"auto" }}>
                       {filteredSuggestions.map(s => {
                         const maxed = form.skills_used.length >= 8;
                         return (
-                          <button
-                            key={s} type="button"
-                            className="skill-quick-btn"
+                          <button key={s} type="button" className="skill-quick-btn"
                             onClick={() => !maxed && addSkill(s)}
                             disabled={maxed}
                             style={{
                               padding:"4px 11px", borderRadius:99, fontSize:10, fontWeight:600,
                               background:"transparent", border:`1px solid ${T.border}`,
-                              color: maxed ? T.text3 : T.text3,
-                              cursor: maxed ? "not-allowed" : "pointer",
-                              fontFamily:"inherit", transition:"all .15s",
-                              opacity: maxed ? .4 : 1,
-                            }}
-                          >+ {s}</button>
+                              color:T.text3, cursor: maxed ? "not-allowed" : "pointer",
+                              fontFamily:"inherit", transition:"all .15s", opacity: maxed ? .4 : 1,
+                            }}>+ {s}</button>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Save error */}
                   {saveError && (
                     <div style={{ fontSize:12, color:"#f87171", padding:"8px 12px", borderRadius:9, background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)" }}>
                       ⚠ {saveError}
                     </div>
                   )}
 
-                  {/* Actions */}
                   <div style={{ display:"flex", gap:8, justifyContent:"flex-end", paddingTop:4 }}>
                     <button type="button" onClick={() => { setShowAddForm(false); setForm(BLANK_FORM); setSaveError(null); setFormErrors({}); }} style={{
                       padding:"9px 18px", background:"transparent", border:`1px solid ${T.border}`,
-                      color:T.text2, borderRadius:10, cursor:"pointer", fontFamily:"inherit",
-                      fontSize:12, fontWeight:600,
+                      color:T.text2, borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600,
                     }}>Cancel</button>
                     <button type="submit" disabled={saving || !form.name.trim()} style={{
                       padding:"9px 22px",
@@ -865,7 +754,6 @@ export default function ProfileTab({
               </div>
             )}
 
-            {/* + Add project trigger */}
             {!showAddForm && (
               <button onClick={() => setShowAddForm(true)} style={{
                 padding:"12px", background:"transparent",
@@ -940,35 +828,160 @@ export default function ProfileTab({
 
         {/* ── CONNECTIONS tab ── */}
         {profileTab === "connections" && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {loading
-              ? Array.from({ length:4 }).map((_,i) => (
-                  <div key={i} style={{ display:"flex", gap:12, alignItems:"center", padding:"12px 14px", borderRadius:13, border:`1px solid ${T.border}`, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
-                    <Sk w="36px" h={36} r={10} />
-                    <div style={{ flex:1 }}><Sk w="70%" h={13} mb={6} /><Sk w="50%" h={11} /></div>
+              ? Array.from({ length:3 }).map((_,i) => (
+                  <div key={i} style={{
+                    display:"flex", gap:12, alignItems:"center",
+                    padding:"12px 14px", borderRadius:13,
+                    border:`1px solid ${T.border}`,
+                    background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
+                  }}>
+                    <Sk w="40px" h={40} r={12} />
+                    <div style={{ flex:1 }}>
+                      <Sk w="55%" h={13} mb={6} />
+                      <Sk w="40%" h={11} mb={6} />
+                      <Sk w="70%" h={11} />
+                    </div>
                   </div>
                 ))
               : connections.length === 0
-                ? <div style={{ gridColumn:"1/-1", textAlign:"center", padding:"32px 0", color:T.text3, fontSize:13 }}>No connections yet. Start matching to connect with builders!</div>
-                : connections.map((conn,i) => {
-                    const otherId = conn.to_user_id ?? conn.from_user_id;
-                    const hue = (String(otherId).split("").reduce((a,c) => a + c.charCodeAt(0), 0)) % 360;
-                    const initials2 = `U${i+1}`;
-                    return (
-                      <div key={conn.id ?? i} style={{ display:"flex", gap:12, alignItems:"center", padding:"12px 14px", borderRadius:13, border:`1px solid ${T.border}`, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
-                        <div style={{ width:36, height:36, borderRadius:10, flexShrink:0, background:`hsla(${hue},60%,60%,${dark?.15:.1})`, border:`1px solid hsla(${hue},60%,60%,.3)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:`hsl(${hue},55%,${dark?75:45}%)` }}>{initials2}</div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:13, fontWeight:700, color:T.text }}>User #{String(otherId).slice(0,8)}</div>
-                          <div style={{ fontSize:10, fontWeight:600, marginTop:2, color:`hsl(${hue},55%,${dark?70:45}%)` }}>{conn.status}</div>
+                ? (
+                  <div style={{ textAlign:"center", padding:"32px 0", color:T.text3, fontSize:13 }}>
+                    No connections yet. Start matching to connect with builders!
+                  </div>
+                )
+                : <>
+                    {connections.slice(0, 5).map((conn, i) => {
+                      const name       = conn.name    ?? `User #${String(conn.to_user_id ?? conn.from_user_id ?? i).slice(0,8)}`;
+                      const handle     = conn.handle  ?? String(conn.to_user_id ?? conn.from_user_id ?? i).slice(0,8);
+                      const role       = conn.role    ?? conn.status ?? "Builder";
+                      const bio        = conn.bio     ?? null;
+                      const hue        = conn.hue != null
+                        ? conn.hue
+                        : (String(conn.to_user_id ?? conn.from_user_id ?? i)
+                            .split("").reduce((a,c) => a + c.charCodeAt(0), 0)) % 360;
+                      const skillsHave = conn.skillsHave ?? conn.skills_have ?? [];
+                      const skillsNeed = conn.skillsNeed ?? conn.skills_need ?? [];
+                      const match      = conn.match ?? 0;
+                      const connInitials = name.trim().split(/\s+/).filter(Boolean)
+                        .slice(0,2).map(p => p[0].toUpperCase()).join("") || "?";
+                      const otherUserId = conn.to_user_id ?? conn.from_user_id ?? conn.id;
+
+                      return (
+                        <div key={conn.id ?? i} className="conn-card" style={{
+                          display:"flex", gap:12, alignItems:"flex-start",
+                          padding:"14px 16px", borderRadius:13,
+                          border:`1px solid ${T.border}`,
+                          background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
+                        }}>
+                          {/* Avatar */}
+                          <div style={{
+                            width:40, height:40, borderRadius:12, flexShrink:0,
+                            background:`hsla(${hue},65%,60%,${dark?.15:.1})`,
+                            border:`1.5px solid hsla(${hue},65%,60%,.3)`,
+                            display:"flex", alignItems:"center", justifyContent:"center",
+                            fontSize:14, fontWeight:700,
+                            color:`hsl(${hue},55%,${dark?72:44}%)`,
+                            fontFamily:"'Instrument Serif',serif",
+                            position:"relative",
+                          }}>
+                            {connInitials}
+                            <div style={{
+                              position:"absolute", bottom:-2, right:-2,
+                              width:11, height:11, borderRadius:"50%",
+                              background:"#22c55e",
+                              border:`2px solid ${dark ? "#07070f" : "#f4f4f8"}`,
+                            }} />
+                          </div>
+
+                          {/* Info */}
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3 }}>
+                              <span style={{ fontSize:14, fontWeight:700, color:T.text }}>{name}</span>
+                              <span style={{ fontSize:11, color:T.text3 }}>@{handle}</span>
+                              {match > 0 && (
+                                <div style={{
+                                  display:"flex", alignItems:"center", gap:4,
+                                  background:"rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.22)",
+                                  borderRadius:99, padding:"2px 8px",
+                                }}>
+                                  <span style={{ width:4, height:4, borderRadius:"50%", background:"#a78bfa", display:"block" }} />
+                                  <span style={{ fontSize:11, color:"#a78bfa", fontFamily:"'Instrument Serif',serif" }}>{match}%</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ fontSize:11, fontWeight:600, color:`hsl(${hue},55%,${dark?65:50}%)`, marginBottom: bio ? 6 : 8 }}>
+                              {role}
+                            </div>
+
+                            {bio && (
+                              <p style={{
+                                fontSize:11, color:T.text2, lineHeight:1.55, marginBottom:8,
+                                overflow:"hidden", display:"-webkit-box",
+                                WebkitLineClamp:2, WebkitBoxOrient:"vertical",
+                              }}>{bio}</p>
+                            )}
+
+                            {(skillsHave.length > 0 || skillsNeed.length > 0) && (
+                              <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+                                {skillsHave.slice(0,3).map(s => (
+                                  <span key={s} style={{
+                                    padding:"2px 8px", borderRadius:99, fontSize:10, fontWeight:600,
+                                    background:T.skillHaveBg, border:`1px solid ${T.skillHaveBorder}`, color:T.skillHaveText,
+                                  }}>{s}</span>
+                                ))}
+                                {skillsNeed.slice(0,2).map(s => (
+                                  <span key={s} style={{
+                                    padding:"2px 8px", borderRadius:99, fontSize:10, fontWeight:600,
+                                    background:T.skillNeedBg, border:`1px solid ${T.skillNeedBorder}`, color:T.skillNeedText,
+                                  }}>{s}</span>
+                                ))}
+                              </div>
+                            )}
+
+                            <div style={{ display:"flex", gap:7 }}>
+                              <button
+                                onClick={() => setDashPage?.("messages")}
+                                style={{
+                                  padding:"6px 14px",
+                                  background:"linear-gradient(135deg,#7c3aed,#a855f7)",
+                                  border:"none", borderRadius:8, color:"#fff",
+                                  cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700,
+                                  boxShadow:"0 3px 10px rgba(124,58,237,.25)",
+                                }}>
+                                Message
+                              </button>
+                              <button
+                                onClick={() => router.push(`/discover/profile/${otherUserId}`)}
+                                style={{
+                                  padding:"6px 12px", background:"transparent",
+                                  border:`1px solid ${T.border}`, color:T.text2,
+                                  borderRadius:8, cursor:"pointer",
+                                  fontFamily:"inherit", fontSize:11, fontWeight:600,
+                                }}>
+                                View profile
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <button onClick={() => setDashPage?.("messages")} style={{
-                          padding:"5px 10px", background:"transparent", border:`1px solid ${T.border}`,
-                          color:T.text2, borderRadius:8, cursor:"pointer", fontFamily:"inherit",
-                          fontSize:11, fontWeight:600, flexShrink:0,
-                        }}>Chat</button>
-                      </div>
-                    );
-                  })
+                      );
+                    })}
+
+                    {connections.length > 5 && (
+                      <button
+                        onClick={() => router.push("/connections")}
+                        style={{
+                          padding:"11px", background:"transparent",
+                          border:`2px dashed ${T.border}`, color:T.text3,
+                          borderRadius:13, cursor:"pointer", fontFamily:"inherit",
+                          fontSize:12, fontWeight:600, transition:"all .2s",
+                        }}>
+                        +{connections.length - 5} more connections → View all
+                      </button>
+                    )}
+                  </>
             }
           </div>
         )}
