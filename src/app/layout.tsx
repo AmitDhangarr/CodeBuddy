@@ -15,7 +15,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
         />
-         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+       <link rel="icon" href="/favicon/favicon.ico" type="image/x-icon" />
       </head>
       <body>
         <ThemesProvider
