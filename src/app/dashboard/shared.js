@@ -129,7 +129,7 @@ export function calculateMatchScore(me, them) {
 
 // Shared component primitives
 export const Lbl = ({ children, T }) => (
-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: T.text3, marginBottom: 7 }}>
+  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: T?.text3, marginBottom: 7 }}>
     {children}
   </div>
 );

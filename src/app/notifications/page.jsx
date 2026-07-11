@@ -1,6 +1,19 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import {
+  Users, Star, MessageSquare, Sparkles, Trash2, CheckCircle2, Info, Sun, Moon,
+  Check, PartyPopper, Handshake, Bell, ArrowRight,
+} from "lucide-react";
+
+const iconSize = (min, max, vw = 3.2) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
+
+const RADIUS = { control: 8, pill: 6, card: 10, modal: 14 };
+const ACCENT = "#7c3aed";
 
 const hsl = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
 const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
@@ -8,26 +21,22 @@ const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
 const THEME = {
   dark: {
     bg: "#07070f", bg2: "#0d0d1a", bg3: "#111124",
-    // FIX 1: Added navBg to both themes (was undefined, causing transparent nav)
     navBg: "rgba(7,7,15,0.85)",
-    border: "rgba(255,255,255,0.06)", border2: "rgba(255,255,255,0.11)", border3: "rgba(255,255,255,0.17)",
+    border: "rgba(255,255,255,0.1)", border2: "rgba(255,255,255,0.14)", border3: "rgba(255,255,255,0.18)",
     text: "#e4e4f0", text2: "#8888aa", text3: "#44445a",
     card: "rgba(255,255,255,0.025)", cardHover: "rgba(255,255,255,0.04)",
-    shadow: "0 24px 64px rgba(0,0,0,0.55)",
     unreadBg: "rgba(124,58,237,0.06)", unreadBorder: "rgba(124,58,237,0.18)",
     tabActive: "rgba(124,58,237,0.14)", tabActiveBorder: "rgba(124,58,237,0.4)",
-    surfaceA: "rgba(124,58,237,0.06)", surfaceBorder: "rgba(124,58,237,0.15)",
+    surfaceA: "rgba(124,58,237,0.06)", surfaceBorder: "rgba(139,92,246,0.18)",
     dangerBg: "rgba(239,68,68,0.08)", dangerBorder: "rgba(239,68,68,0.2)", dangerText: "#f87171",
     successBg: "rgba(34,197,94,0.08)", successBorder: "rgba(34,197,94,0.2)", successText: "#4ade80",
   },
   light: {
     bg: "#f4f4f8", bg2: "#ffffff", bg3: "#f0f0f6",
-    // FIX 1: Added navBg to light theme too
     navBg: "rgba(244,244,248,0.85)",
-    border: "rgba(0,0,0,0.07)", border2: "rgba(0,0,0,0.13)", border3: "rgba(0,0,0,0.2)",
+    border: "rgba(0,0,0,0.09)", border2: "rgba(0,0,0,0.13)", border3: "rgba(0,0,0,0.2)",
     text: "#18182c", text2: "#555570", text3: "#9090b0",
     card: "#ffffff", cardHover: "#f7f7fc",
-    shadow: "0 20px 60px rgba(0,0,0,0.1)",
     unreadBg: "rgba(124,58,237,0.05)", unreadBorder: "rgba(124,58,237,0.15)",
     tabActive: "rgba(124,58,237,0.09)", tabActiveBorder: "rgba(124,58,237,0.35)",
     surfaceA: "rgba(124,58,237,0.05)", surfaceBorder: "rgba(124,58,237,0.15)",
@@ -37,10 +46,10 @@ const THEME = {
 };
 
 const NOTIFICATION_TYPES = {
-  connection: { icon: "👥", color: 259, label: "Connection" },
-  endorsement: { icon: "⭐", color: 38, label: "Endorsement" },
-  message: { icon: "💬", color: 200, label: "Message" },
-  match: { icon: "✦", color: 280, label: "Match" },
+  connection: { Icon: Users, color: 259, label: "Connection" },
+  endorsement: { Icon: Star, color: 38, label: "Endorsement" },
+  message: { Icon: MessageSquare, color: 200, label: "Message" },
+  match: { Icon: Sparkles, color: 280, label: "Match" },
 };
 
 const INITIAL_NOTIFICATIONS = [
@@ -117,14 +126,14 @@ const INITIAL_NOTIFICATIONS = [
 ];
 
 const Logo = () => (
-  <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="30" height="30" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 20C0 12.5231 0 8.78461 1.60769 6C2.66091 4.17577 4.17577 2.66091 6 1.60769C8.78461 0 12.5231 0 20 0C27.4769 0 31.2154 0 34 1.60769C35.8242 2.66091 37.3391 4.17577 38.3923 6C40 8.78461 40 12.5231 40 20C40 27.4769 40 31.2154 38.3923 34C37.3391 35.8242 35.8242 37.3391 34 38.3923C31.2154 40 27.4769 40 20 40C12.5231 40 8.78461 40 6 38.3923C4.17577 37.3391 2.66091 35.8242 1.60769 34C0 31.2154 0 27.4769 0 20Z" fill="#1a0a6a" />
     <path fillRule="evenodd" clipRule="evenodd" d="M28.0441 7.60927C28.8868 6.80331 30.2152 6.79965 31.0622 7.58229L31.1425 7.66005L31.4164 7.94729C34.1911 10.9318 35.2251 14.4098 34.9599 17.8065C34.6908 21.2511 33.1012 24.4994 30.8836 27.0664C28.6673 29.6316 25.7084 31.6519 22.51 32.5287C19.2714 33.4164 15.7294 33.1334 12.6547 30.9629C10.0469 29.1218 9.05406 26.1465 8.98661 23.2561C7.52323 22.5384 5.98346 21.6463 4.36789 20.5615L3.941 20.2716L3.85006 20.206C2.93285 19.5053 2.72313 18.2084 3.39161 17.2564C4.06029 16.3043 5.36233 16.046 6.34665 16.6512L6.44134 16.7126L6.83024 16.9771C7.79805 17.6269 8.72153 18.1903 9.59966 18.6767C10.1661 16.6889 11.1047 14.7802 12.3413 13.207C14.1938 10.8501 16.9713 8.96525 20.374 9.24647C23.439 9.49995 25.7036 11.081 26.8725 13.3122C28.0044 15.4728 28.0211 18.0719 27.0319 20.307C26.0234 22.5857 23.976 24.484 21.0309 25.2662C18.9114 25.8291 16.4284 25.7905 13.6267 25.0367V25.0377C12.5115 24.7375 11.3427 24.323 10.1212 23.7846C9.8472 23.6638 9.60873 23.8483 10.1212 24.1686C11.5636 25.1924 13.5956 26.0505 14.1836 26.3385C14.4615 26.788 14.8061 27.1568 15.2011 27.4356C17.0188 28.7188 19.1451 28.9539 21.3396 28.3523C23.5743 27.7397 25.8141 26.2625 27.5514 24.2516C29.2873 22.2423 30.4065 19.8348 30.5909 17.4727C30.765 15.2439 30.1218 12.9543 28.1842 10.8736L27.9927 10.6731L27.9162 10.5906C27.1538 9.72748 27.2018 8.41516 28.0441 7.60927ZM20.0092 13.5651C18.6033 13.4489 17.1196 14.189 15.8013 15.8662C14.7973 17.1436 14.0376 18.8033 13.6503 20.5112C16.4093 21.4544 18.4655 21.4608 19.8942 21.0814C21.5481 20.6422 22.5399 19.6477 23.0172 18.5693C23.5137 17.4472 23.4628 16.2245 22.9813 15.3055C22.5369 14.4571 21.6422 13.7002 20.0092 13.5651Z" fill="#ffffff" />
   </svg>
 );
 
 const Avatar = ({ u, size = 38, dark }) => (
-  <div style={{ width: size, height: size, borderRadius: 10, background: hsla(u.hue, 70, 60, dark ? 0.14 : 0.1), border: `1.5px solid ${hsla(u.hue, 70, 60, 0.28)}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.3, fontWeight: 700, color: hsl(u.hue), flexShrink: 0, fontFamily: "'Instrument Serif',serif" }}>
+  <div style={{ width: size, height: size, borderRadius: RADIUS.card, background: hsla(u.hue, 70, 60, dark ? 0.14 : 0.1), border: `1px solid ${hsla(u.hue, 70, 60, 0.28)}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.3, fontWeight: 700, color: hsl(u.hue), flexShrink: 0, fontFamily: "'JetBrains Mono',monospace" }}>
     {u.avatar}
   </div>
 );
@@ -132,8 +141,8 @@ const Avatar = ({ u, size = 38, dark }) => (
 const TypeIcon = ({ type, dark }) => {
   const cfg = NOTIFICATION_TYPES[type];
   return (
-    <div style={{ width: 30, height: 30, borderRadius: 9, background: hsla(cfg.color, 70, 60, dark ? 0.14 : 0.1), border: `1.5px solid ${hsla(cfg.color, 70, 60, 0.28)}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>
-      {type === "match" ? <span style={{ color: hsl(cfg.color), fontWeight: 700, fontSize: 13 }}>✦</span> : cfg.icon}
+    <div style={{ width: 30, height: 30, borderRadius: RADIUS.control, background: hsla(cfg.color, 70, 60, dark ? 0.14 : 0.1), border: `1px solid ${hsla(cfg.color, 70, 60, 0.28)}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <cfg.Icon style={{ ...iconSize(13, 14, 2), color: hsl(cfg.color) }} />
     </div>
   );
 };
@@ -141,21 +150,30 @@ const TypeIcon = ({ type, dark }) => {
 const SystemAvatar = ({ type, dark }) => {
   const cfg = NOTIFICATION_TYPES[type];
   return (
-    <div style={{ width: 38, height: 38, borderRadius: 10, background: hsla(cfg.color, 70, 60, dark ? 0.14 : 0.1), border: `1.5px solid ${hsla(cfg.color, 70, 60, 0.28)}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-      {type === "match" ? <span style={{ color: hsl(cfg.color), fontWeight: 700, fontSize: 18 }}>✦</span> : cfg.icon}
+    <div style={{ width: 38, height: 38, borderRadius: RADIUS.card, background: hsla(cfg.color, 70, 60, dark ? 0.14 : 0.1), border: `1px solid ${hsla(cfg.color, 70, 60, 0.28)}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <cfg.Icon style={{ ...iconSize(16, 18, 2.4), color: hsl(cfg.color) }} />
     </div>
   );
 };
 
 const ConfirmModal = ({ T, title, message, confirmLabel, onConfirm, onCancel }) => (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(6px)", animation: "fadeIn 0.18s ease both" }}>
-    <div style={{ background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: 22, padding: "36px 32px", width: "min(360px, calc(100vw - 32px))", boxShadow: T.shadow, textAlign: "center", animation: "modalIn 0.26s cubic-bezier(0.16,1,0.3,1) both" }}>
-      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22 }}>🗑</div>
-      <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 22, color: T.text, marginBottom: 9, letterSpacing: "-0.4px" }}>{title}</h3>
+    <div style={{ background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: RADIUS.modal, padding: "36px 32px", width: "min(360px, calc(100vw - 32px))", textAlign: "center", animation: "modalIn 0.26s cubic-bezier(0.16,1,0.3,1) both" }}>
+      <div style={{ width: 52, height: 52, borderRadius: RADIUS.card, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
+        <Trash2 style={{ ...iconSize(20, 22, 3), color: "#ef4444" }} />
+      </div>
+      <h3 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 20, color: T.text, marginBottom: 9, letterSpacing: "-0.5px" }}>{title}</h3>
       <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, marginBottom: 26 }}>{message}</p>
       <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", background: "transparent", border: `1px solid ${T.border}`, borderRadius: 11, color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-        <button onClick={onConfirm} style={{ flex: 1, padding: "10px 0", background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 11, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{confirmLabel}</button>
+        <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", background: "transparent", border: `1px solid ${T.border}`, borderRadius: RADIUS.control, color: T.text2, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>Cancel</button>
+        <button
+          onClick={onConfirm}
+          style={{ flex: 1, padding: "10px 0", background: "#dc2626", border: "1px solid #dc2626", borderRadius: RADIUS.control, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "filter 0.15s ease" }}
+          onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = ""; }}
+        >
+          {confirmLabel}
+        </button>
       </div>
     </div>
   </div>
@@ -197,7 +215,7 @@ export default function Notifications({ dark = true, onThemeToggle }) {
 
   const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    showToast("All notifications marked as read ✓");
+    showToast("All notifications marked as read");
   };
 
   const deleteOne = (id) => {
@@ -220,8 +238,10 @@ export default function Notifications({ dark = true, onThemeToggle }) {
     match: { bg: "rgba(167,139,250,0.1)", border: "rgba(167,139,250,0.22)", text: "#a78bfa", label: "Match" },
   };
 
+  const EMPTY_ICONS = { unread: PartyPopper, match: Sparkles, connection: Handshake, endorsement: Star, message: MessageSquare, all: Bell };
+
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
     ::-webkit-scrollbar{width:4px}
     ::-webkit-scrollbar-thumb{background:${dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)"};border-radius:99px}
@@ -230,26 +250,26 @@ export default function Notifications({ dark = true, onThemeToggle }) {
     @keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
     @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.85)}}
-    .notif-card{background:${T.card};border:1px solid ${T.border};border-radius:16px;padding:18px;transition:all 0.25s;animation:fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both;position:relative;overflow:hidden}
-    .notif-card:hover{background:${T.cardHover};border-color:${T.border2};box-shadow:0 8px 32px ${dark ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.08)"}}
+    .notif-card{background:${T.card};border:1px solid ${T.border};border-radius:${RADIUS.card}px;padding:18px;transition:background 0.15s ease,border-color 0.15s ease;animation:fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both;position:relative;overflow:hidden}
+    .notif-card:hover{background:${T.cardHover};border-color:${dark ? "rgba(139,92,246,0.22)" : "rgba(139,92,246,0.2)"}}
     .notif-card.unread{background:${T.unreadBg};border-color:${T.unreadBorder}}
-    .notif-card.unread::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#7c3aed,#a855f7);border-radius:2px 0 0 2px}
-    .tab-btn{background:transparent;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;transition:all 0.18s;color:${T.text3};white-space:nowrap}
+    .notif-card.unread::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:${ACCENT};border-radius:2px 0 0 2px}
+    .tab-btn{background:transparent;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:7px 13px;border-radius:${RADIUS.control}px;transition:color 0.15s ease,background 0.15s ease;color:${T.text3};white-space:nowrap}
     .tab-btn:hover{color:${T.text2};background:${T.surfaceA}}
     .tab-btn.active{color:#a78bfa;background:${T.tabActive};box-shadow:inset 0 0 0 1px ${T.tabActiveBorder}}
-    .count-badge{background:rgba(124,58,237,0.15);color:#a78bfa;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700}
-    .unread-dot{width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);flex-shrink:0;animation:pulse 2s ease-in-out infinite}
-    .action-btn{background:transparent;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;transition:all 0.15s;display:flex;align-items:center;gap:5px}
+    .count-badge{background:rgba(124,58,237,0.15);color:#a78bfa;border-radius:${RADIUS.pill}px;padding:1px 7px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace}
+    .unread-dot{width:7px;height:7px;border-radius:50%;background:${ACCENT};flex-shrink:0;animation:pulse 2s ease-in-out infinite}
+    .action-btn{background:transparent;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:5px 10px;border-radius:${RADIUS.control}px;transition:color 0.15s ease,background 0.15s ease;display:flex;align-items:center;gap:5px}
     .action-btn.read{color:${T.text3}}
     .action-btn.read:hover{color:${T.text};background:${T.surfaceA}}
     .action-btn.delete{color:${T.text3}}
     .action-btn.delete:hover{color:${dark ? "#f87171" : "#dc2626"};background:${T.dangerBg}}
-    .header-btn{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:7px 14px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.18s;display:flex;align-items:center;gap:6px}
+    .header-btn{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:7px 14px;border-radius:${RADIUS.control}px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:border-color 0.15s ease,color 0.15s ease;display:flex;align-items:center;gap:6px}
     .header-btn:hover{border-color:${T.border2};color:${T.text}}
     .header-btn.danger:hover{border-color:${T.dangerBorder};color:${T.dangerText};background:${T.dangerBg}}
-    .cta-link{background:none;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;color:#a78bfa;padding:0;transition:opacity 0.15s}
+    .cta-link{background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;color:#a78bfa;padding:0;transition:opacity 0.15s ease;display:inline-flex;align-items:center;gap:4px}
     .cta-link:hover{opacity:0.75;text-decoration:underline}
-    .type-pill{padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:0.3px;border:1px solid}
+    .type-pill{padding:2px 8px;border-radius:${RADIUS.pill}px;font-size:10px;font-weight:700;letter-spacing:0.3px;border:1px solid}
     @media(max-width:600px){
       .notif-actions{flex-wrap:wrap!important;gap:6px!important}
       .filter-tabs{gap:4px!important}
@@ -274,18 +294,16 @@ export default function Notifications({ dark = true, onThemeToggle }) {
 
   const groups = groupedByDay(filtered);
   const dayOrder = ["Today", "Yesterday", "Older"];
+  const EmptyIcon = EMPTY_ICONS[activeFilter] || Bell;
 
   return (
-    // FIX 2: Restructured layout — outer div is just a bg wrapper, nav sits at top full-width,
-    // content area has its own padding. Removed the spurious empty inner div that caused the gap.
-    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
       <style>{css}</style>
 
-      {/* FIX 3: Nav is now a direct child of the root div (full-width), not nested inside the padded content wrapper */}
       <nav style={{ background: T.navBg, backdropFilter: "blur(28px)", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, padding: "0 clamp(16px,5vw,32px)", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <Logo />
-          <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 18, color: T.text }}>CodeBuddy</span>
+          <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 17, color: T.text }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         </div>
@@ -303,25 +321,23 @@ export default function Notifications({ dark = true, onThemeToggle }) {
       )}
 
       {toast && (
-        <div style={{ position: "fixed", top: 20, right: 20, zIndex: 2000, background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: 14, padding: "13px 18px", boxShadow: T.shadow, display: "flex", alignItems: "center", gap: 10, animation: "toastIn 0.3s ease both", maxWidth: 300 }}>
-          <span style={{ fontSize: 16 }}>{toast.type === "success" ? "✅" : "ℹ️"}</span>
+        <div style={{ position: "fixed", top: 20, right: 20, zIndex: 2000, background: T.bg2, border: `1px solid ${T.border2}`, borderRadius: RADIUS.card, padding: "13px 18px", display: "flex", alignItems: "center", gap: 10, animation: "toastIn 0.3s ease both", maxWidth: 300 }}>
+          {toast.type === "success" ? <CheckCircle2 style={{ ...iconSize(15, 16, 2), color: "#4ade80" }} /> : <Info style={{ ...iconSize(15, 16, 2), color: "#818cf8" }} />}
           <span style={{ fontSize: 13, color: T.text, fontWeight: 500 }}>{toast.msg}</span>
         </div>
       )}
 
-      {/* FIX 4: Content wrapper now has its own padding — no spurious empty div eating space */}
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "clamp(28px,4vw,40px) clamp(16px,4vw,32px)" }}>
-        {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(24px,6vw,34px)", fontWeight: 400, color: T.text, letterSpacing: "-0.8px", lineHeight: 1.1 }}>
+                  <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(24px,6vw,34px)", color: T.text, letterSpacing: "-1px", lineHeight: 1.1 }}>
                     Notifications
                   </h1>
                   {unreadCount > 0 && (
-                    <div style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", borderRadius: 99, padding: "3px 10px", fontSize: 12, fontWeight: 700, color: "white", lineHeight: 1 }}>
+                    <div style={{ background: ACCENT, borderRadius: RADIUS.pill, padding: "3px 10px", fontSize: 12, fontWeight: 700, color: "white", lineHeight: 1, fontFamily: "'JetBrains Mono',monospace" }}>
                       {unreadCount} new
                     </div>
                   )}
@@ -334,13 +350,13 @@ export default function Notifications({ dark = true, onThemeToggle }) {
 
             <div className="header-actions" style={{ display: "flex", gap: 8, flexShrink: 0, alignItems: "center" }}>
               {onThemeToggle && (
-                <button onClick={onThemeToggle} style={{ background: "transparent", border: `1px solid ${T.border}`, borderRadius: 10, padding: "7px 12px", cursor: "pointer", color: T.text3, fontSize: 16, display: "flex", alignItems: "center" }}>
-                  {dark ? "☀️" : "🌙"}
+                <button onClick={onThemeToggle} style={{ background: "transparent", border: `1px solid ${T.border}`, borderRadius: RADIUS.control, padding: "7px 12px", cursor: "pointer", color: T.text3, display: "flex", alignItems: "center" }}>
+                  {dark ? <Sun style={iconSize(15, 16, 2)} /> : <Moon style={iconSize(15, 16, 2)} />}
                 </button>
               )}
               {unreadCount > 0 && (
                 <button className="header-btn" onClick={markAllRead}>
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 8l4 4 8-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <Check style={iconSize(13, 14, 2)} />
                   <span>Mark all read</span>
                 </button>
               )}
@@ -353,29 +369,27 @@ export default function Notifications({ dark = true, onThemeToggle }) {
                     onConfirm: clearAll,
                   })
                 }>
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <Trash2 style={iconSize(13, 14, 2)} />
                   <span>Clear {activeFilter !== "all" ? "filtered" : "all"}</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* Summary pills */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {Object.entries(TYPE_COLORS).map(([type, cfg]) => {
               const cnt = notifications.filter(n => n.type === type && !n.read).length;
               if (cnt === 0) return null;
               return (
-                <div key={type} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 99, padding: "4px 11px", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 11, color: cfg.text, fontWeight: 700 }}>{cnt} {cfg.label}{cnt !== 1 ? "s" : ""}</span>
+                <div key={type} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: RADIUS.pill, padding: "4px 11px", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 11, color: cfg.text, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>{cnt} {cfg.label}{cnt !== 1 ? "s" : ""}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="filter-tabs" style={{ display: "flex", gap: 4, marginBottom: 20, background: T.bg2, border: `1px solid ${T.border}`, borderRadius: 14, padding: 5, overflowX: "auto" }}>
+        <div className="filter-tabs" style={{ display: "flex", gap: 4, marginBottom: 20, background: T.bg2, border: `1px solid ${T.border}`, borderRadius: RADIUS.card, padding: 5, overflowX: "auto" }}>
           {FILTERS.map(f => (
             <button key={f.key} className={`tab-btn${activeFilter === f.key ? " active" : ""}`} onClick={() => setActiveFilter(f.key)}>
               {f.label}
@@ -386,13 +400,12 @@ export default function Notifications({ dark = true, onThemeToggle }) {
           ))}
         </div>
 
-        {/* Notifications list */}
         {filtered.length === 0 ? (
-          <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 20, padding: "64px 24px", textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>
-              {activeFilter === "unread" ? "🎉" : activeFilter === "match" ? "✦" : activeFilter === "connection" ? "🤝" : activeFilter === "endorsement" ? "⭐" : activeFilter === "message" ? "💬" : "🔔"}
+          <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: RADIUS.card, padding: "64px 24px", textAlign: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: RADIUS.card, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.16)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <EmptyIcon style={{ ...iconSize(22, 26, 3.5), color: "#a78bfa" }} />
             </div>
-            <h3 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 20, color: T.text, marginBottom: 8, letterSpacing: "-0.4px" }}>
+            <h3 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 18, color: T.text, marginBottom: 8, letterSpacing: "-0.4px" }}>
               {activeFilter === "unread" ? "All caught up!" : `No ${activeFilter === "all" ? "" : activeFilter + " "}notifications`}
             </h3>
             <p style={{ fontSize: 13, color: T.text3, lineHeight: 1.65, maxWidth: 300, margin: "0 auto" }}>
@@ -404,9 +417,9 @@ export default function Notifications({ dark = true, onThemeToggle }) {
             {dayOrder.filter(d => groups[d]).map(day => (
               <div key={day}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: T.text3 }}>{day}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>{day}</span>
                   <div style={{ flex: 1, height: "1px", background: T.border }} />
-                  <span style={{ fontSize: 11, color: T.text3 }}>{groups[day].length}</span>
+                  <span style={{ fontSize: 11, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>{groups[day].length}</span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -422,14 +435,11 @@ export default function Notifications({ dark = true, onThemeToggle }) {
                         onMouseLeave={() => setHoveredId(null)}
                       >
                         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                          {/* Avatar or System icon */}
                           <div style={{ position: "relative", flexShrink: 0 }}>
                             {notif.user
                               ? <Avatar u={notif.user} size={38} dark={dark} />
                               : <SystemAvatar type={notif.type} dark={dark} />
                             }
-                            {/* FIX 5: TypeIcon badge — increased offset slightly and ensured it doesn't clip
-                                by wrapping avatar in overflow:visible container */}
                             {notif.user && (
                               <div style={{ position: "absolute", bottom: -4, right: -4 }}>
                                 <TypeIcon type={notif.type} dark={dark} />
@@ -438,7 +448,6 @@ export default function Notifications({ dark = true, onThemeToggle }) {
                           </div>
 
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            {/* Title row */}
                             <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 5, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.4, flex: 1 }}>{notif.title}</span>
                               <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -447,36 +456,34 @@ export default function Notifications({ dark = true, onThemeToggle }) {
                               </div>
                             </div>
 
-                            {/* Body */}
                             <p style={{ fontSize: 12, color: T.text2, lineHeight: 1.62, marginBottom: 12 }}>{notif.body}</p>
 
-                            {/* Actions row */}
                             <div className="notif-actions" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                               <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                <button className="cta-link">{notif.cta} →</button>
+                                <button className="cta-link">{notif.cta}<ArrowRight style={iconSize(10, 11, 2)} /></button>
                                 <span style={{ color: T.border3, fontSize: 10 }}>·</span>
                                 {!notif.read && (
                                   <button className="action-btn read" onClick={() => markRead(notif.id)}>
-                                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 8l4 4 8-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    <Check style={iconSize(11, 12, 2)} />
                                     Mark read
                                   </button>
                                 )}
                                 {notif.read && (
                                   <span style={{ fontSize: 11, color: T.text3, display: "flex", alignItems: "center", gap: 4 }}>
-                                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M2 8l4 4 8-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    <Check style={iconSize(10, 11, 2)} />
                                     Read
                                   </span>
                                 )}
                               </div>
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ fontSize: 11, color: T.text3 }}>{notif.time}</span>
+                                <span style={{ fontSize: 11, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>{notif.time}</span>
                                 <button
                                   className="action-btn delete"
                                   onClick={() => deleteOne(notif.id)}
                                   title="Remove notification"
-                                  style={{ opacity: isHovered ? 1 : 0, transition: "opacity 0.2s, color 0.15s, background 0.15s" }}
+                                  style={{ opacity: isHovered ? 1 : 0, transition: "opacity 0.15s ease, color 0.15s ease, background 0.15s ease" }}
                                 >
-                                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  <Trash2 style={iconSize(12, 13, 2)} />
                                 </button>
                               </div>
                             </div>
@@ -491,7 +498,6 @@ export default function Notifications({ dark = true, onThemeToggle }) {
           </div>
         )}
 
-        {/* Footer hint */}
         {notifications.length > 0 && (
           <div style={{ textAlign: "center", marginTop: 32, padding: "20px 0", borderTop: `1px solid ${T.border}` }}>
             <p style={{ fontSize: 12, color: T.text3 }}>

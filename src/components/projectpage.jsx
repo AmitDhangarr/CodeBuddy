@@ -1,18 +1,29 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import {
+  Folder, Star, GitFork, Handshake, Calendar, Github, AlertTriangle, X, Check,
+  ArrowLeft, ExternalLink, GitCommitHorizontal,
+} from "lucide-react";
 
-/* ─── tiny helpers (inline so component is self-contained) ──────────────── */
+const iconSize = (min, max, vw = 3.2) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
+
+const RADIUS = { control: 8, pill: 6, card: 10, modal: 14 };
+const ACCENT = "#7c3aed";
+
 const hsla = (h, s, l, a = 1) => `hsla(${h},${s}%,${l}%,${a})`;
 
 const STATUS_COLOR = {
-  Active:   { bg: "rgba(34,197,94,0.1)",  border: "rgba(34,197,94,0.28)",  text: "#4ade80" },
+  Active: { bg: "rgba(34,197,94,0.1)", border: "rgba(34,197,94,0.28)", text: "#4ade80" },
   Building: { bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.28)", text: "#fbbf24" },
-  Archived: { bg: "rgba(148,163,184,0.1)",border: "rgba(148,163,184,0.28)",text: "#94a3b8" },
-  Live:     { bg: "rgba(34,197,94,0.1)",  border: "rgba(34,197,94,0.28)",  text: "#4ade80" },
+  Archived: { bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.28)", text: "#94a3b8" },
+  Live: { bg: "rgba(34,197,94,0.1)", border: "rgba(34,197,94,0.28)", text: "#4ade80" },
 };
 const stateStyle = (s) => STATUS_COLOR[s] ?? STATUS_COLOR.Building;
 
-/* ─── parse owner/repo from a GitHub URL ─────────────────────────────────── */
 function parseGitHubRepo(url) {
   if (!url) return null;
   try {
@@ -20,20 +31,19 @@ function parseGitHubRepo(url) {
     if (!u.hostname.includes("github.com")) return null;
     const parts = u.pathname.replace(/^\//, "").replace(/\.git$/, "").split("/");
     if (parts.length >= 2) return { owner: parts[0], repo: parts[1] };
-  } catch {/* invalid URL */}
+  } catch { }
   return null;
 }
 
-/* ─── format relative time ───────────────────────────────────────────────── */
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1)   return "just now";
-  if (m < 60)  return `${m}m ago`;
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24)  return `${h}h ago`;
+  if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
-  if (d < 30)  return `${d}d ago`;
+  if (d < 30) return `${d}d ago`;
   const mo = Math.floor(d / 30);
   return `${mo}mo ago`;
 }
@@ -42,13 +52,10 @@ function initialsOf(name = "") {
   return name.trim().split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 }
 
-/* ─── mock endorsements (replace with API data when available) ──────────── */
-/* shape now includes `skill`, since endorsements target a specific skill,
-   not the project in general */
 const MOCK_ENDORSEMENTS = [
-  { name: "Rohan Mehra", handle: "rohanm",   hue: 340, skill: "React",      note: "Excellent architecture choices, very clean separation of concerns." },
-  { name: "Sara Chen",   handle: "sarachen", hue: 271, skill: "LangChain",  note: "One of the most thoughtful AI integrations I've seen in a side project." },
-  { name: "Dev Kapoor",  handle: "devk",     hue: 38,  skill: "TypeScript", note: "The typing here is clever — really inspired my own work." },
+  { name: "Rohan Mehra", handle: "rohanm", hue: 340, skill: "React", note: "Excellent architecture choices, very clean separation of concerns." },
+  { name: "Sara Chen", handle: "sarachen", hue: 271, skill: "LangChain", note: "One of the most thoughtful AI integrations I've seen in a side project." },
+  { name: "Dev Kapoor", handle: "devk", hue: 38, skill: "TypeScript", note: "The typing here is clever — really inspired my own work." },
 ];
 
 export default function ProjectPage({
@@ -57,37 +64,32 @@ export default function ProjectPage({
   T,
   dark,
   currentUser,
-  /* NEW: pass these in from ProfileTab/parent so we know whether the
-     viewer is allowed to endorse the project owner */
-  isConnected = true,   // true = viewer & owner are accepted connections
-  isOwnProject = false, // true if the viewer owns this project (can't self-endorse)
+  isConnected = true,
+  isOwnProject = false,
 }) {
-  const [project,       setProject]       = useState(null);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState(null);
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState("overview");
 
-  /* ── endorsement state ── */
-  const [endorsements,    setEndorsements]    = useState(MOCK_ENDORSEMENTS);
-  const [showEndorseModal,setShowEndorseModal]= useState(false);
-  const [endorseSkill,    setEndorseSkill]    = useState("");
-  const [endorseNote,     setEndorseNote]     = useState("");
-  const [endorsing,       setEndorsing]       = useState(false);
-  const [endorseError,    setEndorseError]    = useState(null);
+  const [endorsements, setEndorsements] = useState(MOCK_ENDORSEMENTS);
+  const [showEndorseModal, setShowEndorseModal] = useState(false);
+  const [endorseSkill, setEndorseSkill] = useState("");
+  const [endorseNote, setEndorseNote] = useState("");
+  const [endorsing, setEndorsing] = useState(false);
+  const [endorseError, setEndorseError] = useState(null);
 
-  /* ── commit state ── */
-  const [commits,       setCommits]       = useState([]);
-  const [commitsLoading,setCommitsLoading]= useState(false);
-  const [commitsError,  setCommitsError]  = useState(null);
+  const [commits, setCommits] = useState([]);
+  const [commitsLoading, setCommitsLoading] = useState(false);
+  const [commitsError, setCommitsError] = useState(null);
 
-  /* ── load project ── */
   useEffect(() => {
     async function load() {
       try {
         setLoading(true);
         setError(null);
 
-        const res  = await fetch(`/api/projects/${projectId}`);
+        const res = await fetch(`/api/projects/${projectId}`);
         const json = await res.json();
 
         if (!json.success || !json.project) {
@@ -96,9 +98,8 @@ export default function ProjectPage({
         setProject(json.project);
 
       } catch (err) {
-        /* fallback: reconstruct from profile API (projects array) */
         try {
-          const res  = await fetch("/api/profile");
+          const res = await fetch("/api/profile");
           const json = await res.json();
           const found = (json.profile?.projects ?? []).find(p => p.id === projectId);
           if (found) setProject(found);
@@ -113,21 +114,19 @@ export default function ProjectPage({
     load();
   }, [projectId]);
 
-  /* ── load real endorsements for this project (optional API) ── */
   useEffect(() => {
     async function loadEndorsements() {
       try {
-        const res  = await fetch(`/api/projects/${projectId}/endorsements`);
+        const res = await fetch(`/api/projects/${projectId}/endorsements`);
         const json = await res.json();
         if (json.success && Array.isArray(json.endorsements)) {
           setEndorsements(json.endorsements);
         }
-      } catch {/* keep mock/fallback data */}
+      } catch { }
     }
     loadEndorsements();
   }, [projectId]);
 
-  /* ── fetch real GitHub commits when tab becomes active ── */
   const fetchCommits = useCallback(async (githubUrl, branch) => {
     const parsed = parseGitHubRepo(githubUrl);
     if (!parsed) {
@@ -166,7 +165,6 @@ export default function ProjectPage({
     }
   }, [activeSection, project, commits.length, commitsLoading, commitsError, fetchCommits]);
 
-  /* ── derived ── */
   const p = project;
   const sc = p ? stateStyle(p.state ?? p.status) : stateStyle("Building");
   const skillOptions = p ? (p.skills_used ?? p.tags ?? []) : [];
@@ -177,7 +175,6 @@ export default function ProjectPage({
 
   const canEndorse = isConnected && !isOwnProject && skillOptions.length > 0;
 
-  /* ── open / close modal ── */
   function openEndorseModal() {
     setEndorseError(null);
     setEndorseNote("");
@@ -196,18 +193,17 @@ export default function ProjectPage({
     return () => window.removeEventListener("keydown", onKey);
   }, [showEndorseModal, endorsing]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── submit endorsement ── */
   async function handleSubmitEndorsement() {
     if (!endorseSkill || endorsing) return;
     setEndorsing(true);
     setEndorseError(null);
 
     const optimistic = {
-      name:   currentUser?.name   ?? "You",
+      name: currentUser?.name ?? "You",
       handle: currentUser?.handle ?? "you",
-      hue:    220,
-      skill:  endorseSkill,
-      note:   endorseNote.trim(),
+      hue: 220,
+      skill: endorseSkill,
+      note: endorseNote.trim(),
     };
 
     try {
@@ -217,8 +213,8 @@ export default function ProjectPage({
         body: JSON.stringify({
           to_user_id: p?.user_id ?? p?.owner_id,
           project_id: projectId,
-          skill:      endorseSkill,
-          note:       endorseNote.trim(),
+          skill: endorseSkill,
+          note: endorseNote.trim(),
         }),
       });
       const json = await res.json();
@@ -234,16 +230,14 @@ export default function ProjectPage({
     }
   }
 
-  /* week streak — deterministic from stars + id chars */
   const weekStreak = p
     ? Array.from({ length: 7 }, (_, i) => {
-        const seed = (p.stars ?? 0) + (p.id?.charCodeAt(i % p.id.length) ?? i);
-        return { day: ["M","T","W","T","F","S","S"][i], count: seed % 5 };
-      })
+      const seed = (p.stars ?? 0) + (p.id?.charCodeAt(i % p.id.length) ?? i);
+      return { day: ["M", "T", "W", "T", "F", "S", "S"][i], count: seed % 5 };
+    })
     : [];
 
-  /* ── skeleton ── */
-  const Sk = ({ w = "100%", h = 14, r = 8, mb = 0 }) => (
+  const Sk = ({ w = "100%", h = 14, r = RADIUS.control, mb = 0 }) => (
     <div style={{
       width: w, height: h, borderRadius: r,
       background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
@@ -252,18 +246,18 @@ export default function ProjectPage({
     }} />
   );
 
-  /* shared input style for the modal */
   const inp = {
-    width: "100%", borderRadius: 10, padding: "9px 12px",
+    width: "100%", borderRadius: RADIUS.control, padding: "9px 12px",
     background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
     border: `1px solid ${T.border}`,
-    color: T.text, fontSize: 13, fontFamily: "inherit",
+    color: T.text, fontSize: 13, fontFamily: "'Inter',sans-serif",
     outline: "none", boxSizing: "border-box",
   };
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div style={{ maxWidth: 720, margin: "0 auto", fontFamily: "'Inter',sans-serif" }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         @keyframes sk-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
         @keyframes pp-fade  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes modal-in { from{opacity:0;transform:translateY(8px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
@@ -271,11 +265,11 @@ export default function ProjectPage({
         .pp-card { animation: pp-fade 0.35s ease both; }
         .pp-btn:hover { opacity: .78; }
         .pp-tab-active { border-bottom: 2px solid #a78bfa !important; color: ${T.text} !important; }
-        .endorse-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(124,58,237,.3); }
+        .endorse-cta { transition: filter .15s ease; }
+        .endorse-cta:hover { filter: brightness(1.1); }
         .skill-chip:hover { border-color: rgba(124,58,237,.4) !important; }
       `}</style>
 
-      {/* ── back button ── */}
       <button
         onClick={onBack}
         style={{
@@ -283,34 +277,31 @@ export default function ProjectPage({
           marginBottom: 16, padding: "7px 14px",
           background: "transparent",
           border: `1px solid ${T.border}`,
-          borderRadius: 10, cursor: "pointer",
-          fontFamily: "inherit", fontSize: 12,
+          borderRadius: RADIUS.control, cursor: "pointer",
+          fontFamily: "'Inter',sans-serif", fontSize: 12,
           fontWeight: 600, color: T.text2,
           transition: "opacity .2s",
         }}
         className="pp-btn"
       >
-        ← Back to Profile
+        <ArrowLeft style={iconSize(12, 13, 2)} /> Back to Profile
       </button>
 
-      {/* ── error ── */}
       {error && (
         <div style={{
-          padding: "10px 16px", borderRadius: 12, marginBottom: 14,
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "10px 16px", borderRadius: RADIUS.control, marginBottom: 14,
           background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
           fontSize: 12, color: "#f87171",
         }}>
-          ⚠ {error}
+          <AlertTriangle style={iconSize(13, 14, 2)} /> {error}
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          HERO CARD
-      ══════════════════════════════════════════════════ */}
       <div
         className="pp-card"
         style={{
-          borderRadius: 18, marginBottom: 14, overflow: "hidden",
+          borderRadius: RADIUS.card, marginBottom: 14, overflow: "hidden",
           border: `1px solid ${T.border}`,
           background: dark
             ? "linear-gradient(145deg,rgba(124,58,237,0.09) 0%,rgba(17,17,17,0) 60%)"
@@ -318,7 +309,7 @@ export default function ProjectPage({
           backdropFilter: "blur(12px)",
         }}
       >
-        <div style={{ height: 4, background: "linear-gradient(90deg,#7c3aed,#a855f7,#ec4899)" }} />
+        <div style={{ height: 3, background: ACCENT }} />
 
         <div style={{ padding: "24px 24px 20px" }}>
           {loading ? (
@@ -326,26 +317,25 @@ export default function ProjectPage({
               <Sk w="55%" h={28} mb={10} />
               <Sk w="38%" h={13} mb={16} />
               <Sk w="100%" h={13} mb={5} />
-              <Sk w="80%"  h={13} />
+              <Sk w="80%" h={13} />
             </>
           ) : p ? (
             <>
-              {/* title row */}
               <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
                 <div style={{
-                  width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                  width: 52, height: 52, borderRadius: RADIUS.card, flexShrink: 0,
                   background: dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.1)",
                   border: "1px solid rgba(124,58,237,0.3)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 24,
                 }}>
-                  {p.emoji ?? <i className="fa-solid fa-folder-open"></i>}
+                  {p.emoji ?? <Folder style={{ ...iconSize(22, 24, 3), color: "#a78bfa" }} />}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontFamily: "'Instrument Serif',serif",
-                    fontSize: 26, color: T.text, letterSpacing: "-0.5px",
+                    fontFamily: "'Inter',sans-serif", fontWeight: 700,
+                    fontSize: 24, color: T.text, letterSpacing: "-0.6px",
                     lineHeight: 1.1,
                   }}>
                     {p.name ?? p.title ?? "Untitled"}
@@ -353,78 +343,77 @@ export default function ProjectPage({
                   <div style={{ fontSize: 12, color: T.text3, marginTop: 4 }}>
                     {p.github_url
                       ? <button
-                          onClick={() => window.open(p.github_url, "_blank", "noopener,noreferrer")}
-                          style={{
-                            background: "none", border: "none", padding: 0,
-                            color: "#a78bfa", textDecoration: "none",
-                            cursor: "pointer", fontFamily: "inherit", fontSize: 12,
-                          }}
-                        >
-                          {p.github_url.replace("https://", "")}
-                        </button>
+                        onClick={() => window.open(p.github_url, "_blank", "noopener,noreferrer")}
+                        style={{
+                          background: "none", border: "none", padding: 0,
+                          color: "#a78bfa", textDecoration: "none",
+                          cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12,
+                        }}
+                      >
+                        {p.github_url.replace("https://", "")}
+                      </button>
                       : "No repo linked"
                     }
                     {p.branch && <span style={{ opacity: .5 }}> · {p.branch}</span>}
                   </div>
                 </div>
 
-                {/* state badge */}
                 <span style={{
-                  padding: "4px 12px", borderRadius: 99,
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "4px 12px", borderRadius: RADIUS.pill,
                   fontSize: 11, fontWeight: 700,
                   background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text,
                   flexShrink: 0,
                 }}>
-                  ● {p.state ?? p.status ?? "Building"}
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: sc.text, flexShrink: 0 }} />
+                  {p.state ?? p.status ?? "Building"}
                 </span>
               </div>
 
-              {/* description */}
               {p.description && (
                 <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.65, marginTop: 16, maxWidth: 560 }}>
                   {p.description}
                 </p>
               )}
 
-              {/* stats row + endorse CTA */}
               <div style={{
                 display: "flex", gap: 24, marginTop: 18,
                 paddingTop: 16, borderTop: `1px solid ${T.border}`,
                 flexWrap: "wrap", alignItems: "center",
               }}>
                 {[
-                  { icon: <i className="fa-solid fa-star"></i>, v: p.stars ?? 0, l: "Stars" },
-                  { icon: <i className="fa-solid fa-code-branch"></i>, v: p.forks ?? 0, l: "Forks" },
-                  { icon: <i className="fa-solid fa-handshake"></i>, v: endorsements.length, l: "Endorsements" },
-                  { icon: <i className="fa-solid fa-calendar"></i>, v: p.created_at
+                  { Icon: Star, v: p.stars ?? 0, l: "Stars" },
+                  { Icon: GitFork, v: p.forks ?? 0, l: "Forks" },
+                  { Icon: Handshake, v: endorsements.length, l: "Endorsements" },
+                  {
+                    Icon: Calendar, v: p.created_at
                       ? new Date(p.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
                       : "—",
-                    l: "Created" },
+                    l: "Created"
+                  },
                 ].map((s, i) => (
                   <div key={i} style={{ textAlign: "center", minWidth: 56 }}>
-                    <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 20, color: T.text }}>
-                      {s.icon} {s.v}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 17, color: T.text }}>
+                      <s.Icon style={{ ...iconSize(13, 14, 2), color: "#a78bfa" }} /> {s.v}
                     </div>
                     <div style={{ fontSize: 10, color: T.text3, marginTop: 1 }}>{s.l}</div>
                   </div>
                 ))}
 
-                {/* ENDORSE button — only if connected & not own project */}
                 {canEndorse && (
                   <button
                     onClick={openEndorseModal}
                     className="endorse-cta"
                     style={{
                       marginLeft: "auto", padding: "10px 20px",
-                      background: "linear-gradient(135deg,#7c3aed,#a855f7)",
-                      border: "none", borderRadius: 11, color: "#fff",
-                      cursor: "pointer", fontFamily: "inherit",
+                      background: ACCENT,
+                      border: `1px solid ${ACCENT}`, borderRadius: RADIUS.control, color: "#fff",
+                      cursor: "pointer", fontFamily: "'Inter',sans-serif",
                       fontSize: 12, fontWeight: 700,
                       display: "inline-flex", alignItems: "center", gap: 7,
-                      transition: "all .2s",
                     }}
                   >
-                    <i className="fa-solid fa-handshake"></i> Endorse
+                    <Handshake style={iconSize(13, 14, 2)} /> Endorse
                   </button>
                 )}
                 {!isConnected && !isOwnProject && skillOptions.length > 0 && (
@@ -438,21 +427,18 @@ export default function ProjectPage({
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          WEEK STREAK
-      ══════════════════════════════════════════════════ */}
       {!loading && p && (
         <div className="pp-card" style={{
-          borderRadius: 14, marginBottom: 14, padding: "14px 18px",
+          borderRadius: RADIUS.card, marginBottom: 14, padding: "14px 18px",
           border: `1px solid ${T.border}`,
           background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
           animationDelay: "0.05s",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: T.text2, letterSpacing: "0.04em" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.text2, letterSpacing: "0.06em", fontFamily: "'JetBrains Mono',monospace" }}>
               THIS WEEK'S ACTIVITY
             </span>
-            <span style={{ fontSize: 11, color: T.text3 }}>
+            <span style={{ fontSize: 11, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>
               {weekStreak.filter(d => d.count > 0).length} / 7 active days
             </span>
           </div>
@@ -460,37 +446,34 @@ export default function ProjectPage({
             {weekStreak.map((d, i) => (
               <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <div style={{
-                  width: "100%", height: 32, borderRadius: 6, overflow: "hidden",
+                  width: "100%", height: 32, borderRadius: RADIUS.control, overflow: "hidden",
                   background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
                   display: "flex", alignItems: "flex-end",
                 }}>
                   <div style={{
                     width: "100%",
                     height: `${[0, 25, 50, 75, 100][d.count]}%`,
-                    background: d.count === 0 ? "transparent" : "linear-gradient(180deg,#a855f7,#7c3aed)",
-                    borderRadius: 4,
+                    background: d.count === 0 ? "transparent" : ACCENT,
+                    borderRadius: RADIUS.control,
                     transition: "height 0.4s cubic-bezier(.34,1.56,.64,1)",
                     transitionDelay: `${i * 60}ms`,
                   }} />
                 </div>
-                <span style={{ fontSize: 9, color: T.text3, fontWeight: 700 }}>{d.day}</span>
+                <span style={{ fontSize: 9, color: T.text3, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>{d.day}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          SKILLS USED — now shows endorsement counts per skill
-      ══════════════════════════════════════════════════ */}
       {!loading && p && skillOptions.length > 0 && (
         <div className="pp-card" style={{
-          borderRadius: 14, marginBottom: 14, padding: "14px 18px",
+          borderRadius: RADIUS.card, marginBottom: 14, padding: "14px 18px",
           border: `1px solid ${T.border}`,
           background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
           animationDelay: "0.08s",
         }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: T.text2, letterSpacing: "0.04em" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: T.text2, letterSpacing: "0.06em", fontFamily: "'JetBrains Mono',monospace" }}>
             SKILLS USED
           </span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
@@ -498,7 +481,7 @@ export default function ProjectPage({
               const count = endorsements.filter(e => e.skill === s).length;
               return (
                 <span key={s} style={{
-                  padding: "4px 12px", borderRadius: 99,
+                  padding: "4px 12px", borderRadius: RADIUS.pill,
                   fontSize: 11, fontWeight: 600,
                   background: "rgba(124,58,237,0.1)",
                   border: "1px solid rgba(124,58,237,0.25)",
@@ -508,9 +491,9 @@ export default function ProjectPage({
                   {s}
                   {count > 0 && (
                     <span style={{
-                      fontSize: 10, fontWeight: 700,
+                      fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace",
                       background: "rgba(124,58,237,0.25)",
-                      borderRadius: 99, padding: "0 6px",
+                      borderRadius: RADIUS.pill, padding: "0 6px",
                     }}>{count}</span>
                   )}
                 </span>
@@ -520,11 +503,8 @@ export default function ProjectPage({
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          TAB NAV — Overview | Endorsements | Commits
-      ══════════════════════════════════════════════════ */}
       <div className="pp-card" style={{
-        borderRadius: 16, overflow: "hidden",
+        borderRadius: RADIUS.card, overflow: "hidden",
         border: `1px solid ${T.border}`,
         background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
         animationDelay: "0.1s",
@@ -539,7 +519,7 @@ export default function ProjectPage({
                 flex: 1, padding: "13px 0",
                 background: "transparent", border: "none",
                 borderBottom: "2px solid transparent",
-                cursor: "pointer", fontFamily: "inherit",
+                cursor: "pointer", fontFamily: "'Inter',sans-serif",
                 fontSize: 12, fontWeight: 700,
                 color: activeSection === tab ? T.text : T.text3,
                 textTransform: "uppercase", letterSpacing: "0.06em",
@@ -548,10 +528,10 @@ export default function ProjectPage({
             >
               {tab}
               {tab === "endorsements" && (
-                <span style={{ marginLeft: 4, fontSize: 10, opacity: .6 }}>({endorsements.length})</span>
+                <span style={{ marginLeft: 4, fontSize: 10, opacity: .6, fontFamily: "'JetBrains Mono',monospace" }}>({endorsements.length})</span>
               )}
               {tab === "commits" && commits.length > 0 && (
-                <span style={{ marginLeft: 4, fontSize: 10, opacity: .6 }}>({commits.length})</span>
+                <span style={{ marginLeft: 4, fontSize: 10, opacity: .6, fontFamily: "'JetBrains Mono',monospace" }}>({commits.length})</span>
               )}
             </button>
           ))}
@@ -559,25 +539,26 @@ export default function ProjectPage({
 
         <div style={{ padding: "20px 20px 24px" }}>
 
-          {/* ── OVERVIEW ──────────────────────────────── */}
           {activeSection === "overview" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {loading ? (
                 <>
                   <Sk w="100%" h={13} mb={5} />
-                  <Sk w="90%"  h={13} mb={5} />
-                  <Sk w="70%"  h={13} />
+                  <Sk w="90%" h={13} mb={5} />
+                  <Sk w="70%" h={13} />
                 </>
               ) : p ? (
                 <>
                   {[
                     { label: "Project ID", value: p.id },
-                    { label: "Branch",     value: p.branch ?? "main" },
-                    { label: "State",      value: p.state ?? p.status ?? "Building" },
+                    { label: "Branch", value: p.branch ?? "main" },
+                    { label: "State", value: p.state ?? p.status ?? "Building" },
                     { label: "Sort order", value: String(p.sort_order ?? p.sort ?? "—") },
-                    { label: "Created",    value: p.created_at
+                    {
+                      label: "Created", value: p.created_at
                         ? new Date(p.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
-                        : "—" },
+                        : "—"
+                    },
                   ].map((row, i) => (
                     <div key={i} style={{
                       display: "flex", gap: 8, alignItems: "flex-start",
@@ -586,13 +567,14 @@ export default function ProjectPage({
                       <span style={{
                         fontSize: 11, fontWeight: 700, color: T.text3,
                         minWidth: 100, paddingTop: 1,
-                        textTransform: "uppercase", letterSpacing: "0.04em",
+                        textTransform: "uppercase", letterSpacing: "0.06em",
+                        fontFamily: "'JetBrains Mono',monospace",
                       }}>
                         {row.label}
                       </span>
                       <span style={{
                         fontSize: 12, color: T.text,
-                        fontFamily: row.label === "Project ID" || row.label === "Branch" ? "'Courier New',monospace" : "inherit",
+                        fontFamily: row.label === "Project ID" || row.label === "Branch" ? "'JetBrains Mono',monospace" : "'Inter',sans-serif",
                         wordBreak: "break-all",
                       }}>
                         {row.value}
@@ -605,16 +587,16 @@ export default function ProjectPage({
                       onClick={() => window.open(p.github_url, "_blank", "noopener,noreferrer")}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 8,
-                        padding: "10px 18px", borderRadius: 11,
+                        padding: "10px 18px", borderRadius: RADIUS.control,
                         background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
                         border: `1px solid ${T.border}`,
                         color: T.text, fontSize: 13, fontWeight: 600,
                         transition: "opacity .2s", alignSelf: "flex-start",
-                        cursor: "pointer", fontFamily: "inherit",
+                        cursor: "pointer", fontFamily: "'Inter',sans-serif",
                       }}
                       className="pp-btn"
                     >
-                      <span style={{ fontSize: 16 }}><i className="fa-brands fa-github"></i></span> View on GitHub
+                      <Github style={iconSize(15, 16, 2)} /> View on GitHub
                     </button>
                   )}
                 </>
@@ -622,15 +604,13 @@ export default function ProjectPage({
             </div>
           )}
 
-          {/* ── ENDORSEMENTS ──────────────────────────── */}
           {activeSection === "endorsements" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-              {/* contextual CTA card (mirrors the old compose box, but opens the modal) */}
               {canEndorse && (
                 <div style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  gap: 12, padding: "14px 16px", borderRadius: 13,
+                  gap: 12, padding: "14px 16px", borderRadius: RADIUS.card,
                   background: dark ? "rgba(124,58,237,0.06)" : "rgba(124,58,237,0.04)",
                   border: "1px solid rgba(124,58,237,0.2)",
                 }}>
@@ -640,9 +620,9 @@ export default function ProjectPage({
                   <button
                     onClick={openEndorseModal}
                     style={{
-                      padding: "7px 16px", background: "linear-gradient(135deg,#7c3aed,#a855f7)",
-                      border: "none", borderRadius: 9, color: "#fff",
-                      cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, flexShrink: 0,
+                      padding: "7px 16px", background: ACCENT,
+                      border: `1px solid ${ACCENT}`, borderRadius: RADIUS.control, color: "#fff",
+                      cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, flexShrink: 0,
                     }}
                   >
                     Endorse
@@ -650,7 +630,6 @@ export default function ProjectPage({
                 </div>
               )}
 
-              {/* endorsement list */}
               {endorsements.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "28px 0", color: T.text3, fontSize: 13 }}>
                   No endorsements yet. Be the first!
@@ -659,16 +638,16 @@ export default function ProjectPage({
                 endorsements.map((e, i) => (
                   <div key={i} style={{
                     display: "flex", gap: 14, alignItems: "flex-start",
-                    padding: "14px 16px", borderRadius: 13,
+                    padding: "14px 16px", borderRadius: RADIUS.card,
                     background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
                     border: `1px solid ${T.border}`,
                   }}>
                     <div style={{
-                      width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                      width: 38, height: 38, borderRadius: RADIUS.card, flexShrink: 0,
                       background: hsla(e.hue, 65, 60, dark ? 0.15 : 0.1),
                       border: `1px solid ${hsla(e.hue, 65, 60, 0.3)}`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 13, fontWeight: 700,
+                      fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace",
                       color: `hsl(${e.hue},55%,${dark ? 75 : 45}%)`,
                     }}>
                       {initialsOf(e.name)}
@@ -676,10 +655,10 @@ export default function ProjectPage({
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{e.name}</span>
-                        <span style={{ fontSize: 11, color: T.text3 }}>@{e.handle}</span>
+                        <span style={{ fontSize: 11, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>@{e.handle}</span>
                         {e.skill && (
                           <span style={{
-                            fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 99,
+                            fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: RADIUS.pill,
                             background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.3)",
                             color: "#c4b5fd", marginLeft: "auto",
                           }}>
@@ -699,13 +678,12 @@ export default function ProjectPage({
             </div>
           )}
 
-          {/* ── COMMITS ──────────────────────────────── */}
           {activeSection === "commits" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
               {commitsLoading && (
                 Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
-                    <Sk w="36px" h={36} r={9} />
+                    <Sk w="36px" h={36} r={RADIUS.control} />
                     <div style={{ flex: 1 }}>
                       <Sk w="70%" h={13} mb={6} />
                       <Sk w="40%" h={10} />
@@ -716,18 +694,18 @@ export default function ProjectPage({
 
               {commitsError && !commitsLoading && (
                 <div style={{
-                  padding: "14px 16px", borderRadius: 11, marginBottom: 12,
+                  padding: "14px 16px", borderRadius: RADIUS.card, marginBottom: 12,
                   background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)",
                   fontSize: 12, color: "#f87171", display: "flex", alignItems: "center", gap: 10,
                 }}>
-                  <span style={{ fontSize: 16 }}>⚠</span>
+                  <AlertTriangle style={iconSize(15, 16, 2)} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, marginBottom: 3 }}>{commitsError}</div>
                     {p?.github_url && p.github_url !== "#" && (
-                      <div style={{ opacity: .7 }}>
+                      <div style={{ opacity: .7, display: "flex", alignItems: "center", gap: 4 }}>
                         You can still{" "}
-                        <a href={`${p.github_url}/commits`} target="_blank" rel="noreferrer" style={{ color: "#a78bfa" }}>
-                          view commits on GitHub ↗
+                        <a href={`${p.github_url}/commits`} target="_blank" rel="noreferrer" style={{ color: "#a78bfa", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                          view commits on GitHub <ExternalLink style={iconSize(10, 11, 2)} />
                         </a>
                       </div>
                     )}
@@ -735,9 +713,9 @@ export default function ProjectPage({
                   <button
                     onClick={() => { setCommitsError(null); fetchCommits(p?.github_url, p?.branch); }}
                     style={{
-                      padding: "5px 10px", borderRadius: 7,
+                      padding: "5px 10px", borderRadius: RADIUS.control,
                       background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)",
-                      color: "#f87171", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700,
+                      color: "#f87171", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 11, fontWeight: 700,
                     }}
                   >
                     Retry
@@ -754,13 +732,13 @@ export default function ProjectPage({
               {!commitsLoading && !commitsError && commits.length > 0 && (
                 <>
                   {commits.map((c, i) => {
-                    const sha    = c.sha?.slice(0, 7) ?? "unknown";
-                    const msg    = c.commit?.message?.split("\n")[0] ?? "No message";
+                    const sha = c.sha?.slice(0, 7) ?? "unknown";
+                    const msg = c.commit?.message?.split("\n")[0] ?? "No message";
                     const author = c.commit?.author?.name ?? c.author?.login ?? "unknown";
-                    const date   = c.commit?.author?.date;
-                    const avatarUrl  = c.author?.avatar_url;
+                    const date = c.commit?.author?.date;
+                    const avatarUrl = c.author?.avatar_url;
                     const profileUrl = c.author?.html_url;
-                    const commitUrl  = c.html_url;
+                    const commitUrl = c.html_url;
 
                     return (
                       <div key={c.sha ?? i} style={{
@@ -770,16 +748,17 @@ export default function ProjectPage({
                         {avatarUrl ? (
                           <a href={profileUrl} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
                             <img src={avatarUrl} alt={author} width={36} height={36}
-                              style={{ borderRadius: 9, border: "1px solid rgba(124,58,237,0.2)", display: "block" }} />
+                              style={{ borderRadius: RADIUS.control, border: "1px solid rgba(124,58,237,0.2)", display: "block" }} />
                           </a>
                         ) : (
                           <div style={{
-                            width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                            width: 36, height: 36, borderRadius: RADIUS.control, flexShrink: 0,
                             background: dark ? "rgba(124,58,237,0.1)" : "rgba(124,58,237,0.08)",
                             border: "1px solid rgba(124,58,237,0.2)",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 14, color: "#a78bfa",
-                          }}>⌥</div>
+                          }}>
+                            <GitCommitHorizontal style={{ ...iconSize(15, 16, 2), color: "#a78bfa" }} />
+                          </div>
                         )}
 
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -797,7 +776,7 @@ export default function ProjectPage({
                               <code style={{
                                 background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
                                 padding: "1px 5px", borderRadius: 4,
-                                color: "#a78bfa", fontFamily: "'Courier New',monospace",
+                                color: "#a78bfa", fontFamily: "'JetBrains Mono',monospace",
                               }}>
                                 {sha}
                               </code>
@@ -812,8 +791,8 @@ export default function ProjectPage({
 
                   <div style={{ textAlign: "center", marginTop: 14 }}>
                     <a href={`${p.github_url}/commits/${p.branch ?? "main"}`} target="_blank" rel="noreferrer"
-                      style={{ fontSize: 11, color: "#a78bfa", textDecoration: "none", fontWeight: 600 }}>
-                      View full commit history on GitHub ↗
+                      style={{ fontSize: 11, color: "#a78bfa", textDecoration: "none", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      View full commit history on GitHub <ExternalLink style={iconSize(11, 12, 2)} />
                     </a>
                   </div>
                 </>
@@ -829,9 +808,6 @@ export default function ProjectPage({
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          ENDORSE MODAL
-      ══════════════════════════════════════════════════ */}
       {showEndorseModal && (
         <div
           onClick={closeEndorseModal}
@@ -845,27 +821,24 @@ export default function ProjectPage({
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              width: "100%", maxWidth: 420, borderRadius: 16,
+              width: "100%", maxWidth: 420, borderRadius: RADIUS.modal,
               background: dark ? "#161616" : "#fff",
               border: `1px solid ${T.border}`,
-              boxShadow: "0 20px 60px rgba(0,0,0,.35)",
               animation: "modal-in .18s cubic-bezier(.34,1.56,.64,1) both",
               overflow: "hidden",
             }}
           >
-            {/* header */}
             <div style={{
               padding: "16px 20px", borderBottom: `1px solid ${T.border}`,
               display: "flex", alignItems: "center", justifyContent: "space-between",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
-                  width: 30, height: 30, borderRadius: 9,
+                  width: 30, height: 30, borderRadius: RADIUS.control,
                   background: "rgba(124,58,237,.15)", border: "1px solid rgba(124,58,237,.3)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 13, color: "#a78bfa",
                 }}>
-                  <i className="fa-solid fa-handshake"></i>
+                  <Handshake style={{ ...iconSize(14, 15, 2), color: "#a78bfa" }} />
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>
                   Endorse {p?.owner_name ?? "this builder"}
@@ -873,19 +846,19 @@ export default function ProjectPage({
               </div>
               <button onClick={closeEndorseModal} style={{
                 background: "transparent", border: "none", color: T.text3,
-                cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0,
-              }}>×</button>
+                cursor: "pointer", display: "flex", padding: 0,
+              }}>
+                <X style={iconSize(17, 18, 2.4)} />
+              </button>
             </div>
 
-            {/* body */}
             <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
               <p style={{ fontSize: 12, color: T.text3, margin: 0, lineHeight: 1.5 }}>
                 Based on <strong style={{ color: T.text2 }}>{p?.name}</strong>, vouch for a skill they used.
               </p>
 
-              {/* skill select */}
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: ".04em", display: "block", marginBottom: 6, textTransform: "uppercase" }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: ".06em", display: "block", marginBottom: 6, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>
                   Skill
                 </label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -901,25 +874,25 @@ export default function ProjectPage({
                         className="skill-chip"
                         title={taken ? "Already endorsed" : undefined}
                         style={{
-                          padding: "6px 14px", borderRadius: 99, fontSize: 12, fontWeight: 600,
-                          cursor: taken ? "not-allowed" : "pointer", fontFamily: "inherit",
-                          transition: "all .15s",
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                          padding: "6px 14px", borderRadius: RADIUS.pill, fontSize: 12, fontWeight: 600,
+                          cursor: taken ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif",
+                          transition: "border-color .15s ease, background .15s ease",
                           background: active ? "rgba(124,58,237,.18)" : "transparent",
                           border: `1px solid ${active ? "rgba(124,58,237,.5)" : T.border}`,
                           color: taken ? T.text3 : (active ? "#c4b5fd" : T.text2),
                           opacity: taken ? .45 : 1,
                         }}
                       >
-                        {taken ? "✓ " : ""}{s}
+                        {taken && <Check style={iconSize(11, 12, 2)} />}{s}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* note */}
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: ".04em", display: "block", marginBottom: 6, textTransform: "uppercase" }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: ".06em", display: "block", marginBottom: 6, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>
                   Note <span style={{ fontWeight: 400, textTransform: "none" }}>(optional)</span>
                 </label>
                 <textarea
@@ -929,22 +902,22 @@ export default function ProjectPage({
                   rows={3}
                   style={{ ...inp, resize: "vertical", lineHeight: 1.55 }}
                 />
-                <div style={{ textAlign: "right", fontSize: 10, color: T.text3, marginTop: 4 }}>
+                <div style={{ textAlign: "right", fontSize: 10, color: T.text3, marginTop: 4, fontFamily: "'JetBrains Mono',monospace" }}>
                   {endorseNote.length}/140
                 </div>
               </div>
 
               {endorseError && (
                 <div style={{
-                  fontSize: 12, color: "#f87171", padding: "8px 12px", borderRadius: 9,
+                  display: "flex", alignItems: "center", gap: 6,
+                  fontSize: 12, color: "#f87171", padding: "8px 12px", borderRadius: RADIUS.control,
                   background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)",
                 }}>
-                  ⚠ {endorseError}
+                  <AlertTriangle style={iconSize(13, 14, 2)} /> {endorseError}
                 </div>
               )}
             </div>
 
-            {/* footer */}
             <div style={{
               padding: "14px 20px", borderTop: `1px solid ${T.border}`,
               display: "flex", gap: 8, justifyContent: "flex-end",
@@ -954,7 +927,7 @@ export default function ProjectPage({
                 disabled={endorsing}
                 style={{
                   padding: "9px 18px", background: "transparent", border: `1px solid ${T.border}`,
-                  color: T.text2, borderRadius: 10, cursor: "pointer", fontFamily: "inherit",
+                  color: T.text2, borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "'Inter',sans-serif",
                   fontSize: 12, fontWeight: 600,
                 }}
               >
@@ -965,12 +938,14 @@ export default function ProjectPage({
                 disabled={!endorseSkill || endorsing}
                 style={{
                   padding: "9px 22px",
-                  background: endorseSkill ? "linear-gradient(135deg,#7c3aed,#a855f7)" : (dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.06)"),
-                  border: "none", borderRadius: 10,
+                  background: endorseSkill ? ACCENT : (dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.06)"),
+                  border: `1px solid ${endorseSkill ? ACCENT : "transparent"}`, borderRadius: RADIUS.control,
                   color: endorseSkill ? "#fff" : T.text3,
                   cursor: endorseSkill ? "pointer" : "default",
-                  fontFamily: "inherit", fontSize: 12, fontWeight: 700, transition: "all .2s",
+                  fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, transition: "filter .15s ease",
                 }}
+                onMouseEnter={(e) => { if (endorseSkill) e.currentTarget.style.filter = "brightness(1.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = ""; }}
               >
                 {endorsing ? "Submitting…" : "Submit Endorsement"}
               </button>

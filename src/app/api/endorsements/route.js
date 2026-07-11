@@ -1,6 +1,6 @@
 const { NextResponse } = require("next/server");
 import { cookies } from "next/headers";
-import { supabase } from "../../../../lib/supabaseClient";
+import { supabase } from "./../../../lib/supabaseClient";
 import { getPayload } from "../../../../service/handletoken";
 
 export async function GET(request) {

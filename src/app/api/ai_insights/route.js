@@ -1,7 +1,6 @@
 "use server";
 import { NextResponse } from "next/server";
-import { getAIInsight } from "../../../../AI/analyticalAI";
-
+import {getAIInsight} from "../../../../service/AI/analyticalAI.js"
 export async function POST(request) {
   try {
     const body = await request.json();

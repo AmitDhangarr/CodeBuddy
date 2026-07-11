@@ -3,6 +3,18 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { hsl, hsla, calculateMatchScore, Avatar, Lbl } from "../shared";
 import ProjectPage from "../../../components/projectpage";
+import {
+  Handshake, Sparkles, Send, Zap, Eye, Star, FolderGit2, Wrench,
+  Search, MapPin, AlertTriangle, Rocket, Github, X, Plus, ArrowRight,
+} from "lucide-react";
+
+// Responsive icon sizing: scales fluidly between breakpoints instead of a
+// fixed pixel size, matching the convention used across the rest of the app.
+const iconSize = (min, max, vw = 3) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
 const ENDORSEMENTS = [
@@ -11,12 +23,12 @@ const ENDORSEMENTS = [
 ];
 
 const ACTIVITY_FEED = [
-  { a: "Connected with",    t: "Rohan Mehra",      time: "2h ago", hue: 340, icon: "🤝" },
-  { a: "New 89% match —",   t: "Sara Chen",         time: "5h ago", hue: 271, icon: "✦"  },
-  { a: "Sent request to",   t: "Priya Nair",        time: "1d ago", hue: 158, icon: "📨" },
-  { a: "Updated skills:",   t: "Added TypeScript",  time: "2d ago", hue: 259, icon: "⚡" },
-  { a: "Viewed by",         t: "Dev Kapoor",        time: "3d ago", hue: 38,  icon: "👁" },
-  { a: "Project starred by",t: "Aanya Sharma",      time: "5d ago", hue: 259, icon: "★"  },
+  { a: "Connected with",    t: "Rohan Mehra",      time: "2h ago", hue: 340, Icon: Handshake },
+  { a: "New 89% match —",   t: "Sara Chen",         time: "5h ago", hue: 271, Icon: Sparkles  },
+  { a: "Sent request to",   t: "Priya Nair",        time: "1d ago", hue: 158, Icon: Send       },
+  { a: "Updated skills:",   t: "Added TypeScript",  time: "2d ago", hue: 259, Icon: Zap        },
+  { a: "Viewed by",         t: "Dev Kapoor",        time: "3d ago", hue: 38,  Icon: Eye        },
+  { a: "Project starred by",t: "Aanya Sharma",      time: "5d ago", hue: 259, Icon: Star       },
 ];
 
 const PROJECT_STATES = ["Active", "Building", "Archived"];
@@ -81,7 +93,7 @@ const BLANK_FORM = {
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
-   PROFILE TAB
+  PROFILE TAB
 ══════════════════════════════════════════════════════════════════════════ */
 export default function ProfileTab({
   T, dark,
@@ -245,7 +257,7 @@ export default function ProfileTab({
   const totalConnections = connections.length;
   const totalStars       = projects.reduce((s, p) => s + (p.stars ?? 0), 0);
   const profileViews     = apiProfile?.profile_views ?? 248;
-  const initials         = nameInitials(currentUser.name);
+  const initials         = nameInitials(currentUser?.name);
 
   const Sk = ({ w = "100%", h = 14, r = 8, mb = 0 }) => (
     <div style={{
@@ -256,10 +268,10 @@ export default function ProfileTab({
   );
 
   const inp = (hasErr) => ({
-    width: "100%", borderRadius: 10, padding: "9px 12px",
+    width: "100%", borderRadius: 8, padding: "9px 12px",
     background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-    border: `1px solid ${hasErr ? "rgba(248,113,113,0.5)" : T.border}`,
-    color: T.text, fontSize: 13, fontFamily: "inherit",
+    border: `1px solid ${hasErr ? "rgba(248,113,113,0.5)" : T?.border}`,
+    color: T?.text, fontSize: 13, fontFamily: "'Inter',sans-serif",
     outline: "none", boxSizing: "border-box",
   });
 
@@ -271,39 +283,40 @@ export default function ProfileTab({
 
   const filteredSuggestions = SKILL_SUGGESTIONS.filter(
     s => !form.skills_used.includes(s) &&
-         (skillSearch === "" || s.toLowerCase().includes(skillSearch.toLowerCase()))
+        (skillSearch === "" || s.toLowerCase().includes(skillSearch.toLowerCase()))
   );
 
   /* ══════════════════════════════════════════════════════════════════════
-     RENDER
+    RENDER
   ══════════════════════════════════════════════════════════════════════ */
   return (
-    <div className="fade-up" style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div className="fade-up" style={{ maxWidth: 720, margin: "0 auto", fontFamily: "'Inter',sans-serif" }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-        @keyframes slide-down { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
-        .proj-card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(124,58,237,.12); cursor:pointer; }
-        .proj-card { transition:transform .2s, box-shadow .2s; }
-        .add-form { animation: slide-down .25s ease both; }
+        @keyframes slide-down { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+        .proj-card:hover { border-color:rgba(139,92,246,.3); cursor:pointer; }
+        .proj-card { transition:border-color .15s ease; }
+        .add-form { animation: slide-down .2s ease both; }
         .pp-inp:focus { border-color: rgba(124,58,237,.5) !important; }
         .skill-tag-rm:hover { opacity:.7; }
-        .state-chip-btn:hover { border-color:rgba(124,58,237,.4) !important; color:${T.text} !important; }
-        .skill-quick-btn:hover { border-color:rgba(124,58,237,.35) !important; background:rgba(124,58,237,.07) !important; color:${T.text} !important; }
-        .conn-card:hover { border-color:${T.border2} !important; }
-        .conn-card { transition: border-color .2s; }
+        .state-chip-btn:hover { border-color:rgba(124,58,237,.4) !important; color:${T?.text} !important; }
+        .skill-quick-btn:hover { border-color:rgba(124,58,237,.35) !important; background:rgba(124,58,237,.07) !important; color:${T?.text} !important; }
+        .conn-card:hover { border-color:${T?.border2} !important; }
+        .conn-card { transition: border-color .15s ease; }
       `}</style>
 
       {/* error banner */}
       {error && (
         <div style={{
-          padding:"10px 16px", borderRadius:12, marginBottom:14,
+          padding:"10px 16px", borderRadius:10, marginBottom:14,
           background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)",
           fontSize:12, color:"#f87171", display:"flex", gap:8, alignItems:"center",
         }}>
-          ⚠ {error}
+          <AlertTriangle style={iconSize(13, 15)} /> {error}
           <button onClick={() => window.location.reload()} style={{
             marginLeft:"auto", fontSize:11, color:"#f87171",
-            background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit",
+            background:"transparent", border:"none", cursor:"pointer", fontFamily:"'Inter',sans-serif",
           }}>Retry</button>
         </div>
       )}
@@ -313,21 +326,20 @@ export default function ProfileTab({
         <div style={{
           position:"absolute", inset:0, pointerEvents:"none",
           background: dark
-            ? "linear-gradient(135deg,rgba(124,58,237,.07),transparent 60%)"
+            ? "linear-gradient(135deg,rgba(139,92,246,.06),transparent 60%)"
             : "linear-gradient(135deg,rgba(124,58,237,.04),transparent 60%)",
         }} />
 
         <div style={{ display:"flex", gap:20, alignItems:"flex-start", position:"relative" }}>
           <div style={{
-            width:70, height:70, borderRadius:20, flexShrink:0,
-            background:"linear-gradient(135deg,rgba(124,58,237,.25),rgba(168,85,247,.12))",
-            border:"2px solid rgba(124,58,237,.35)",
+            width:70, height:70, borderRadius:14, flexShrink:0,
+            background:"rgba(124,58,237,.14)",
+            border:"1px solid rgba(124,58,237,.3)",
             display:"flex", alignItems:"center", justifyContent:"center",
             fontSize: initials.length > 1 ? 22 : 28,
             fontWeight:700, color:"#c4b5fd",
-            fontFamily:"'Instrument Serif',serif",
-            boxShadow:"0 8px 24px rgba(124,58,237,.18)",
-            letterSpacing:"-1px",
+            fontFamily:"'JetBrains Mono',monospace",
+            letterSpacing:"-0.5px",
           }}>
             {loading ? "…" : initials}
           </div>
@@ -342,26 +354,27 @@ export default function ProfileTab({
               </>
             ) : (
               <>
-                <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:24, color:T.text, letterSpacing:"-0.5px" }}>
+                <div style={{ fontFamily:"'Inter',sans-serif", fontWeight:700, fontSize:22, color:T?.text, letterSpacing:"-0.4px" }}>
                   {currentUser.name}
                 </div>
-                <div style={{ fontSize:12, color:T.text3, marginTop:3 }}>
+                <div style={{ fontSize:12, color:T?.text3, marginTop:3 }}>
                   @{currentUser.handle} · {currentUser.role}
                 </div>
-                <p style={{ fontSize:13, color:T.text2, marginTop:8, lineHeight:1.6, maxWidth:460 }}>
+                <p style={{ fontSize:13, color:T?.text2, marginTop:8, lineHeight:1.6, maxWidth:460 }}>
                   {currentUser.bio}
                 </p>
                 <div style={{ display:"flex", gap:7, marginTop:12, flexWrap:"wrap" }}>
-                  <span style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.25)", color:"#4ade80" }}>
-                    ● Open to Collaborate
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.25)", color:"#4ade80" }}>
+                    <span style={{ width:5, height:5, borderRadius:"50%", background:"#4ade80", flexShrink:0 }} />
+                    Open to Collaborate
                   </span>
                   {currentUser.skillsNeed?.[0] && (
-                    <span style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.25)", color:"#f59e0b" }}>
+                    <span style={{ padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:600, background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.25)", color:"#f59e0b" }}>
                       Seeking {currentUser.skillsNeed[0]}
                     </span>
                   )}
-                  <span style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, background:T.skillNeedBg, border:`1px solid ${T.skillNeedBorder}`, color:T.skillNeedText }}>
-                    📍 {currentUser.location}
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:600, background:T?.skillNeedBg, border:`1px solid ${T?.skillNeedBorder}`, color:T?.skillNeedText }}>
+                    <MapPin style={iconSize(11, 13)} /> {currentUser.location}
                   </span>
                 </div>
               </>
@@ -369,23 +382,24 @@ export default function ProfileTab({
           </div>
 
           <button onClick={() => setDashPage("settings")} style={{
-            background:"transparent", border:`1px solid ${T.border}`,
-            color:T.text2, padding:"7px 16px", borderRadius:10,
-            cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, flexShrink:0,
-          }}>Edit →</button>
+            display:"inline-flex", alignItems:"center", gap:6,
+            background:"transparent", border:`1px solid ${T?.border}`,
+            color:T?.text2, padding:"7px 16px", borderRadius:8,
+            cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600, flexShrink:0,
+          }}>Edit <ArrowRight style={iconSize(11, 13)} /></button>
         </div>
 
         {/* stats row */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", marginTop:22, paddingTop:18, borderTop:`1px solid ${T.border}` }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", marginTop:22, paddingTop:18, borderTop:`1px solid ${T?.border}` }}>
           {[
             { v: loading ? "—" : String(totalConnections), l:"Connections" },
             { v: loading ? "—" : String(projects.length),  l:"Projects" },
             { v: loading ? "—" : String(totalStars),        l:"Total Stars" },
             { v: loading ? "—" : String(profileViews),      l:"Profile Views" },
           ].map((s,i) => (
-            <div key={i} style={{ textAlign:"center", borderRight: i < 3 ? `1px solid ${T.border}` : "none" }}>
-              <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:22, color:T.text }}>{s.v}</div>
-              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{s.l}</div>
+            <div key={i} style={{ textAlign:"center", borderRight: i < 3 ? `1px solid ${T?.border}` : "none" }}>
+              <div style={{ fontFamily:"'JetBrains Mono',monospace", fontWeight:700, fontSize:20, color:T?.text }}>{s.v}</div>
+              <div style={{ fontSize:11, color:T?.text3, marginTop:2 }}>{s.l}</div>
             </div>
           ))}
         </div>
@@ -397,9 +411,9 @@ export default function ProfileTab({
           <Lbl T={T}>Skills I Have</Lbl>
           <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:10 }}>
             {loading
-              ? [80,60,70].map((w,i) => <Sk key={i} w={`${w}px`} h={24} r={99} />)
+              ? [80,60,70].map((w,i) => <Sk key={i} w={`${w}px`} h={24} r={6} />)
               : (currentUser.skillsHave ?? []).map(s => (
-                <span key={s} style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, background:T.skillHaveBg, border:`1px solid ${T.skillHaveBorder}`, color:T.skillHaveText }}>{s}</span>
+                <span key={s} style={{ padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:600, fontFamily:"'JetBrains Mono',monospace", background:T?.skillHaveBg, border:`1px solid ${T?.skillHaveBorder}`, color:T?.skillHaveText }}>{s}</span>
               ))
             }
           </div>
@@ -408,9 +422,9 @@ export default function ProfileTab({
           <Lbl T={T}>Skills I Need</Lbl>
           <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:10 }}>
             {loading
-              ? [65,75].map((w,i) => <Sk key={i} w={`${w}px`} h={24} r={99} />)
+              ? [65,75].map((w,i) => <Sk key={i} w={`${w}px`} h={24} r={6} />)
               : (currentUser.skillsNeed ?? []).map(s => (
-                <span key={s} style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, background:T.skillNeedBg, border:`1px solid ${T.skillNeedBorder}`, color:T.skillNeedText }}>{s}</span>
+                <span key={s} style={{ padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:600, fontFamily:"'JetBrains Mono',monospace", background:T?.skillNeedBg, border:`1px solid ${T?.skillNeedBorder}`, color:T?.skillNeedText }}>{s}</span>
               ))
             }
           </div>
@@ -424,17 +438,17 @@ export default function ProfileTab({
           {Object.entries(availability).map(([day,on]) => (
             <button key={day} onClick={() => setAvailability(p => ({ ...p, [day]:!p[day] }))} style={{
               padding:"6px 12px", borderRadius:8,
-              border:`1px solid ${on ? "rgba(34,197,94,.35)" : T.border}`,
+              border:`1px solid ${on ? "rgba(34,197,94,.35)" : T?.border}`,
               background: on ? (dark ? "rgba(34,197,94,.1)" : "rgba(34,197,94,.08)") : "transparent",
-              color: on ? "#4ade80" : T.text3,
-              cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, transition:"all .2s", textTransform:"capitalize",
+              color: on ? "#4ade80" : T?.text3,
+              cursor:"pointer", fontFamily:"'JetBrains Mono',monospace", fontSize:11, fontWeight:700, transition:"border-color .15s,color .15s,background .15s", textTransform:"capitalize",
             }}>
               {day.slice(0,3).toUpperCase()}
             </button>
           ))}
         </div>
-        <div style={{ fontSize:11, color:T.text3, marginTop:10 }}>
-          Available {Object.values(availability).filter(Boolean).length} days/week
+        <div style={{ fontSize:11, color:T?.text3, marginTop:10 }}>
+          Available <span style={{ fontFamily:"'JetBrains Mono',monospace" }}>{Object.values(availability).filter(Boolean).length}</span> days/week
         </div>
       </div>
 
@@ -444,39 +458,39 @@ export default function ProfileTab({
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginTop:12 }}>
           {[
             {
-              icon:"🤝", label:"Connections", value: loading ? "—" : String(totalConnections),
+              Icon:Handshake, label:"Connections", value: loading ? "—" : String(totalConnections),
               sub:"accepted", color:"#4ade80", bg:"rgba(34,197,94,.08)", border:"rgba(34,197,94,.2)",
             },
             {
-              icon:"🗂", label:"Projects", value: loading ? "—" : String(projects.length),
+              Icon:FolderGit2, label:"Projects", value: loading ? "—" : String(projects.length),
               sub:"total", color:"#a78bfa", bg:"rgba(124,58,237,.08)", border:"rgba(124,58,237,.2)",
             },
             {
-              icon:"★", label:"Stars", value: loading ? "—" : String(totalStars),
+              Icon:Star, label:"Stars", value: loading ? "—" : String(totalStars),
               sub:"across projects", color:"#fbbf24", bg:"rgba(245,158,11,.08)", border:"rgba(245,158,11,.2)",
             },
             {
-              icon:"👁", label:"Profile Views", value: loading ? "—" : String(profileViews),
+              Icon:Eye, label:"Profile Views", value: loading ? "—" : String(profileViews),
               sub:"all time", color:"#60a5fa", bg:"rgba(59,130,246,.08)", border:"rgba(59,130,246,.2)",
             },
             {
-              icon:"🛠", label:"Skills", value: loading ? "—" : String((currentUser.skillsHave ?? []).length),
+              Icon:Wrench, label:"Skills", value: loading ? "—" : String((currentUser.skillsHave ?? []).length),
               sub:"have listed", color:"#34d399", bg:"rgba(52,211,153,.08)", border:"rgba(52,211,153,.2)",
             },
             {
-              icon:"🔍", label:"Seeking", value: loading ? "—" : String((currentUser.skillsNeed ?? []).length),
+              Icon:Search, label:"Seeking", value: loading ? "—" : String((currentUser.skillsNeed ?? []).length),
               sub:"skills needed", color:"#f472b6", bg:"rgba(244,114,182,.08)", border:"rgba(244,114,182,.2)",
             },
           ].map((item, i) => (
             <div key={i} style={{
-              padding:"12px 14px", borderRadius:12,
+              padding:"12px 14px", borderRadius:10,
               background:item.bg, border:`1px solid ${item.border}`,
               display:"flex", flexDirection:"column", gap:4,
             }}>
-              <div style={{ fontSize:18 }}>{item.icon}</div>
-              <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:22, color:item.color, lineHeight:1 }}>{item.value}</div>
-              <div style={{ fontSize:11, fontWeight:700, color:T.text }}>{item.label}</div>
-              <div style={{ fontSize:10, color:T.text3 }}>{item.sub}</div>
+              <div style={{ color:item.color }}><item.Icon style={iconSize(16, 18)} /></div>
+              <div style={{ fontFamily:"'JetBrains Mono',monospace", fontWeight:700, fontSize:20, color:item.color, lineHeight:1 }}>{item.value}</div>
+              <div style={{ fontSize:11, fontWeight:700, color:T?.text }}>{item.label}</div>
+              <div style={{ fontSize:10, color:T?.text3 }}>{item.sub}</div>
             </div>
           ))}
         </div>
@@ -484,18 +498,18 @@ export default function ProfileTab({
 
       {/* ══ TABS ══ */}
       <div className="card-flat" style={{ padding:20 }}>
-        <div style={{ display:"flex", gap:4, marginBottom:18, borderBottom:`1px solid ${T.border}`, paddingBottom:12, overflowX:"auto" }}>
+        <div style={{ display:"flex", gap:4, marginBottom:18, borderBottom:`1px solid ${T?.border}`, paddingBottom:12, overflowX:"auto" }}>
           {["projects","endorsements","activity","connections"].map(t => (
             <button key={t} onClick={() => setProfileTab(t)} style={{
               background: profileTab===t ? (dark ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.06)") : "none",
-              border:"none", color: profileTab===t ? T.text : T.text3,
-              cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:500,
-              padding:"7px 15px", borderRadius:8, transition:"all .2s",
+              border:"none", color: profileTab===t ? T?.text : T?.text3,
+              cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:500,
+              padding:"7px 15px", borderRadius:8, transition:"background .15s,color .15s",
               whiteSpace:"nowrap", textTransform:"capitalize",
             }}>
               {t}
-              {t==="projects"    && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6 }}>({projects.length})</span>}
-              {t==="connections" && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6 }}>({totalConnections})</span>}
+              {t==="projects"    && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({projects.length})</span>}
+              {t==="connections" && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({totalConnections})</span>}
             </button>
           ))}
         </div>
@@ -505,18 +519,18 @@ export default function ProfileTab({
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {loading
               ? Array.from({ length:2 }).map((_,i) => (
-                  <div key={i} style={{ padding:16, borderRadius:13, border:`1px solid ${T.border}`, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
+                  <div key={i} style={{ padding:16, borderRadius:10, border:`1px solid ${T?.border}`, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
                     <Sk w="60%" h={16} mb={10} />
                     <Sk w="100%" h={12} mb={5} />
                     <Sk w="80%"  h={12} mb={12} />
                     <div style={{ display:"flex", gap:5 }}>
-                      {[50,55,45].map((w,j) => <Sk key={j} w={`${w}px`} h={20} r={99} />)}
+                      {[50,55,45].map((w,j) => <Sk key={j} w={`${w}px`} h={20} r={6} />)}
                     </div>
                   </div>
                 ))
               : projects.length === 0 && !showAddForm
                 ? (
-                  <div style={{ textAlign:"center", padding:"32px 0", color:T.text3, fontSize:13 }}>
+                  <div style={{ textAlign:"center", padding:"32px 0", color:T?.text3, fontSize:13 }}>
                     No projects yet — add your first one below.
                   </div>
                 )
@@ -524,14 +538,14 @@ export default function ProfileTab({
                   <div key={p.id ?? i} className="proj-card" onClick={() => setOpenProjectId(p.id)} style={{
                     padding:16,
                     background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
-                    borderRadius:13, border:`1px solid ${T.border}`,
+                    borderRadius:10, border:`1px solid ${T?.border}`,
                   }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8, gap:8, flexWrap:"wrap" }}>
                       <div style={{ display:"flex", gap:10, alignItems:"center" }}>
                         <span style={{ fontSize:22 }}>{p.img}</span>
                         <div>
-                          <div style={{ fontSize:14, fontWeight:700, color:T.text }}>{p.n}</div>
-                          <div style={{ fontSize:11, color:T.text3, marginTop:1 }}>
+                          <div style={{ fontSize:14, fontWeight:700, color:T?.text }}>{p.n}</div>
+                          <div style={{ fontSize:11, color:T?.text3, marginTop:1 }}>
                             {p.url && p.url !== "#"
                               ? p.url.replace("https://","")
                               : `github.com/${currentUser.handle}/${p.n.toLowerCase().replace(/ /g,"-")}`
@@ -541,20 +555,24 @@ export default function ProfileTab({
                       </div>
                       <div style={{ display:"flex", gap:6, alignItems:"center", flexShrink:0 }}>
                         <span style={{
-                          fontSize:10, fontWeight:700, padding:"2px 9px", borderRadius:99,
+                          fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6,
                           background: ["Live","Active"].includes(p.status) ? "rgba(34,197,94,.1)" : "rgba(245,158,11,.1)",
                           border:`1px solid ${["Live","Active"].includes(p.status) ? "rgba(34,197,94,.25)" : "rgba(245,158,11,.25)"}`,
                           color: ["Live","Active"].includes(p.status) ? "#4ade80" : "#fbbf24",
                         }}>{p.status}</span>
-                        <span style={{ fontSize:11, color:T.text3 }}>★ {p.stars}</span>
-                        <span style={{ fontSize:11, color:"#a78bfa", fontWeight:600 }}>View →</span>
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:T?.text3 }}>
+                          <Star style={iconSize(10, 12)} /> <span style={{ fontFamily:"'JetBrains Mono',monospace" }}>{p.stars}</span>
+                        </span>
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:"#a78bfa", fontWeight:600 }}>
+                          View <ArrowRight style={iconSize(10, 12)} />
+                        </span>
                       </div>
                     </div>
-                    {p.d && <p style={{ fontSize:12, color:T.text2, lineHeight:1.55, marginBottom:10 }}>{p.d}</p>}
+                    {p.d && <p style={{ fontSize:12, color:T?.text2, lineHeight:1.55, marginBottom:10 }}>{p.d}</p>}
                     {p.tags.length > 0 && (
                       <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
                         {p.tags.map(tag => (
-                          <span key={tag} style={{ padding:"2px 9px", borderRadius:99, fontSize:10, fontWeight:600, background: dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.05)", color:T.text2 }}>{tag}</span>
+                          <span key={tag} style={{ padding:"2px 9px", borderRadius:6, fontSize:10, fontWeight:600, fontFamily:"'JetBrains Mono',monospace", background: dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.05)", color:T?.text2 }}>{tag}</span>
                         ))}
                       </div>
                     )}
@@ -565,29 +583,30 @@ export default function ProfileTab({
             {/* ══ ADD PROJECT FORM ══ */}
             {showAddForm && (
               <div className="add-form" style={{
-                borderRadius:16, border:`1px solid rgba(124,58,237,.3)`,
+                borderRadius:14, border:`1px solid rgba(124,58,237,.3)`,
                 background: dark ? "rgba(124,58,237,.06)" : "rgba(124,58,237,.03)",
                 overflow:"hidden",
               }}>
                 <div style={{
-                  padding:"14px 20px", borderBottom:`1px solid ${T.border}`,
+                  padding:"14px 20px", borderBottom:`1px solid ${T?.border}`,
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                 }}>
                   <span style={{
-                    fontSize:10, fontWeight:700, padding:"2px 9px", borderRadius:99,
+                    display:"inline-flex", alignItems:"center", gap:5,
+                    fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6,
                     background:"rgba(124,58,237,.15)", border:"1px solid rgba(124,58,237,.3)",
                     color:"#c4a8ff", textTransform:"uppercase", letterSpacing:".8px",
-                  }}>★ New Project</span>
+                  }}><Star style={iconSize(10, 11)} /> New Project</span>
                   <button onClick={() => { setShowAddForm(false); setForm(BLANK_FORM); setSaveError(null); setFormErrors({}); }} style={{
-                    background:"transparent", border:"none", color:T.text3,
-                    cursor:"pointer", fontSize:20, lineHeight:1, padding:0,
-                  }}>×</button>
+                    background:"transparent", border:"none", color:T?.text3,
+                    cursor:"pointer", display:"flex", padding:0,
+                  }}><X style={iconSize(16, 18)} /></button>
                 </div>
 
                 <form onSubmit={handleAddProject} style={{ padding:"20px 20px 18px", display:"flex", flexDirection:"column", gap:16 }}>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 160px", gap:10 }}>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>
+                      <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>
                         Project Name <span style={{ color:"#f87171" }}>*</span>
                       </label>
                       <input
@@ -600,10 +619,10 @@ export default function ProfileTab({
                         }}
                         style={inp(!!formErrors.name)}
                       />
-                      {formErrors.name && <div style={{ fontSize:11, color:"#f87171", marginTop:4 }}>⚠ {formErrors.name}</div>}
+                      {formErrors.name && <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, color:"#f87171", marginTop:4 }}><AlertTriangle style={iconSize(10, 12)} /> {formErrors.name}</div>}
                     </div>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>⭐ Stars</label>
+                      <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", marginBottom:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}><Star style={iconSize(10, 11)} /> Stars</label>
                       <input
                         className="pp-inp" type="number" min="0" placeholder="0"
                         value={form.stars}
@@ -614,7 +633,7 @@ export default function ProfileTab({
                   </div>
 
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>Short Description</label>
+                    <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>Short Description</label>
                     <textarea
                       className="pp-inp"
                       placeholder="What does this project do? Who is it for?"
@@ -627,12 +646,10 @@ export default function ProfileTab({
 
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 110px", gap:10 }}>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>GitHub URL</label>
+                      <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>GitHub URL</label>
                       <div style={{ position:"relative" }}>
-                        <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", fontSize:12 }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill={T.text3}>
-                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 013-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.21.7.83.58C20.57 21.79 24 17.3 24 12c0-6.63-5.37-12-12-12z"/>
-                          </svg>
+                        <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:T?.text3, display:"flex" }}>
+                          <Github style={iconSize(13, 15)} />
                         </span>
                         <input
                           className="pp-inp"
@@ -645,10 +662,10 @@ export default function ProfileTab({
                           style={{ ...inp(!!formErrors.github_url), paddingLeft:30 }}
                         />
                       </div>
-                      {formErrors.github_url && <div style={{ fontSize:11, color:"#f87171", marginTop:4 }}>⚠ {formErrors.github_url}</div>}
+                      {formErrors.github_url && <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, color:"#f87171", marginTop:4 }}><AlertTriangle style={iconSize(10, 12)} /> {formErrors.github_url}</div>}
                     </div>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>Branch</label>
+                      <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>Branch</label>
                       <input
                         className="pp-inp" placeholder="main"
                         value={form.branch}
@@ -659,7 +676,7 @@ export default function ProfileTab({
                   </div>
 
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:8, textTransform:"uppercase" }}>State</label>
+                    <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:8, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>State</label>
                     <div style={{ display:"flex", gap:6 }}>
                       {PROJECT_STATES.map(s => {
                         const sc = stateColors[s] ?? stateColors.Building;
@@ -668,11 +685,11 @@ export default function ProfileTab({
                           <button key={s} type="button" className="state-chip-btn"
                             onClick={() => setForm(f => ({ ...f, state: s }))}
                             style={{
-                              padding:"6px 16px", borderRadius:99, fontSize:11, fontWeight:700,
-                              cursor:"pointer", fontFamily:"inherit", transition:"all .15s",
+                              padding:"6px 16px", borderRadius:6, fontSize:11, fontWeight:700,
+                              cursor:"pointer", fontFamily:"'Inter',sans-serif", transition:"border-color .15s,color .15s,background .15s",
                               background: on ? sc.bg : "transparent",
-                              border: on ? `1px solid ${sc.border}` : `1px solid ${T.border}`,
-                              color: on ? sc.color : T.text3,
+                              border: on ? `1px solid ${sc.border}` : `1px solid ${T?.border}`,
+                              color: on ? sc.color : T?.text3,
                             }}>{s}</button>
                         );
                       })}
@@ -680,22 +697,22 @@ export default function ProfileTab({
                   </div>
 
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:T.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase" }}>
-                      Skills Used <span style={{ color:T.text3, fontWeight:400, textTransform:"none" }}>({form.skills_used.length}/8)</span>
+                    <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>
+                      Skills Used <span style={{ color:T?.text3, fontWeight:400, textTransform:"none" }}>(<span style={{ fontFamily:"'JetBrains Mono',monospace" }}>{form.skills_used.length}/8</span>)</span>
                     </label>
                     {form.skills_used.length > 0 && (
                       <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:8 }}>
                         {form.skills_used.map(s => (
                           <span key={s} style={{
                             display:"inline-flex", alignItems:"center", gap:5,
-                            padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600,
+                            padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:600, fontFamily:"'JetBrains Mono',monospace",
                             background:"rgba(124,58,237,.12)", border:"1px solid rgba(124,58,237,.3)", color:"#c4b5fd",
                           }}>
                             {s}
                             <button type="button" className="skill-tag-rm" onClick={() => removeSkill(s)} style={{
                               background:"transparent", border:"none", color:"#c4b5fd",
-                              cursor:"pointer", fontSize:13, lineHeight:1, padding:0,
-                            }}>×</button>
+                              cursor:"pointer", display:"flex", padding:0,
+                            }}><X style={iconSize(10, 12)} /></button>
                           </span>
                         ))}
                       </div>
@@ -718,36 +735,38 @@ export default function ProfileTab({
                             onClick={() => !maxed && addSkill(s)}
                             disabled={maxed}
                             style={{
-                              padding:"4px 11px", borderRadius:99, fontSize:10, fontWeight:600,
-                              background:"transparent", border:`1px solid ${T.border}`,
-                              color:T.text3, cursor: maxed ? "not-allowed" : "pointer",
-                              fontFamily:"inherit", transition:"all .15s", opacity: maxed ? .4 : 1,
-                            }}>+ {s}</button>
+                              display:"inline-flex", alignItems:"center", gap:3,
+                              padding:"4px 11px", borderRadius:6, fontSize:10, fontWeight:600,
+                              background:"transparent", border:`1px solid ${T?.border}`,
+                              color:T?.text3, cursor: maxed ? "not-allowed" : "pointer",
+                              fontFamily:"'Inter',sans-serif", transition:"border-color .15s,background .15s,color .15s", opacity: maxed ? .4 : 1,
+                            }}><Plus style={iconSize(9, 11)} /> {s}</button>
                         );
                       })}
                     </div>
                   </div>
 
                   {saveError && (
-                    <div style={{ fontSize:12, color:"#f87171", padding:"8px 12px", borderRadius:9, background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)" }}>
-                      ⚠ {saveError}
+                    <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"#f87171", padding:"8px 12px", borderRadius:8, background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)" }}>
+                      <AlertTriangle style={iconSize(13, 15)} /> {saveError}
                     </div>
                   )}
 
                   <div style={{ display:"flex", gap:8, justifyContent:"flex-end", paddingTop:4 }}>
                     <button type="button" onClick={() => { setShowAddForm(false); setForm(BLANK_FORM); setSaveError(null); setFormErrors({}); }} style={{
-                      padding:"9px 18px", background:"transparent", border:`1px solid ${T.border}`,
-                      color:T.text2, borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600,
+                      padding:"9px 18px", background:"transparent", border:`1px solid ${T?.border}`,
+                      color:T?.text2, borderRadius:8, cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
                     }}>Cancel</button>
                     <button type="submit" disabled={saving || !form.name.trim()} style={{
+                      display:"inline-flex", alignItems:"center", gap:6,
                       padding:"9px 22px",
-                      background: form.name.trim() ? "linear-gradient(135deg,#7c3aed,#a855f7)" : (dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.06)"),
-                      border:"none", borderRadius:10,
-                      color: form.name.trim() ? "#fff" : T.text3,
+                      background: form.name.trim() ? "#7c3aed" : (dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.06)"),
+                      border: form.name.trim() ? "1px solid #7c3aed" : "1px solid transparent", borderRadius:8,
+                      color: form.name.trim() ? "#fff" : T?.text3,
                       cursor: form.name.trim() ? "pointer" : "default",
-                      fontFamily:"inherit", fontSize:12, fontWeight:700, transition:"all .2s",
+                      fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:700, transition:"filter .15s",
                     }}>
-                      {saving ? "Saving…" : "🚀 Add Project"}
+                      {saving ? "Saving…" : <>Add Project <Rocket style={iconSize(12, 14)} /></>}
                     </button>
                   </div>
                 </form>
@@ -756,12 +775,13 @@ export default function ProfileTab({
 
             {!showAddForm && (
               <button onClick={() => setShowAddForm(true)} style={{
+                display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6,
                 padding:"12px", background:"transparent",
-                border:`2px dashed ${T.border}`, color:T.text3,
-                borderRadius:13, cursor:"pointer", fontFamily:"inherit",
-                fontSize:13, fontWeight:600, transition:"all .2s",
+                border:`2px dashed ${T?.border}`, color:T?.text3,
+                borderRadius:10, cursor:"pointer", fontFamily:"'Inter',sans-serif",
+                fontSize:13, fontWeight:600, transition:"border-color .15s,color .15s",
               }}>
-                + Add project
+                <Plus style={iconSize(13, 15)} /> Add project
               </button>
             )}
           </div>
@@ -772,8 +792,8 @@ export default function ProfileTab({
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {loading
               ? Array.from({ length:2 }).map((_,i) => (
-                  <div key={i} style={{ padding:16, borderRadius:13, border:`1px solid ${T.border}`, display:"flex", gap:14 }}>
-                    <Sk w="38px" h={38} r={10} />
+                  <div key={i} style={{ padding:16, borderRadius:10, border:`1px solid ${T?.border}`, display:"flex", gap:14 }}>
+                    <Sk w="38px" h={38} r={8} />
                     <div style={{ flex:1 }}>
                       <Sk w="50%" h={13} mb={8} />
                       <Sk w="100%" h={12} mb={4} />
@@ -782,21 +802,21 @@ export default function ProfileTab({
                   </div>
                 ))
               : ENDORSEMENTS.map((e,i) => (
-                <div key={i} style={{ padding:16, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)", borderRadius:13, border:`1px solid ${T.border}`, display:"flex", gap:14, alignItems:"flex-start" }}>
-                  <div style={{ width:38, height:38, borderRadius:10, flexShrink:0, background: dark ? "rgba(124,58,237,.15)" : "rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"#a78bfa", fontWeight:700 }}>
+                <div key={i} style={{ padding:16, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)", borderRadius:10, border:`1px solid ${T?.border}`, display:"flex", gap:14, alignItems:"flex-start" }}>
+                  <div style={{ width:38, height:38, borderRadius:8, flexShrink:0, background: dark ? "rgba(124,58,237,.15)" : "rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"#a78bfa", fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>
                     {e.skill[0]}
                   </div>
                   <div style={{ flex:1 }}>
                     <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
-                      <span style={{ fontSize:11, color:T.text3 }}>endorsed you for</span>
-                      <span style={{ fontSize:11, fontWeight:700, padding:"2px 9px", borderRadius:99, background:T.skillHaveBg, border:`1px solid ${T.skillHaveBorder}`, color:T.skillHaveText }}>{e.skill}</span>
+                      <span style={{ fontSize:11, color:T?.text3 }}>endorsed you for</span>
+                      <span style={{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6, background:T?.skillHaveBg, border:`1px solid ${T?.skillHaveBorder}`, color:T?.skillHaveText }}>{e.skill}</span>
                     </div>
-                    <p style={{ fontSize:12, color:T.text2, fontStyle:"italic", lineHeight:1.55 }}>"{e.note}"</p>
+                    <p style={{ fontSize:12, color:T?.text2, fontStyle:"italic", lineHeight:1.55 }}>"{e.note}"</p>
                   </div>
                 </div>
               ))
             }
-            <div style={{ textAlign:"center", padding:"20px", color:T.text3, fontSize:12 }}>
+            <div style={{ textAlign:"center", padding:"20px", color:T?.text3, fontSize:12 }}>
               Connect with more builders to get skill endorsements
             </div>
           </div>
@@ -807,19 +827,21 @@ export default function ProfileTab({
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {loading
               ? Array.from({ length:4 }).map((_,i) => (
-                  <div key={i} style={{ display:"flex", gap:12, alignItems:"center", padding:"10px 13px", borderRadius:11, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
-                    <Sk w="32px" h={32} r={9} />
+                  <div key={i} style={{ display:"flex", gap:12, alignItems:"center", padding:"10px 13px", borderRadius:8, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
+                    <Sk w="32px" h={32} r={8} />
                     <Sk w="60%" h={13} />
                     <Sk w="40px" h={11} />
                   </div>
                 ))
               : ACTIVITY_FEED.map((a,i) => (
-                <div key={i} style={{ display:"flex", gap:12, alignItems:"center", padding:"10px 13px", borderRadius:11, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
-                  <div style={{ width:32, height:32, borderRadius:9, flexShrink:0, background:`hsla(${a.hue},70%,60%,${dark?.1:.08})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>{a.icon}</div>
-                  <span style={{ fontSize:12, color:T.text2, flex:1 }}>
-                    {a.a} <span style={{ color:T.text, fontWeight:600 }}>{a.t}</span>
+                <div key={i} style={{ display:"flex", gap:12, alignItems:"center", padding:"10px 13px", borderRadius:8, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
+                  <div style={{ width:32, height:32, borderRadius:8, flexShrink:0, background:`hsla(${a.hue},70%,60%,${dark?.1:.08})`, display:"flex", alignItems:"center", justifyContent:"center", color:hsl(a.hue) }}>
+                    <a.Icon style={iconSize(14, 16)} />
+                  </div>
+                  <span style={{ fontSize:12, color:T?.text2, flex:1 }}>
+                    {a.a} <span style={{ color:T?.text, fontWeight:600 }}>{a.t}</span>
                   </span>
-                  <span style={{ fontSize:10, color:T.text3 }}>{a.time}</span>
+                  <span style={{ fontSize:10, color:T?.text3, fontFamily:"'JetBrains Mono',monospace" }}>{a.time}</span>
                 </div>
               ))
             }
@@ -833,11 +855,11 @@ export default function ProfileTab({
               ? Array.from({ length:3 }).map((_,i) => (
                   <div key={i} style={{
                     display:"flex", gap:12, alignItems:"center",
-                    padding:"12px 14px", borderRadius:13,
-                    border:`1px solid ${T.border}`,
+                    padding:"12px 14px", borderRadius:10,
+                    border:`1px solid ${T?.border}`,
                     background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
                   }}>
-                    <Sk w="40px" h={40} r={12} />
+                    <Sk w="40px" h={40} r={10} />
                     <div style={{ flex:1 }}>
                       <Sk w="55%" h={13} mb={6} />
                       <Sk w="40%" h={11} mb={6} />
@@ -847,7 +869,7 @@ export default function ProfileTab({
                 ))
               : connections.length === 0
                 ? (
-                  <div style={{ textAlign:"center", padding:"32px 0", color:T.text3, fontSize:13 }}>
+                  <div style={{ textAlign:"center", padding:"32px 0", color:T?.text3, fontSize:13 }}>
                     No connections yet. Start matching to connect with builders!
                   </div>
                 )
@@ -871,19 +893,19 @@ export default function ProfileTab({
                       return (
                         <div key={conn.id ?? i} className="conn-card" style={{
                           display:"flex", gap:12, alignItems:"flex-start",
-                          padding:"14px 16px", borderRadius:13,
-                          border:`1px solid ${T.border}`,
+                          padding:"14px 16px", borderRadius:10,
+                          border:`1px solid ${T?.border}`,
                           background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
                         }}>
                           {/* Avatar */}
                           <div style={{
-                            width:40, height:40, borderRadius:12, flexShrink:0,
+                            width:40, height:40, borderRadius:10, flexShrink:0,
                             background:`hsla(${hue},65%,60%,${dark?.15:.1})`,
-                            border:`1.5px solid hsla(${hue},65%,60%,.3)`,
+                            border:`1px solid hsla(${hue},65%,60%,.3)`,
                             display:"flex", alignItems:"center", justifyContent:"center",
                             fontSize:14, fontWeight:700,
                             color:`hsl(${hue},55%,${dark?72:44}%)`,
-                            fontFamily:"'Instrument Serif',serif",
+                            fontFamily:"'JetBrains Mono',monospace",
                             position:"relative",
                           }}>
                             {connInitials}
@@ -891,23 +913,23 @@ export default function ProfileTab({
                               position:"absolute", bottom:-2, right:-2,
                               width:11, height:11, borderRadius:"50%",
                               background:"#22c55e",
-                              border:`2px solid ${dark ? "#07070f" : "#f4f4f8"}`,
+                              border:`2px solid ${dark ? "#0a0a0f" : "#fafafa"}`,
                             }} />
                           </div>
 
                           {/* Info */}
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3 }}>
-                              <span style={{ fontSize:14, fontWeight:700, color:T.text }}>{name}</span>
-                              <span style={{ fontSize:11, color:T.text3 }}>@{handle}</span>
+                              <span style={{ fontSize:14, fontWeight:700, color:T?.text }}>{name}</span>
+                              <span style={{ fontSize:11, color:T?.text3 }}>@{handle}</span>
                               {match > 0 && (
                                 <div style={{
                                   display:"flex", alignItems:"center", gap:4,
                                   background:"rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.22)",
-                                  borderRadius:99, padding:"2px 8px",
+                                  borderRadius:6, padding:"2px 8px",
                                 }}>
                                   <span style={{ width:4, height:4, borderRadius:"50%", background:"#a78bfa", display:"block" }} />
-                                  <span style={{ fontSize:11, color:"#a78bfa", fontFamily:"'Instrument Serif',serif" }}>{match}%</span>
+                                  <span style={{ fontSize:11, color:"#a78bfa", fontFamily:"'JetBrains Mono',monospace", fontWeight:700 }}>{match}%</span>
                                 </div>
                               )}
                             </div>
@@ -918,7 +940,7 @@ export default function ProfileTab({
 
                             {bio && (
                               <p style={{
-                                fontSize:11, color:T.text2, lineHeight:1.55, marginBottom:8,
+                                fontSize:11, color:T?.text2, lineHeight:1.55, marginBottom:8,
                                 overflow:"hidden", display:"-webkit-box",
                                 WebkitLineClamp:2, WebkitBoxOrient:"vertical",
                               }}>{bio}</p>
@@ -928,14 +950,14 @@ export default function ProfileTab({
                               <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
                                 {skillsHave.slice(0,3).map(s => (
                                   <span key={s} style={{
-                                    padding:"2px 8px", borderRadius:99, fontSize:10, fontWeight:600,
-                                    background:T.skillHaveBg, border:`1px solid ${T.skillHaveBorder}`, color:T.skillHaveText,
+                                    padding:"2px 8px", borderRadius:6, fontSize:10, fontWeight:600, fontFamily:"'JetBrains Mono',monospace",
+                                    background:T?.skillHaveBg, border:`1px solid ${T?.skillHaveBorder}`, color:T?.skillHaveText,
                                   }}>{s}</span>
                                 ))}
                                 {skillsNeed.slice(0,2).map(s => (
                                   <span key={s} style={{
-                                    padding:"2px 8px", borderRadius:99, fontSize:10, fontWeight:600,
-                                    background:T.skillNeedBg, border:`1px solid ${T.skillNeedBorder}`, color:T.skillNeedText,
+                                    padding:"2px 8px", borderRadius:6, fontSize:10, fontWeight:600, fontFamily:"'JetBrains Mono',monospace",
+                                    background:T?.skillNeedBg, border:`1px solid ${T?.skillNeedBorder}`, color:T?.skillNeedText,
                                   }}>{s}</span>
                                 ))}
                               </div>
@@ -946,10 +968,10 @@ export default function ProfileTab({
                                 onClick={() => setDashPage?.("messages")}
                                 style={{
                                   padding:"6px 14px",
-                                  background:"linear-gradient(135deg,#7c3aed,#a855f7)",
-                                  border:"none", borderRadius:8, color:"#fff",
-                                  cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700,
-                                  boxShadow:"0 3px 10px rgba(124,58,237,.25)",
+                                  background:"#7c3aed",
+                                  border:"1px solid #7c3aed", borderRadius:8, color:"#fff",
+                                  cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:11, fontWeight:700,
+                                  transition:"filter .15s",
                                 }}>
                                 Message
                               </button>
@@ -957,9 +979,9 @@ export default function ProfileTab({
                                 onClick={() => router.push(`/discover/profile/${otherUserId}`)}
                                 style={{
                                   padding:"6px 12px", background:"transparent",
-                                  border:`1px solid ${T.border}`, color:T.text2,
+                                  border:`1px solid ${T?.border}`, color:T?.text2,
                                   borderRadius:8, cursor:"pointer",
-                                  fontFamily:"inherit", fontSize:11, fontWeight:600,
+                                  fontFamily:"'Inter',sans-serif", fontSize:11, fontWeight:600,
                                 }}>
                                 View profile
                               </button>
@@ -973,12 +995,13 @@ export default function ProfileTab({
                       <button
                         onClick={() => router.push("/connections")}
                         style={{
+                          display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6,
                           padding:"11px", background:"transparent",
-                          border:`2px dashed ${T.border}`, color:T.text3,
-                          borderRadius:13, cursor:"pointer", fontFamily:"inherit",
-                          fontSize:12, fontWeight:600, transition:"all .2s",
+                          border:`2px dashed ${T?.border}`, color:T?.text3,
+                          borderRadius:10, cursor:"pointer", fontFamily:"'Inter',sans-serif",
+                          fontSize:12, fontWeight:600, transition:"border-color .15s,color .15s",
                         }}>
-                        +{connections.length - 5} more connections → View all
+                        <span style={{ fontFamily:"'JetBrains Mono',monospace" }}>+{connections.length - 5}</span> more connections <ArrowRight style={iconSize(11, 13)} />
                       </button>
                     )}
                   </>

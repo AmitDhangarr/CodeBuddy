@@ -1,6 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
-import { useState, useCallback, useEffect, useRef } from "react"; 
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { calculateMatchScore } from "../shared";
 import {
@@ -8,6 +8,19 @@ import {
   hsl, hsla,
   Avatar, Lbl,
 } from "../shared";
+import {
+  MapPin, Folder, Star, Heart, Sparkles, MessageSquare, Ban,
+  CheckCircle2, AlertTriangle, Info, Search, Clock, Check,
+  LayoutGrid, List, ArrowLeft, ArrowRight, ExternalLink,
+} from "lucide-react";
+
+// Responsive icon sizing: scales fluidly between breakpoints instead of a
+// fixed pixel size, matching the convention used across the rest of the app.
+const iconSize = (min, max, vw = 3) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
 
 const PROFILES_PER_PAGE = 9;
 
@@ -84,8 +97,8 @@ function getStatusConfig(connectionStatus) {
     default:
       return {
         label: "Connect",
-        style: { background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", color: "white", boxShadow: "0 4px 14px rgba(124,58,237,0.28)" },
-        hoverStyle: null,
+        style: { background: "#7c3aed", border: "1px solid #7c3aed", color: "white", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" },
+        hoverStyle: { background: "#8b4ff5", border: "1px solid #8b4ff5", color: "white" },
         hoverLabel: null,
       };
   }
@@ -104,7 +117,7 @@ function StatusButton({ connectionStatus, onClick, style: extraStyle = {}, size 
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ flex: 1, padding, borderRadius: 11, cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif", fontSize, fontWeight: 700, transition: "all 0.2s", ...currentStyle, ...extraStyle }}
+      style={{ flex: 1, padding, borderRadius: 8, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize, fontWeight: 600, transition: "background 0.15s ease,border-color 0.15s ease,color 0.15s ease", ...currentStyle, ...extraStyle }}
     >
       {currentLabel}
     </button>
@@ -134,9 +147,11 @@ function ResizableAIBox({ text, dark, T }) {
   }, [dragging]);
 
   return (
-    <div className="fade-in" style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 12, marginBottom: 12, position: "relative", overflow: "hidden", height, transition: dragging ? "none" : "height 0.1s" }}>
+    <div className="fade-in" style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 10, marginBottom: 12, position: "relative", overflow: "hidden", height, transition: dragging ? "none" : "height 0.1s" }}>
       <div style={{ padding: "11px 13px", height: "100%", overflow: "auto", boxSizing: "border-box" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", marginBottom: 5 }}>✦ AI MATCH INSIGHT</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 600, color: "#a78bfa", marginBottom: 5, fontFamily: "'JetBrains Mono',monospace", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+          <Sparkles style={iconSize(10, 12)} /> AI match insight
+        </div>
         <p style={{ fontSize: 11, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.6, margin: 0 }}>{text}</p>
       </div>
       <div onMouseDown={onMouseDown} style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 10, cursor: "ns-resize", display: "flex", alignItems: "center", justifyContent: "center", background: dragging ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.08)") : "transparent", transition: "background 0.15s" }}>
@@ -155,15 +170,19 @@ function Pagination({ page, totalPages, onChange, T, dark }) {
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 32, paddingBottom: 8 }}>
-      <button onClick={() => onChange(page - 1)} disabled={page === 1} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${T?.border}`, background: "transparent", color: page === 1 ? T?.text3 : T?.text2, cursor: page === 1 ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, opacity: page === 1 ? 0.4 : 1, transition: "all 0.2s" }}>← Prev</button>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 32, paddingBottom: 8, flexWrap: "wrap" }}>
+      <button onClick={() => onChange(page - 1)} disabled={page === 1} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, border: `1px solid ${T?.border}`, background: "transparent", color: page === 1 ? T?.text3 : T?.text2, cursor: page === 1 ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, opacity: page === 1 ? 0.4 : 1, transition: "border-color 0.15s,color 0.15s" }}>
+        <ArrowLeft style={iconSize(12, 14)} /> Prev
+      </button>
       {pages.map((p, i) =>
         p === "…"
           ? <span key={`ellipsis-${i}`} style={{ color: T?.text3, padding: "0 4px", fontSize: 13 }}>…</span>
-          : <button key={p} onClick={() => onChange(p)} style={{ width: 36, height: 36, borderRadius: 10, border: p === page ? "1px solid rgba(124,58,237,0.5)" : `1px solid ${T?.border}`, background: p === page ? (dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.1)") : "transparent", color: p === page ? "#a78bfa" : T?.text2, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: p === page ? 700 : 500, transition: "all 0.2s" }}>{p}</button>
+          : <button key={p} onClick={() => onChange(p)} style={{ width: 34, height: 34, borderRadius: 8, border: p === page ? "1px solid rgba(124,58,237,0.5)" : `1px solid ${T?.border}`, background: p === page ? (dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.1)") : "transparent", color: p === page ? "#a78bfa" : T?.text2, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: p === page ? 700 : 500, transition: "border-color 0.15s,color 0.15s" }}>{p}</button>
       )}
-      <button onClick={() => onChange(page + 1)} disabled={page === totalPages} style={{ padding: "7px 14px", borderRadius: 10, border: `1px solid ${T?.border}`, background: "transparent", color: page === totalPages ? T?.text3 : T?.text2, cursor: page === totalPages ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, opacity: page === totalPages ? 0.4 : 1, transition: "all 0.2s" }}>Next →</button>
-      <span style={{ marginLeft: 8, fontSize: 11, color: T?.text3 }}>Page {page} of {totalPages}</span>
+      <button onClick={() => onChange(page + 1)} disabled={page === totalPages} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, border: `1px solid ${T?.border}`, background: "transparent", color: page === totalPages ? T?.text3 : T?.text2, cursor: page === totalPages ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, opacity: page === totalPages ? 0.4 : 1, transition: "border-color 0.15s,color 0.15s" }}>
+        Next <ArrowRight style={iconSize(12, 14)} />
+      </button>
+      <span style={{ marginLeft: 8, fontSize: 11, color: T?.text3, fontFamily: "'JetBrains Mono',monospace" }}>Page {page} of {totalPages}</span>
     </div>
   );
 }
@@ -299,16 +318,17 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
             ? { top: pos.top, left: pos.left }
             : { top: "50%", left: "50%" }),
           transformOrigin: usingAnchor ? "top center" : "center center",
-          background: dark ? "#0d0d1a" : "#fff",
+          background: dark ? "#111116" : "#fff",
           border: `1px solid ${T?.border}`,
-          borderRadius: 20,
+          borderRadius: 14,
           padding: "28px 26px",
           width: MODAL_WIDTH,
           maxWidth: `calc(100vw - ${MODAL_MARGIN * 2}px)`,
           maxHeight: `min(${MODAL_MAX_HEIGHT}px, calc(100vh - ${MODAL_MARGIN * 2}px))`,
           overflowY: "auto",
           boxSizing: "border-box",
-          boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+          fontFamily: "'Inter',sans-serif",
           animation: `${anim} ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1) both`,
           textAlign: "center",
           visibility: usingAnchor || !anchor ? "visible" : "hidden", // avoid a flash at (0,0) before pos is computed
@@ -318,13 +338,14 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
         }}
       >
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, flexShrink: 0 }}>
-          <Avatar u={user_} size={64} radius={18} T={T} dark={dark} />
+          <Avatar u={user_} size={64} radius={14} T={T} dark={dark} />
         </div>
 
         <div
           style={{
             fontSize: 18, fontWeight: 700, color: T?.text, marginBottom: 4,
             width: "100%", wordBreak: "break-word", overflowWrap: "break-word",
+            fontFamily: "'Inter',sans-serif",
           }}
         >
           {user_.name}
@@ -351,10 +372,10 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
           <button
             onClick={onClose}
             style={{
-              flex: "1 1 90px", minWidth: 0, padding: "11px 12px", borderRadius: 12,
+              flex: "1 1 90px", minWidth: 0, padding: "10px 12px", borderRadius: 8,
               border: `1px solid ${T?.border}`, background: "transparent",
-              color: T?.text3, cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif",
-              fontSize: 13, fontWeight: 600, transition: "all 0.2s", whiteSpace: "nowrap",
+              color: T?.text3, cursor: "pointer", fontFamily: "'Inter',sans-serif",
+              fontSize: 13, fontWeight: 600, transition: "border-color 0.15s,color 0.15s", whiteSpace: "nowrap",
               overflow: "hidden", textOverflow: "ellipsis",
             }}
           >
@@ -363,10 +384,10 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
           <button
             onClick={() => onConnect(user_)}
             style={{
-              flex: "1 1 90px", minWidth: 0, padding: "11px 12px", borderRadius: 12,
+              flex: "1 1 90px", minWidth: 0, padding: "10px 12px", borderRadius: 8,
               border: `1px solid ${T?.border}`, background: "transparent",
-              color: T?.text2, cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif",
-              fontSize: 13, fontWeight: 700, transition: "all 0.2s", whiteSpace: "nowrap",
+              color: T?.text2, cursor: "pointer", fontFamily: "'Inter',sans-serif",
+              fontSize: 13, fontWeight: 700, transition: "border-color 0.15s,color 0.15s", whiteSpace: "nowrap",
               overflow: "hidden", textOverflow: "ellipsis",
             }}
           >
@@ -375,12 +396,12 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
           <button
             onClick={() => onLearnMore(user_)}
             style={{
-              flex: "1 1 90px", minWidth: 0, padding: "11px 12px", borderRadius: 12,
-              border: "none", cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif",
+              flex: "1 1 90px", minWidth: 0, padding: "10px 12px", borderRadius: 8,
+              border: "1px solid #7c3aed", cursor: "pointer", fontFamily: "'Inter',sans-serif",
               fontSize: 13, fontWeight: 700, color: "white",
-              background: "linear-gradient(135deg,#7c3aed,#a855f7)",
-              boxShadow: "0 4px 14px rgba(124,58,237,0.28)",
-              transition: "all 0.2s", whiteSpace: "nowrap",
+              background: "#7c3aed",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
+              transition: "filter 0.15s", whiteSpace: "nowrap",
               overflow: "hidden", textOverflow: "ellipsis",
             }}
           >
@@ -392,10 +413,10 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
       <style>{`
         @keyframes overlayIn  { from { opacity:0; } to { opacity:1; } }
         @keyframes overlayOut { from { opacity:1; } to { opacity:0; } }
-        @keyframes modalIn    { from { opacity:0; transform:translate(-50%,-50%) scale(0.92); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
-        @keyframes modalOut   { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.92); } }
-        @keyframes popIn      { from { opacity:0; transform:scale(0.9) translateY(-10px); } to { opacity:1; transform:scale(1) translateY(0); } }
-        @keyframes popOut     { from { opacity:1; transform:scale(1) translateY(0); } to { opacity:0; transform:scale(0.9) translateY(-10px); } }
+        @keyframes modalIn    { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+        @keyframes modalOut   { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.95); } }
+        @keyframes popIn      { from { opacity:0; transform:scale(0.94) translateY(-8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        @keyframes popOut     { from { opacity:1; transform:scale(1) translateY(0); } to { opacity:0; transform:scale(0.94) translateY(-8px); } }
       `}</style>
     </div>
   );
@@ -542,8 +563,8 @@ export default function DiscoverTab({
     }
   };
 
-  // Opens the confirm modal anchored to wherever the "↗" button was clicked,
-  // instead of navigating immediately
+  // Opens the confirm modal anchored to wherever the "view profile" button
+  // was clicked, instead of navigating immediately
   const handleRequestViewProfile = useCallback((user, e) => {
     if (e?.currentTarget) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -603,7 +624,7 @@ export default function DiscoverTab({
     return hsl(0, 60, 60);
   };
 
-  const btn = { border: "none", cursor: "pointer", fontFamily: "'Instrument Sans',sans-serif", transition: "all 0.2s" };
+  const btn = { border: "none", cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "background 0.15s,border-color 0.15s,color 0.15s" };
 
   const handleAIAPI = async (prompt) => {
     const res = await fetch("/api/ai_insights", {
@@ -632,22 +653,26 @@ export default function DiscoverTab({
   }, [currentUser, aiLoading]);
 
   return (
-    <div className="fade-up">
+    <div className="fade-up" style={{ fontFamily: "'Inter',sans-serif" }}>
       {/* Global toast */}
       {toast && (
         <div style={{
           position: "fixed", top: 20, right: 20, zIndex: 9999,
-          background: dark ? "#0d0d1a" : "#fff",
+          background: dark ? "#111116" : "#fff",
           border: `1px solid ${toast.type === "warn" ? "rgba(245,158,11,0.3)" : toast.type === "info" ? "rgba(99,102,241,0.3)" : "rgba(34,197,94,0.3)"}`,
-          borderRadius: 14, padding: "13px 18px",
-          boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
+          borderRadius: 10, padding: "12px 16px",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
           display: "flex", alignItems: "center", gap: 10,
-          animation: "toastIn 0.3s ease both", minWidth: 220, maxWidth: 320,
+          animation: "toastIn 0.25s ease both", minWidth: 220, maxWidth: 320,
         }}>
-          <span style={{ fontSize: 16 }}>
-            {toast.type === "success" ? "✅" : toast.type === "warn" ? "⚠️" : "ℹ️"}
+          <span style={{ color: toast.type === "success" ? "#4ade80" : toast.type === "warn" ? "#f59e0b" : "#818cf8", display: "flex" }}>
+            {toast.type === "success"
+              ? <CheckCircle2 style={iconSize(16, 18)} />
+              : toast.type === "warn"
+                ? <AlertTriangle style={iconSize(16, 18)} />
+                : <Info style={iconSize(16, 18)} />}
           </span>
-          <span style={{ fontSize: 13, color: dark ? "#e4e4f0" : "#18182c", fontWeight: 500 }}>{toast.msg}</span>
+          <span style={{ fontSize: 13, color: dark ? "#ededf2" : "#111116", fontWeight: 500 }}>{toast.msg}</span>
         </div>
       )}
 
@@ -665,17 +690,20 @@ export default function DiscoverTab({
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20, gap: 14, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: "#7c3aed", marginBottom: 6 }}>
-            <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e", marginRight: 7, verticalAlign: "middle" }} />
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: "#7c3aed", marginBottom: 6, fontFamily: "'JetBrains Mono',monospace" }}>
+            <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#22c55e", marginRight: 7, verticalAlign: "middle" }} />
             Live Matching
           </div>
-          <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T?.text, letterSpacing: "-0.8px", lineHeight: 1.1 }}>Discover Builders</h1>
-          <p style={{ fontSize: 13, color: T?.text3, marginTop: 4 }}>{filtered.length} builders ranked by your match score</p>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 26, color: T?.text, letterSpacing: "-0.6px", lineHeight: 1.15 }}>Discover Builders</h1>
+          <p style={{ fontSize: 13, color: T?.text3, marginTop: 4 }}><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>{filtered.length}</span> builders ranked by your match score</p>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          {["grid", "list"].map(v => (
-            <button key={v} onClick={() => setView(v)} style={{ ...btn, padding: "7px 14px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: view === v ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)") : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T?.border}`, color: view === v ? "#a78bfa" : T?.text3 }}>
-              {v === "grid" ? "⊞" : "☰"}
+          {[
+            { v: "grid", Icon: LayoutGrid },
+            { v: "list", Icon: List },
+          ].map(({ v, Icon }) => (
+            <button key={v} onClick={() => setView(v)} style={{ ...btn, display: "flex", alignItems: "center", justifyContent: "center", padding: "7px 12px", borderRadius: 8, background: view === v ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)") : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T?.border}`, color: view === v ? "#a78bfa" : T?.text3 }}>
+              <Icon style={iconSize(14, 16)} />
             </button>
           ))}
         </div>
@@ -684,25 +712,28 @@ export default function DiscoverTab({
       {/* Filters */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20, alignItems: "center" }}>
         <div style={{ position: "relative", flex: "1 1 180px", minWidth: 140 }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T?.text3, fontSize: 14, pointerEvents: "none" }}>🔍</span>
-          <input aria-label="Search developers" placeholder="Search name, role, skill…" value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text, borderRadius: 11, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "inherit" }} />
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: T?.text3, display: "flex", pointerEvents: "none" }}>
+            <Search style={iconSize(13, 15)} />
+          </span>
+          <input aria-label="Search developers" placeholder="Search name, role, skill…" value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text, borderRadius: 8, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "'Inter',sans-serif" }} />
         </div>
-        <select aria-label="Filter by skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
+        <select aria-label="Filter by skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontFamily: "'Inter',sans-serif", outline: "none", cursor: "pointer" }}>
           <option value="All">All Skills</option>
           {SKILLS_ALL.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select aria-label="Filter by looking for" value={filterLooking} onChange={e => setFilterLooking(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
+        <select aria-label="Filter by looking for" value={filterLooking} onChange={e => setFilterLooking(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontFamily: "'Inter',sans-serif", outline: "none", cursor: "pointer" }}>
           <option value="All">All Roles</option>
           <option>Collaborator</option><option>Mentor</option><option>Mentee</option>
         </select>
-        <select aria-label="Sort developers" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 10, fontSize: 12, fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
+        <select aria-label="Sort developers" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontFamily: "'Inter',sans-serif", outline: "none", cursor: "pointer" }}>
           <option value="match">Sort: Match %</option>
           <option value="followers">Sort: Followers</option>
           <option value="projects">Sort: Projects</option>
           <option value="online">Sort: Online First</option>
         </select>
-        <button onClick={() => setFilterOnline(p => !p)} style={{ ...btn, padding: "7px 13px", borderRadius: 10, fontSize: 12, fontWeight: 600, background: filterOnline ? (dark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)") : "transparent", border: `1px solid ${filterOnline ? "rgba(34,197,94,0.35)" : T?.border}`, color: filterOnline ? "#4ade80" : T?.text3 }}>
-          ● Online only
+        <button onClick={() => setFilterOnline(p => !p)} style={{ ...btn, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: filterOnline ? (dark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)") : "transparent", border: `1px solid ${filterOnline ? "rgba(34,197,94,0.35)" : T?.border}`, color: filterOnline ? "#4ade80" : T?.text3 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: filterOnline ? "#22c55e" : T?.text3, flexShrink: 0 }} />
+          Online only
         </button>
       </div>
 
@@ -714,8 +745,8 @@ export default function DiscoverTab({
           { v: String(profiles.filter(u => u.online).length), l: "Active now" },
           { v: `${Math.round(filtered.reduce((a, u) => a + u.matchScore, 0) / Math.max(filtered.length, 1))}%`, l: "Avg match" },
         ].map((s, i) => (
-          <div key={i} style={{ background: T?.card, border: `1px solid ${T?.border}`, borderRadius: 12, padding: "10px 18px", display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 20, color: T?.text }}>{s.v}</span>
+          <div key={i} style={{ background: T?.card, border: `1px solid ${T?.border}`, borderRadius: 10, padding: "10px 18px", display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 18, color: T?.text }}>{s.v}</span>
             <span style={{ fontSize: 11, color: T?.text3 }}>{s.l}</span>
           </div>
         ))}
@@ -724,18 +755,24 @@ export default function DiscoverTab({
       {/* Content */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: T?.text3 }}>
-          <div style={{ fontSize: 28, marginBottom: 14, animation: "spin 1s linear infinite", display: "inline-block" }}>✦</div>
+          <div style={{ display: "inline-flex", marginBottom: 14, animation: "spin 1s linear infinite", color: "#a78bfa" }}>
+            <Sparkles style={iconSize(24, 28)} />
+          </div>
           <div style={{ fontSize: 14, color: T?.text2 }}>Finding your best matches…</div>
         </div>
       ) : fetchError ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: T?.text3 }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}>⚠️</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14, color: "#f87171" }}>
+            <AlertTriangle style={iconSize(32, 38)} />
+          </div>
           <div style={{ fontSize: 15, fontWeight: 600, color: "#f87171", marginBottom: 6 }}>Failed to load profiles</div>
           <div style={{ fontSize: 13 }}>{fetchError}</div>
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: T?.text3 }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}>🔍</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+            <Search style={iconSize(32, 38)} />
+          </div>
           <div style={{ fontSize: 15, fontWeight: 600, color: T?.text2, marginBottom: 6 }}>No builders found</div>
           <div style={{ fontSize: 13 }}>Try adjusting your filters</div>
         </div>
@@ -753,6 +790,7 @@ export default function DiscoverTab({
       )}
 
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
         @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
         @keyframes spin    { to { transform:rotate(360deg); } }
@@ -769,8 +807,8 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
       <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: `radial-gradient(circle,${hsla(u.hue, 70, 60, dark ? 0.08 : 0.05)} 0%,transparent 70%)`, pointerEvents: "none" }} />
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
         <div style={{ position: "relative" }}>
-          <Avatar u={u} size={48} radius={13} T={T} dark={dark} />
-          <div style={{ position: "absolute", bottom: -1, right: -1, width: 8, height: 8, borderRadius: "50%", background: u.online ? "#22c55e" : "#555570", border: `2px solid ${dark ? "#060608" : "#f5f5f9"}` }} />
+          <Avatar u={u} size={48} radius={10} T={T} dark={dark} />
+          <div style={{ position: "absolute", bottom: -1, right: -1, width: 8, height: 8, borderRadius: "50%", background: u.online ? "#22c55e" : "#57575f", border: `2px solid ${dark ? "#0a0a0f" : "#fafafa"}` }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: T?.text }}>{u.name}</div>
@@ -778,47 +816,55 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
           <div style={{ fontSize: 11, color: hsl(u.hue), fontWeight: 500, marginTop: 2 }}>{u.role}</div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 24, color: scoreColor(u.matchScore), lineHeight: 1 }}>{u.matchScore}%</div>
+          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 20, color: scoreColor(u.matchScore), lineHeight: 1 }}>{u.matchScore}%</div>
           <div style={{ fontSize: 9, color: T?.text3, marginTop: 1 }}>match</div>
         </div>
       </div>
-      <div style={{ height: 3, background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)", borderRadius: 99, overflow: "hidden", marginBottom: 12 }}>
+      <div style={{ height: 3, background: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.09)", borderRadius: 99, overflow: "hidden", marginBottom: 12 }}>
         <div style={{ height: "100%", width: `${u.matchScore}%`, background: `linear-gradient(90deg,hsl(${u.hue},70%,45%),hsl(${u.hue},80%,65%))`, borderRadius: 99, transition: "width 1s" }} />
       </div>
       <p style={{ fontSize: 12, color: T?.text2, lineHeight: 1.55, marginBottom: 12 }}>{u.bio}</p>
       <div style={{ marginBottom: 8 }}>
         <Lbl T={T}>Has</Lbl>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-          {u.skillsHave.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}
+          {u.skillsHave.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 6, fontSize: 10, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace", background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}
         </div>
       </div>
       <div style={{ marginBottom: 12 }}>
         <Lbl T={T}>Needs</Lbl>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-          {u.skillsNeed.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
+          {u.skillsNeed.map(s => <span key={s} style={{ padding: "3px 9px", borderRadius: 6, fontSize: 10, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace", background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 11, color: T?.text3 }}>📍 {u.location || "Location not set"}</span>
-        <span style={{ fontSize: 11, color: T?.text3 }}>📁 {u.projects} projects</span>
-        <span style={{ fontSize: 11, color: T?.text3 }}>★ {u.followers}</span>
+      <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: T?.text3 }}><MapPin style={iconSize(11, 13)} /> {u.location || "Location not set"}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: T?.text3 }}><Folder style={iconSize(11, 13)} /> <span style={{ fontFamily: "'JetBrains Mono',monospace" }}>{u.projects}</span> projects</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: T?.text3 }}><Star style={iconSize(11, 13)} /> <span style={{ fontFamily: "'JetBrains Mono',monospace" }}>{u.followers}</span></span>
       </div>
       <div style={{ marginBottom: 12 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 99, background: hsla(u.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(u.hue, 70, 60, 0.25)}`, color: hsl(u.hue) }}>Seeking {u.lookingFor}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace", padding: "3px 10px", borderRadius: 6, background: hsla(u.hue, 70, 60, dark ? 0.12 : 0.08), border: `1px solid ${hsla(u.hue, 70, 60, 0.25)}`, color: hsl(u.hue) }}>Seeking {u.lookingFor}</span>
       </div>
 
       {aiText[u.id] && <ResizableAIBox text={aiText[u.id]} dark={dark} T={T} />}
 
       <div style={{ display: "flex", gap: 6, marginTop: "auto" }}>
         <StatusButton connectionStatus={u.connectionStatus} onClick={() => onConnect(u)} />
-        <button onClick={() => onFavourite(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${isFav ? "rgba(248,113,113,0.3)" : T?.border}`, color: isFav ? "#f87171" : T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}>{isFav ? "♥" : "♡"}</button>
-        <button onClick={() => handleAI(u)} style={{ padding: "8px 10px", background: aiText[u.id] ? (dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)") : "transparent", border: `1px solid ${aiText[u.id] ? "rgba(124,58,237,0.3)" : T?.border}`, color: aiText[u.id] ? "#a78bfa" : T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 13, transition: "all 0.2s" }}>
-          {aiLoading === u.id ? <span style={{ display: "inline-block", animation: "spin 0.9s linear infinite" }}>✦</span> : "✦"}
+        <button onClick={() => onFavourite(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: "transparent", border: `1px solid ${isFav ? "rgba(248,113,113,0.3)" : T?.border}`, color: isFav ? "#f87171" : T?.text3, borderRadius: 8, cursor: "pointer", transition: "border-color 0.15s,color 0.15s" }}>
+          <Heart style={{ ...iconSize(13, 15), fill: isFav ? "#f87171" : "none" }} />
         </button>
-        <button onClick={() => onMessage(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>💬</button>
-        <button onClick={() => onBlock(u)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T?.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>⊘</button>
-        {/* "↗" opens the confirm modal — parent decides navigation once the user picks "Learn More" */}
-        <button onClick={(e) => onViewProfile?.(u, e)} style={{ padding: "8px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>↗</button>
+        <button onClick={() => handleAI(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: aiText[u.id] ? (dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)") : "transparent", border: `1px solid ${aiText[u.id] ? "rgba(124,58,237,0.3)" : T?.border}`, color: aiText[u.id] ? "#a78bfa" : T?.text3, borderRadius: 8, cursor: "pointer", transition: "border-color 0.15s,color 0.15s" }}>
+          <Sparkles style={{ ...iconSize(13, 15), animation: aiLoading === u.id ? "spin 0.9s linear infinite" : "none" }} />
+        </button>
+        <button onClick={() => onMessage(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 8, cursor: "pointer" }}>
+          <MessageSquare style={iconSize(13, 15)} />
+        </button>
+        <button onClick={() => onBlock(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T?.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T?.text3, borderRadius: 8, cursor: "pointer" }}>
+          <Ban style={iconSize(13, 15)} />
+        </button>
+        {/* Opens the confirm modal — parent decides navigation once the user picks "Learn More" */}
+        <button onClick={(e) => onViewProfile?.(u, e)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 8, cursor: "pointer" }}>
+          <ExternalLink style={iconSize(13, 15)} />
+        </button>
       </div>
     </div>
   );
@@ -829,37 +875,47 @@ function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
   return (
     <div className="card fade-up" style={{ padding: "14px 18px", display: "flex", gap: 14, alignItems: "center", animationDelay: `${i * 0.04}s` }}>
       <div style={{ position: "relative", flexShrink: 0 }}>
-        <Avatar u={u} size={42} radius={11} T={T} dark={dark} />
-        <div style={{ position: "absolute", bottom: -1, right: -1, width: 7, height: 7, borderRadius: "50%", background: u.online ? "#22c55e" : "#555570", border: `2px solid ${dark ? "#060608" : "#f5f5f9"}` }} />
+        <Avatar u={u} size={42} radius={9} T={T} dark={dark} />
+        <div style={{ position: "absolute", bottom: -1, right: -1, width: 7, height: 7, borderRadius: "50%", background: u.online ? "#22c55e" : "#57575f", border: `2px solid ${dark ? "#0a0a0f" : "#fafafa"}` }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: T?.text }}>{u.name}</span>
           <span style={{ fontSize: 11, color: hsl(u.hue), fontWeight: 600 }}>{u.role}</span>
-          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: hsla(u.hue, 70, 60, dark ? 0.1 : 0.07), border: `1px solid ${hsla(u.hue, 70, 60, 0.22)}`, color: hsl(u.hue) }}>{u.lookingFor}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace", padding: "2px 8px", borderRadius: 6, background: hsla(u.hue, 70, 60, dark ? 0.1 : 0.07), border: `1px solid ${hsla(u.hue, 70, 60, 0.22)}`, color: hsl(u.hue) }}>{u.lookingFor}</span>
           {u.connectionStatus && (
-            <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: u.connectionStatus === "accepted" ? "rgba(74,222,128,0.08)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${u.connectionStatus === "accepted" ? "rgba(74,222,128,0.25)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.25)"}`, color: u.connectionStatus === "accepted" ? "#4ade80" : u.connectionStatus === "pending" ? "#f59e0b" : "#f87171" }}>
-              {u.connectionStatus === "accepted" ? "✓ Connected" : u.connectionStatus === "pending" ? "⏳ Pending" : "⊘ Blocked"}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", padding: "2px 8px", borderRadius: 6, background: u.connectionStatus === "accepted" ? "rgba(74,222,128,0.08)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${u.connectionStatus === "accepted" ? "rgba(74,222,128,0.25)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.25)"}`, color: u.connectionStatus === "accepted" ? "#4ade80" : u.connectionStatus === "pending" ? "#f59e0b" : "#f87171" }}>
+              {u.connectionStatus === "accepted"
+                ? <><Check style={iconSize(9, 11)} /> Connected</>
+                : u.connectionStatus === "pending"
+                  ? <><Clock style={iconSize(9, 11)} /> Pending</>
+                  : <><Ban style={iconSize(9, 11)} /> Blocked</>}
             </span>
           )}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {u.skillsHave.slice(0, 3).map(s => <span key={s} style={{ padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}
-          {u.skillsNeed.slice(0, 2).map(s => <span key={s} style={{ padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
+          {u.skillsHave.slice(0, 3).map(s => <span key={s} style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace", background: T.skillHaveBg, border: `1px solid ${T.skillHaveBorder}`, color: T.skillHaveText }}>{s}</span>)}
+          {u.skillsNeed.slice(0, 2).map(s => <span key={s} style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace", background: T.skillNeedBg, border: `1px solid ${T.skillNeedBorder}`, color: T.skillNeedText }}>{s}</span>)}
         </div>
         <div style={{ marginTop: 4 }}>
-          <span style={{ fontSize: 11, color: T?.text3 }}>📍 {u.location || "Location not set"}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: T?.text3 }}><MapPin style={iconSize(11, 13)} /> {u.location || "Location not set"}</span>
         </div>
       </div>
       <div style={{ textAlign: "right", flexShrink: 0 }}>
-        <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 22, color: scoreColor(u.matchScore), lineHeight: 1 }}>{u.matchScore}%</div>
+        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 18, color: scoreColor(u.matchScore), lineHeight: 1 }}>{u.matchScore}%</div>
         <div style={{ fontSize: 10, color: T?.text3 }}>match</div>
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <StatusButton connectionStatus={u.connectionStatus} onClick={() => onConnect(u)} size="small" extraStyle={{ flex: "none", padding: "6px 14px" }} />
-        <button onClick={() => onBlock(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T?.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T?.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>⊘</button>
-        <button onClick={() => onMessage(u)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>💬</button>
-        <button onClick={(e) => onViewProfile?.(u, e)} style={{ padding: "6px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 9, cursor: "pointer", fontSize: 12 }}>↗</button>
+        <button onClick={() => onBlock(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T?.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T?.text3, borderRadius: 8, cursor: "pointer" }}>
+          <Ban style={iconSize(12, 14)} />
+        </button>
+        <button onClick={() => onMessage(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 8, cursor: "pointer" }}>
+          <MessageSquare style={iconSize(12, 14)} />
+        </button>
+        <button onClick={(e) => onViewProfile?.(u, e)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 8, cursor: "pointer" }}>
+          <ExternalLink style={iconSize(12, 14)} />
+        </button>
       </div>
     </div>
   );

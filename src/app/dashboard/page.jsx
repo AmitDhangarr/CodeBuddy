@@ -9,16 +9,29 @@ import {
 
 import { useThemeStore } from "../../../store/themeprovider";
 
-import DiscoverTab  from "./discover/page";
-import MessagesTab  from "./messages/page";
-import ProfileTab   from "./profile/page";
-import SettingsTab  from "./settings/page";
+import DiscoverTab      from "./discover/page";
+import MessagesTab      from "./messages/page";
+import ProfileTab       from "./profile/page";
+import SettingsTab      from "./settings/page";
+import OtherProfileTab  from "../dashboard/discover/profile/page";
+
+import {
+  Code, MessageSquare, User, Settings, Bell, Sun, Moon,
+} from "lucide-react";
+
+// Responsive icon sizing: scales fluidly between breakpoints instead of a
+// fixed pixel size, matching the convention used across the rest of the app.
+const iconSize = (min, max, vw = 3) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
 
 const NAV_ITEMS = [
-  { id: "discover", icon: <i className="fa-solid fa-code" />,        label: "Discover" },
-  { id: "messages", icon: <i className="fa-regular fa-message" />,   label: "Messages" },
-  { id: "profile",  icon: <i className="fa-regular fa-user" />,      label: "Profile"  },
-  { id: "settings", icon: <i className="fa-solid fa-gear" />,        label: "Settings" },
+  { id: "discover", Icon: Code,           label: "Discover" },
+  { id: "messages", Icon: MessageSquare,  label: "Messages" },
+  { id: "profile",  Icon: User,           label: "Profile"  },
+  { id: "settings", Icon: Settings,       label: "Settings" },
 ];
 
 export default function Dashboard() {
@@ -33,6 +46,7 @@ export default function Dashboard() {
   const [connected,   setConnected]   = useState({});
   const [liked,       setLiked]       = useState({});
   const [notifOpen,   setNotifOpen]   = useState(false);
+  const [viewUserId,  setViewUserId]  = useState(null); // ← NEW: id of the profile currently being viewed
 
   const T = dark ? DARK : LIGHT;
   const unread = notifs.filter(n => !n.read).length;
@@ -193,24 +207,33 @@ export default function Dashboard() {
     }
   }, [liked]);
 
+  // ── View-profile handler ─────────────────────────────────────────────────
+  // Called from DiscoverTab (via its confirm modal's "Learn More" button)
+  // with the id of the user whose full profile should be shown. This is the
+  // piece that "embeds" the id from Discover and hands it to OtherProfileTab.
+  const handleViewProfile = useCallback((userId) => {
+    if (!userId) return;
+    setViewUserId(userId);
+    setDashPage("otherprofile");
+  }, []);
+
   const globalCss = `
-    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
     ::-webkit-scrollbar{width:4px;height:4px}
     ::-webkit-scrollbar-track{background:transparent}
     ::-webkit-scrollbar-thumb{background:${dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"};border-radius:99px}
-    input,textarea,select{font-family:'Instrument Sans',sans-serif}
+    input,textarea,select{font-family:'Inter',sans-serif}
     textarea{resize:none}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes spin{to{transform:rotate(360deg)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
-    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-    .fade-up{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
-    .fade-in{animation:fadeIn 0.3s ease both}
-    .card{background:${T.card};border:1px solid ${T.border};border-radius:18px;transition:all 0.25s}
-    .card:hover{background:${T.cardHover};border-color:${T.border2};transform:translateY(-2px);box-shadow:${T.shadow}}
-    .card-flat{background:${T.card};border:1px solid ${T.border};border-radius:18px}
+    .fade-up{animation:fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both}
+    .fade-in{animation:fadeIn 0.25s ease both}
+    .card{background:${T.card};border:1px solid ${T.border};border-radius:10px;transition:border-color 0.15s ease,background 0.15s ease}
+    .card:hover{background:${T.cardHover};border-color:${T.border2}}
+    .card-flat{background:${T.card};border:1px solid ${T.border};border-radius:10px}
     @media(max-width:768px){
       .db-main{padding:16px 12px !important}
       .desk-nav{display:none !important}
@@ -224,7 +247,7 @@ export default function Dashboard() {
       backdrop-filter:blur(20px);
       border-top:1px solid ${T.border};
       z-index:200;padding:8px 0 12px;
-      background:${dark ? "rgba(6,6,8,0.95)" : "rgba(245,245,249,0.97)"};
+      background:${dark ? "rgba(10,10,15,0.95)" : "rgba(250,250,250,0.97)"};
     }
   `;
 
@@ -238,29 +261,29 @@ export default function Dashboard() {
   );
 
   return (
-    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <style>{globalCss}</style>
 
       {/* Ambient bg blobs */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "-15%", left: "-5%", width: 500, height: 500, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(259,70%,35%,0.08)" : "hsla(259,70%,60%,0.05)"} 0%,transparent 65%)` }} />
-        <div style={{ position: "absolute", bottom: "-10%", right: 0, width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(300,60%,30%,0.06)" : "hsla(300,60%,60%,0.04)"} 0%,transparent 65%)` }} />
+        <div style={{ position: "absolute", top: "-15%", left: "-5%", width: 500, height: 500, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(259,70%,35%,0.07)" : "hsla(259,70%,60%,0.04)"} 0%,transparent 65%)` }} />
+        <div style={{ position: "absolute", bottom: "-10%", right: 0, width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(280,60%,30%,0.05)" : "hsla(280,60%,60%,0.03)"} 0%,transparent 65%)` }} />
       </div>
 
       {/* ── Top nav ── */}
-      <header style={{ position: "sticky", top: 0, zIndex: 200, background: dark ? "rgba(6,6,8,0.94)" : "rgba(245,245,249,0.96)", backdropFilter: "blur(24px)", borderBottom: `1px solid ${T.border}`, padding: "0 22px", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+      <header style={{ position: "sticky", top: 0, zIndex: 200, background: dark ? "rgba(10,10,15,0.92)" : "rgba(250,250,250,0.94)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "0 22px", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }} onClick={() => router.push("/")}>
           <LogoIcon />
-          <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 16, color: T.text }}>CodeBuddy</span>
+          <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 15, color: T.text, letterSpacing: "-0.2px" }}>CodeBuddy</span>
         </div>
 
         <nav className="desk-nav" style={{ display: "flex", gap: 2 }}>
           {NAV_ITEMS.map(n => (
-            <button key={n.id} onClick={() => setDashPage(n.id)} style={{ background: dashPage === n.id ? dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)" : "none", border: "none", color: dashPage === n.id ? dark ? "#e0d8ff" : "#7c3aed" : T.text3, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 500, padding: "8px 13px", borderRadius: 10, display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
-              <span style={{ fontSize: 14 }}>{n.icon}</span>
+            <button key={n.id} onClick={() => setDashPage(n.id)} style={{ background: dashPage === n.id ? dark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.08)" : "none", border: "none", color: dashPage === n.id ? dark ? "#e0d8ff" : "#7c3aed" : T.text3, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 500, padding: "8px 13px", borderRadius: 8, display: "flex", alignItems: "center", gap: 7, transition: "background 0.15s,color 0.15s" }}>
+              <n.Icon style={iconSize(14, 16)} />
               {n.label}
               {n.id === "messages" && convos.length > 0 && (
-                <span style={{ background: "#7c3aed", color: "white", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 99 }}>{convos.length}</span>
+                <span style={{ background: "#7c3aed", color: "white", fontSize: 9, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", padding: "1px 5px", borderRadius: 6 }}>{convos.length}</span>
               )}
             </button>
           ))}
@@ -268,8 +291,8 @@ export default function Dashboard() {
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <div style={{ position: "relative" }}>
-            <button onClick={() => setNotifOpen(p => !p)} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", position: "relative", transition: "all 0.2s" }}>
-              <i className="fa-regular fa-bell" />
+            <button onClick={() => setNotifOpen(p => !p)} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 8, cursor: "pointer", position: "relative", transition: "border-color 0.15s,color 0.15s" }}>
+              <Bell style={iconSize(15, 17)} />
               {unread > 0 && <span style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, background: "#ef4444", borderRadius: "50%", border: `2px solid ${T.bg}` }} />}
             </button>
             {notifOpen && (
@@ -277,16 +300,16 @@ export default function Dashboard() {
                 <div style={{ padding: "13px 16px 10px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Notifications</span>
-                    {unread > 0 && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "#7c3aed", color: "white" }}>{unread} new</span>}
+                    {unread > 0 && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", padding: "1px 6px", borderRadius: 6, background: "#7c3aed", color: "white" }}>{unread} new</span>}
                   </div>
                   <button onClick={() => setNotifs(p => p.map(n => ({ ...n, read: true })))} style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 11, fontFamily: "inherit", fontWeight: 600 }}>Mark all read</button>
                 </div>
                 {notifs.map((n, i) => (
                   <div key={n.id} style={{ padding: "11px 16px", borderBottom: i < notifs.length - 1 ? `1px solid ${T.border}` : "none", display: "flex", gap: 10, background: n.read ? "transparent" : dark ? "rgba(124,58,237,0.04)" : "rgba(124,58,237,0.03)", cursor: "pointer" }} onClick={() => setNotifs(p => p.map(x => x.id === n.id ? { ...x, read: true } : x))}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.read ? T.text3 : hsl(n.hue), marginTop: 5, flexShrink: 0, boxShadow: n.read ? "none" : `0 0 6px ${hsl(n.hue)}` }} />
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.read ? T.text3 : hsl(n.hue), marginTop: 5, flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, color: n.read ? T.text3 : T.text, lineHeight: 1.4 }}>{n.text}</div>
-                      <div style={{ fontSize: 10, color: T.text3, marginTop: 3 }}>{n.time}</div>
+                      <div style={{ fontSize: 10, color: T.text3, marginTop: 3, fontFamily: "'JetBrains Mono',monospace" }}>{n.time}</div>
                     </div>
                   </div>
                 ))}
@@ -294,11 +317,11 @@ export default function Dashboard() {
             )}
           </div>
 
-          <button onClick={() => toggleDark(p => !p)} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 10, cursor: "pointer", transition: "all 0.2s" }}>
-            {dark ? <i className="fa-regular fa-sun" /> : <i className="fa-regular fa-moon" />}
+          <button onClick={() => toggleDark(p => !p)} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: `1px solid ${T.border}`, color: T.text3, borderRadius: 8, cursor: "pointer", transition: "border-color 0.15s,color 0.15s" }}>
+            {dark ? <Sun style={iconSize(15, 17)} /> : <Moon style={iconSize(15, 17)} />}
           </button>
 
-          <div onClick={() => setDashPage("profile")} style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2))", border: "1px solid rgba(124,58,237,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#c4b5fd", cursor: "pointer" }}>
+          <div onClick={() => setDashPage("profile")} style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(124,58,237,0.14)", border: "1px solid rgba(124,58,237,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "#c4b5fd", cursor: "pointer" }}>
             {currentUser?.name?.[0] ?? "?"}
           </div>
         </div>
@@ -317,6 +340,7 @@ export default function Dashboard() {
             onSeedLiked={(init) => setLiked(init)}
             onMessage={handleMessage}
             onFavourite={handleFavourite}
+            onViewProfile={handleViewProfile}
           />
         )}
         {dashPage === "messages" && (
@@ -335,6 +359,15 @@ export default function Dashboard() {
             convos={convos} setActiveConvo={setActiveConvo}
           />
         )}
+        {dashPage === "otherprofile" && (
+          <OtherProfileTab
+            T={T} dark={dark}
+            currentUser={currentUser}
+            viewUserId={viewUserId}
+            setDashPage={setDashPage}
+            setActiveConvo={setActiveConvo}
+          />
+        )}
         {dashPage === "settings" && (
           <SettingsTab
             T={T} dark={dark} toggleDark={toggleDark}
@@ -347,9 +380,9 @@ export default function Dashboard() {
       {/* ── Mobile bottom nav ── */}
       <nav className="mob-bottom-nav" style={{ justifyContent: "space-around", alignItems: "center" }}>
         {NAV_ITEMS.map(n => (
-          <button key={n.id} onClick={() => setDashPage(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "6px 16px", borderRadius: 10, color: dashPage === n.id ? "#a78bfa" : T.text3, fontFamily: "inherit", transition: "all 0.2s" }}>
-            <span style={{ fontSize: 18, position: "relative" }}>
-              {n.icon}
+          <button key={n.id} onClick={() => setDashPage(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "6px 16px", borderRadius: 8, color: dashPage === n.id ? "#a78bfa" : T.text3, fontFamily: "inherit", transition: "color 0.15s" }}>
+            <span style={{ position: "relative", display: "flex" }}>
+              <n.Icon style={iconSize(17, 19)} />
               {n.id === "messages" && convos.length > 0 && <span style={{ position: "absolute", top: -3, right: -6, width: 8, height: 8, background: "#7c3aed", borderRadius: "50%", border: `2px solid ${T.bg}` }} />}
             </span>
             <span style={{ fontSize: 10, fontWeight: 600 }}>{n.label}</span>

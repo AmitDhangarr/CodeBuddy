@@ -5,10 +5,17 @@ import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
 import { useSignupStore } from "../../../../store/UsesignupStore";
 import { useThemeStore } from "../../../../store/themeprovider";
-// ─── Theme constants ─────────────────────────────────────────────────────────
+import { Sparkles, AlertTriangle, Lock, Loader2, ArrowRight, Check, Copy, Eye, EyeOff, Github, Chrome } from "lucide-react";
+
+const iconSize = (min, max, vw = 3.2) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
+
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
-  border: "rgba(255,255,255,0.07)", border2: "rgba(255,255,255,0.12)",
+  border: "rgba(255,255,255,0.09)", border2: "rgba(255,255,255,0.14)",
   text: "#e2e2ef", text2: "#9090b0", text3: "#555570",
   card: "rgba(255,255,255,0.025)", cardHover: "rgba(255,255,255,0.045)",
   input: "rgba(255,255,255,0.05)", inputBorder: "rgba(255,255,255,0.09)",
@@ -17,7 +24,7 @@ const DARK = {
 };
 const LIGHT = {
   bg: "#f5f5f9", bg2: "#ffffff", bg3: "#eeeef5",
-  border: "rgba(0,0,0,0.08)", border2: "rgba(0,0,0,0.15)",
+  border: "rgba(0,0,0,0.09)", border2: "rgba(0,0,0,0.16)",
   text: "#1a1a2e", text2: "#555570", text3: "#9090b0",
   card: "#ffffff", cardHover: "#f8f8fc",
   input: "#ffffff", inputBorder: "rgba(0,0,0,0.12)",
@@ -26,11 +33,11 @@ const LIGHT = {
 };
 
 const STATIC_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
   ::-webkit-scrollbar{width:4px}
   ::-webkit-scrollbar-thumb{border-radius:99px;background:rgba(124,58,237,0.3)}
-  input,textarea{font-family:'Instrument Sans',sans-serif}
+  input,textarea{font-family:'Inter',sans-serif}
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -39,18 +46,19 @@ const STATIC_CSS = `
   .fade-up{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
   .slide-in{animation:slideIn 0.25s ease both}
   .spin{animation:spin 0.9s linear infinite;display:inline-block}
-  .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:12px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:-0.1px;box-shadow:0 6px 24px rgba(124,58,237,0.3)}
-  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.45)}
-  .btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
-  .btn-icon{background:transparent;border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
-  .auth-input{border-radius:11px;font-size:14px;outline:none;transition:border-color 0.2s,background 0.2s;width:100%;font-family:'Instrument Sans',sans-serif;padding:10px 14px;border-width:1px;border-style:solid}
+  .btn-primary{background:#7c3aed;border:1px solid #7c3aed;color:white;padding:12px 24px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:filter 0.15s ease;letter-spacing:-0.1px}
+  .btn-primary:hover{filter:brightness(1.1)}
+  .btn-primary:active{filter:brightness(0.95)}
+  .btn-primary:disabled{opacity:0.5;cursor:not-allowed;filter:none}
+  .btn-icon{background:transparent;border-radius:8px;cursor:pointer;transition:filter 0.15s ease;display:flex;align-items:center;justify-content:center}
+  .auth-input{border-radius:8px;font-size:14px;outline:none;transition:border-color 0.15s ease,background 0.15s ease;width:100%;font-family:'Inter',sans-serif;padding:10px 14px;border-width:1px;border-style:solid}
   .auth-input:focus{border-color:rgba(124,58,237,0.6) !important}
   .auth-input::placeholder{opacity:0.5}
-  .strength-bar{height:3px;border-radius:99px;transition:all 0.3s ease}
-  .req-item{display:flex;align-items:center;gap:7px;font-size:11px;transition:color 0.2s}
-  .suggest-btn{background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(168,85,247,0.12));border:1px solid rgba(124,58,237,0.25);color:#a78bfa;padding:7px 14px;border-radius:9px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap}
-  .suggest-btn:hover{background:linear-gradient(135deg,rgba(124,58,237,0.2),rgba(168,85,247,0.2));border-color:rgba(124,58,237,0.45)}
-  .copy-btn{background:transparent;border:none;cursor:pointer;padding:5px;border-radius:7px;transition:all 0.2s;display:flex;align-items:center}
+  .strength-bar{height:3px;border-radius:6px;transition:background 0.15s ease}
+  .req-item{display:flex;align-items:center;gap:7px;font-size:11px;transition:color 0.15s ease}
+  .suggest-btn{background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.25);color:#a78bfa;padding:7px 14px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:filter 0.15s ease;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .suggest-btn:hover{filter:brightness(1.1)}
+  .copy-btn{background:transparent;border:none;cursor:pointer;padding:5px;border-radius:6px;transition:background 0.15s ease;display:flex;align-items:center}
   .copy-btn:hover{background:rgba(124,58,237,0.15)}
   @media(max-width:480px){.btn-primary{font-size:12px;padding:10px 16px}}
 `;
@@ -62,7 +70,6 @@ const Logo = ({ fill }) => (
   </svg>
 );
 
-// ─── Password strength engine ─────────────────────────────────────────────────
 const checks = [
   { id: "len", label: "At least 8 characters", test: p => p.length >= 8 },
   { id: "upper", label: "Uppercase letter", test: p => /[A-Z]/.test(p) },
@@ -83,7 +90,6 @@ function getStrength(p) {
   return checks.filter(c => c.test(p)).length;
 }
 
-// ─── Suggest a strong password ────────────────────────────────────────────────
 const CHARS = {
   upper: "ABCDEFGHJKLMNPQRSTUVWXYZ",
   lower: "abcdefghijkmnopqrstuvwxyz",
@@ -106,28 +112,14 @@ function suggestPassword() {
   return pool.sort(() => Math.random() - 0.5).join("");
 }
 
-// ─── EyeIcon toggle ───────────────────────────────────────────────────────────
-const EyeIcon = ({ open, color }) => open ? (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-  </svg>
-) : (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" />
-  </svg>
-);
-
 const CheckIcon = ({ done, color }) => done ? (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
+  <Check style={{ ...iconSize(12, 13), color }} strokeWidth={2.5} />
 ) : (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg style={iconSize(12, 13)} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="9" />
   </svg>
 );
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PasswordSetup() {
 
   const [email, setemail] = useState();
@@ -151,7 +143,7 @@ export default function PasswordSetup() {
   }, [email])
 
   const router = useRouter();
- const { dark, toggleDark } = useThemeStore();
+  const { dark, toggleDark } = useThemeStore();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -189,10 +181,10 @@ export default function PasswordSetup() {
     if (Object.keys(e).length) return;
     setSubmitting(true);
     updateForm({
-      email:email,
-      password:password,
+      email: email,
+      password: password,
     });
-  
+
     setTimeout(() => {
       setSubmitting(false);
       setSaved(true);
@@ -200,49 +192,43 @@ export default function PasswordSetup() {
     }, 1100);
   };
 
-const [provider, setProvider] = useState(null);
+  const [provider, setProvider] = useState(null);
 
-useEffect(() => {
-  const p = localStorage.getItem("Oauth");
-  localStorage.removeItem("Oauth");
-  setProvider(p);
-}, []);
+  useEffect(() => {
+    const p = localStorage.getItem("Oauth");
+    localStorage.removeItem("Oauth");
+    setProvider(p);
+  }, []);
 
   return (
-    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <style>{STATIC_CSS}</style>
 
-      {/* Background glow */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none" }}>
         <div style={{ position: "absolute", top: "-20%", right: "-10%", width: 600, height: 600, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(259,70%,35%,0.08)" : "hsla(259,70%,60%,0.05)"} 0%,transparent 65%)` }} />
       </div>
 
-      {/* Nav */}
       <nav style={{ padding: "0 clamp(16px,5vw,28px)", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, background: T.navBg, backdropFilter: "blur(20px)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
           <Logo fill={T.logoFill} />
-          <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 16, color: T.text }}>CodeBuddy</span>
+          <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: "-0.3px", color: T.text }}>CodeBuddy</span>
         </Link>
       </nav>
 
-      {/* Content */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "clamp(24px,5vw,48px) 20px", position: "relative", zIndex: 1 }}>
         <div className="fade-up" style={{ width: "100%", maxWidth: 420 }}>
 
-          {/* Provider context chip */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: 22 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${T.border}`, borderRadius: 99, padding: "5px 13px 5px 8px", fontSize: 12, color: T.text2 }}>
-              <span style={{ fontSize: 15 }}>{provider === "Google" ? <i class="fa-brands fa-google"></i> : <i class="fa-brands fa-github"></i>}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${T.border}`, borderRadius: 6, padding: "5px 13px 5px 8px", fontSize: 12, color: T.text2 }}>
+              {provider === "Google" ? <Chrome style={iconSize(14, 15)} /> : <Github style={iconSize(14, 15)} />}
               <span>Signed in via <strong style={{ color: T.text }}>{provider}</strong></span>
             </div>
           </div>
 
-          {/* Card */}
-          <div style={{ borderRadius: 18, padding: "28px 28px 24px", background: T.card, border: `1px solid ${T.border}` }}>
+          <div style={{ borderRadius: 10, padding: "28px 28px 24px", background: T.card, border: `1px solid ${T.border}` }}>
 
-            {/* Header */}
             <div style={{ marginBottom: 22 }}>
-              <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,24px)", color: T.text, marginBottom: 5 }}>
+              <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(20px,5vw,24px)", letterSpacing: "-1px", color: T.text, marginBottom: 5 }}>
                 Set up your password
               </h1>
               <p style={{ fontSize: 12, color: T.text3, lineHeight: 1.6 }}>
@@ -250,12 +236,11 @@ useEffect(() => {
               </p>
             </div>
 
-            {/* Password field */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>New password</label>
                 <button className="suggest-btn" onClick={handleSuggest} title="Generate strong password">
-                  ✨ Suggest strong password
+                  <Sparkles style={iconSize(12, 13)} /> Suggest strong password
                 </button>
               </div>
 
@@ -272,20 +257,19 @@ useEffect(() => {
                   {password && (
                     <button className="copy-btn" onClick={handleCopy} title={copied ? "Copied!" : "Copy password"}>
                       {copied
-                        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
-                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        ? <Check style={{ ...iconSize(13, 14), color: "#22c55e" }} strokeWidth={2.5} />
+                        : <Copy style={{ ...iconSize(13, 14), color: T.text3 }} strokeWidth={2} />
                       }
                     </button>
                   )}
                   <button className="copy-btn" onClick={() => setShowPass(p => !p)} title={showPass ? "Hide" : "Show"}>
-                    <EyeIcon open={showPass} color={T.text3} />
+                    {showPass ? <EyeOff style={{ ...iconSize(15, 16), color: T.text3 }} /> : <Eye style={{ ...iconSize(15, 16), color: T.text3 }} />}
                   </button>
                 </div>
               </div>
 
-              {errors.password && <div style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>⚠ {errors.password}</div>}
+              {errors.password && <div style={{ fontSize: 11, color: "#f87171", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}><AlertTriangle style={iconSize(11, 12)} /> {errors.password}</div>}
 
-              {/* Strength bar */}
               {password && (
                 <div className="slide-in" style={{ marginTop: 10 }}>
                   <div style={{ display: "flex", gap: 4, marginBottom: 5 }}>
@@ -293,11 +277,10 @@ useEffect(() => {
                       <div key={i} className="strength-bar" style={{ flex: 1, background: i <= strength ? meta.color : (dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)") }} />
                     ))}
                   </div>
-                  <div style={{ fontSize: 11, color: meta.color, fontWeight: 600 }}>{meta.label}</div>
+                  <div style={{ fontSize: 11, color: meta.color, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace" }}>{meta.label}</div>
                 </div>
               )}
 
-              {/* Requirements checklist */}
               {password && (
                 <div className="slide-in" style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 5 }}>
                   {checks.map(c => {
@@ -313,7 +296,6 @@ useEffect(() => {
               )}
             </div>
 
-            {/* Confirm field */}
             <div style={{ marginBottom: 22 }}>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 6 }}>Confirm password</label>
               <div style={{ position: "relative" }}>
@@ -326,27 +308,25 @@ useEffect(() => {
                   style={{ paddingRight: 44, background: T.input, borderColor: errors.confirm ? "rgba(248,113,113,0.5)" : (confirm && confirm === password) ? "rgba(34,197,94,0.45)" : T.inputBorder, color: T.text, letterSpacing: showConfirm ? "normal" : confirm ? "0.08em" : "normal" }}
                 />
                 <button className="copy-btn" onClick={() => setShowConfirm(p => !p)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)" }}>
-                  <EyeIcon open={showConfirm} color={T.text3} />
+                  {showConfirm ? <EyeOff style={{ ...iconSize(15, 16), color: T.text3 }} /> : <Eye style={{ ...iconSize(15, 16), color: T.text3 }} />}
                 </button>
               </div>
-              {errors.confirm && <div style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>⚠ {errors.confirm}</div>}
+              {errors.confirm && <div style={{ fontSize: 11, color: "#f87171", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}><AlertTriangle style={iconSize(11, 12)} /> {errors.confirm}</div>}
               {confirm && confirm === password && !errors.confirm && (
                 <div style={{ fontSize: 11, color: "#22c55e", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  <Check style={iconSize(12, 13)} strokeWidth={2.5} />
                   Passwords match
                 </div>
               )}
             </div>
 
-            {/* Security note */}
             <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: dark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.06)", border: `1px solid rgba(124,58,237,0.18)`, borderRadius: 10, padding: "10px 12px", marginBottom: 20 }}>
-              <span style={{ fontSize: 14, marginTop: 1 }}>🔒</span>
+              <Lock style={{ ...iconSize(13, 14), color: "#a78bfa", marginTop: 1 }} />
               <p style={{ fontSize: 11, color: T.text2, lineHeight: 1.6 }}>
                 Your password is hashed and never stored in plain text. We recommend saving it in a password manager.
               </p>
             </div>
 
-            {/* CTA */}
             <button
               className="btn-primary"
               style={{ width: "100%", padding: 13, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
@@ -354,14 +334,13 @@ useEffect(() => {
               disabled={submitting || saved}
             >
               {saved
-                ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg> Saved! Redirecting…</>
+                ? <><Check style={iconSize(14, 15)} strokeWidth={2.5} /> Saved! Redirecting…</>
                 : submitting
-                  ? <><span className="spin">⌛</span> Saving…</>
-                  : "Save password →"
+                  ? <><Loader2 className="spin" style={iconSize(14, 15)} /> Saving…</>
+                  : <>Save password <ArrowRight style={iconSize(13, 14)} /></>
               }
             </button>
 
-            {/* Skip */}
             <div style={{ textAlign: "center", marginTop: 14 }}>
               <button
                 onClick={() => router.push("/dashboard")}

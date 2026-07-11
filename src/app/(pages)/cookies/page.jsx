@@ -2,6 +2,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useThemeStore } from "../../../../store/themeprovider";
+import { Lock, BarChart3, Settings, Megaphone, Cookie, FolderOpen, SlidersHorizontal, Globe, Check, Sparkles, ExternalLink, CheckCircle2 } from "lucide-react";
+
+const iconSize = (min, max, vw = 3.2) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
+
 export default function CookiesPage() {
    const { dark, toggleDark } = useThemeStore();
   const [preferences, setPreferences] = useState({ essential: true, analytics: false, preferences: false, marketing: false });
@@ -9,10 +17,9 @@ export default function CookiesPage() {
 
   const T = dark ? {
     bg: "#07070f", bg2: "#0d0d1a",
-    border: "rgba(255,255,255,0.06)", border2: "rgba(255,255,255,0.11)",
+    border: "rgba(255,255,255,0.10)", border2: "rgba(255,255,255,0.16)",
     text: "#e4e4f0", text2: "#8888aa", text3: "#44445a",
     card: "rgba(255,255,255,0.025)",
-    shadow: "0 24px 64px rgba(0,0,0,0.55)",
     navBg: "rgba(7,7,15,0.92)",
     surfaceA: "rgba(124,58,237,0.06)", surfaceBorder: "rgba(124,58,237,0.15)",
     aiBg: "rgba(60,40,140,0.12)", aiBorder: "rgba(120,80,255,0.18)",
@@ -20,10 +27,9 @@ export default function CookiesPage() {
     redBg: "rgba(239,68,68,0.08)", redBorder: "rgba(239,68,68,0.2)", redText: "#f87171",
   } : {
     bg: "#f4f4f8", bg2: "#ffffff",
-    border: "rgba(0,0,0,0.07)", border2: "rgba(0,0,0,0.13)",
+    border: "rgba(0,0,0,0.09)", border2: "rgba(0,0,0,0.15)",
     text: "#18182c", text2: "#555570", text3: "#9090b0",
     card: "#ffffff",
-    shadow: "0 20px 60px rgba(0,0,0,0.1)",
     navBg: "rgba(244,244,248,0.95)",
     surfaceA: "rgba(124,58,237,0.05)", surfaceBorder: "rgba(124,58,237,0.15)",
     aiBg: "rgba(124,58,237,0.06)", aiBorder: "rgba(124,58,237,0.18)",
@@ -32,25 +38,26 @@ export default function CookiesPage() {
   };
 
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
     ::-webkit-scrollbar{width:4px}
-    ::-webkit-scrollbar-thumb{background:${dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)"};border-radius:99px}
+    ::-webkit-scrollbar-thumb{background:${dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)"};border-radius:6px}
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes pop{0%{transform:scale(0.95)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
     .fade-up{animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both}
-    .btn-ghost{background:transparent;border:1px solid ${T.border};color:${T.text2};padding:9px 18px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s}
+    .btn-ghost{background:transparent;border:1px solid ${T.border};color:${T.text2};padding:9px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:border-color 0.15s ease,color 0.15s ease}
     .btn-ghost:hover{border-color:${T.border2};color:${T.text}}
-    .btn-icon{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:8px;border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
+    .btn-icon{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:8px;border-radius:8px;cursor:pointer;transition:border-color 0.15s ease,color 0.15s ease;display:flex;align-items:center;justify-content:center}
     .btn-icon:hover{border-color:${T.border2};color:${T.text}}
-    .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:11px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 6px 24px rgba(124,58,237,0.28)}
-    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.42)}
+    .btn-primary{background:#7c3aed;border:1px solid #7c3aed;color:white;padding:11px 24px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:filter 0.15s ease}
+    .btn-primary:hover{filter:brightness(1.1)}
+    .btn-primary:active{filter:brightness(0.95)}
     .section-block{padding:32px 0;border-bottom:1px solid ${T.border}}
     .section-block:last-child{border-bottom:none}
-    .toggle-track{width:44px;height:24px;border-radius:99px;position:relative;cursor:pointer;transition:background 0.25s;flex-shrink:0;border:none;padding:0}
-    .toggle-thumb{width:18px;height:18px;border-radius:50%;background:white;position:absolute;top:3px;transition:left 0.25s;box-shadow:0 1px 4px rgba(0,0,0,0.3)}
-    .nav-link{font-size:14px;color:${T.text3};cursor:pointer;padding:8px 12px;border-radius:10px;transition:all 0.2s;text-decoration:none;display:block;border-left:2px solid transparent}
+    .toggle-track{width:44px;height:24px;border-radius:99px;position:relative;cursor:pointer;transition:background 0.15s ease;flex-shrink:0;border:none;padding:0}
+    .toggle-thumb{width:18px;height:18px;border-radius:50%;background:white;position:absolute;top:3px;transition:left 0.15s ease;box-shadow:0 1px 4px rgba(0,0,0,0.3)}
+    .nav-link{font-size:14px;color:${T.text3};cursor:pointer;padding:8px 12px;border-radius:8px;transition:color 0.15s ease,background 0.15s ease,border-color 0.15s ease;text-decoration:none;display:flex;align-items:center;gap:8px;border-left:2px solid transparent}
     .nav-link:hover{color:${T.text};background:${T.surfaceA};border-left-color:rgba(124,58,237,0.3)}
+    .cookie-card{transition:border-color 0.15s ease,background 0.15s ease}
     @media(max-width:768px){.layout{grid-template-columns:1fr!important}.sidebar{display:none!important}}
   `;
 
@@ -73,35 +80,42 @@ export default function CookiesPage() {
 
   const cookieTypes = [
     {
-      id: "essential", icon: "🔒", label: "Essential", required: true,
+      id: "essential", Icon: Lock, label: "Essential", required: true,
       desc: "Required for core platform functionality — login sessions, security tokens, and match state. Cannot be disabled.",
       examples: ["Session token", "CSRF protection", "Auth state"],
       duration: "Session / 30 days",
     },
     {
-      id: "analytics", icon: "📊", label: "Analytics", required: false,
+      id: "analytics", Icon: BarChart3, label: "Analytics", required: false,
       desc: "Help us understand how builders use CodeBuddy so we can improve matching accuracy and surface better features.",
       examples: ["Page visits", "Feature usage", "Match interactions"],
       duration: "Up to 2 years",
     },
     {
-      id: "preferences", icon: "⚙️", label: "Preferences", required: false,
+      id: "preferences", Icon: Settings, label: "Preferences", required: false,
       desc: "Remember your settings — dark mode, notification preferences, and filter state — so you don't have to re-set them every visit.",
       examples: ["Theme setting", "Filter state", "Notification prefs"],
       duration: "1 year",
     },
     {
-      id: "marketing", icon: "📣", label: "Marketing", required: false,
+      id: "marketing", Icon: Megaphone, label: "Marketing", required: false,
       desc: "Used to measure the effectiveness of campaigns that bring new builders to CodeBuddy. We do not use these for third-party ad targeting.",
       examples: ["Referral tracking", "Campaign attribution"],
       duration: "90 days",
     },
   ];
 
+  const sidebarLinks = [
+    { Icon: Cookie, label: "What Are Cookies" },
+    { Icon: FolderOpen, label: "Types We Use" },
+    { Icon: SlidersHorizontal, label: "Your Preferences" },
+    { Icon: Globe, label: "Third-Party Cookies" },
+  ];
+
   const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 3000); };
 
   return (
-    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
       <style>{css}</style>
 
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
@@ -111,7 +125,7 @@ export default function CookiesPage() {
       <nav style={{ background: T.navBg, backdropFilter: "blur(28px)", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, padding: "0 clamp(16px,5vw,32px)", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <Logo />
-          <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 18, color: T.text }}>CodeBuddy</span>
+          <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 18, color: T.text, letterSpacing: "-0.3px" }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         
@@ -121,26 +135,28 @@ export default function CookiesPage() {
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1060, margin: "0 auto", padding: "clamp(32px,6vw,64px) clamp(16px,5vw,32px)" }}>
 
         <div className="fade-up" style={{ marginBottom: 52 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: T.surfaceA, border: `1px solid ${T.surfaceBorder}`, borderRadius: 99, padding: "4px 13px", marginBottom: 18 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.8px", textTransform: "uppercase" }}>Legal</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: T.surfaceA, border: `1px solid ${T.surfaceBorder}`, borderRadius: 6, padding: "4px 13px", marginBottom: 18 }}>
+            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.8px", textTransform: "uppercase" }}>Legal</span>
           </div>
-          <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(32px,7vw,52px)", fontWeight: 400, color: T.text, letterSpacing: "-1.5px", lineHeight: 1.08, marginBottom: 14 }}>
-            Cookie <span style={{ fontStyle: "italic", color: "#a78bfa" }}>Policy</span>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(32px,7vw,52px)", color: T.text, letterSpacing: "-1.5px", lineHeight: 1.08, marginBottom: 14 }}>
+            Cookie <span style={{ color: "#a78bfa" }}>Policy</span>
           </h1>
-          <p style={{ fontSize: 14, color: T.text2 }}>Last updated: <strong style={{ color: T.text }}>June 1, 2026</strong> · Manage your preferences below</p>
+          <p style={{ fontSize: 14, color: T.text2 }}>Last updated: <strong style={{ color: T.text, fontFamily: "'JetBrains Mono',monospace", fontWeight: 600 }}>June 1, 2026</strong> · Manage your preferences below</p>
         </div>
 
         <div className="layout" style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 40 }}>
 
           <div className="sidebar" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.text3, letterSpacing: "1px", textTransform: "uppercase", marginBottom: 12 }}>On this page</div>
-            {[["🍪", "What Are Cookies"], ["🗂", "Types We Use"], ["🎛", "Your Preferences"], ["🌐", "Third-Party Cookies"]].map(([icon, label]) => (
+            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 700, color: T.text3, letterSpacing: "1px", textTransform: "uppercase", marginBottom: 12 }}>On this page</div>
+            {sidebarLinks.map(({ Icon, label }) => (
               <a key={label} href="#" className="nav-link">
-                <span style={{ marginRight: 8 }}>{icon}</span>{label}
+                <Icon style={iconSize(14, 16)} />{label}
               </a>
             ))}
-            <div style={{ marginTop: 24, padding: "14px 16px", background: T.greenBg, border: `1px solid ${T.greenBorder}`, borderRadius: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: T.greenText, marginBottom: 6 }}>✓ No ad tracking</div>
+            <div style={{ marginTop: 24, padding: "14px 16px", background: T.greenBg, border: `1px solid ${T.greenBorder}`, borderRadius: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: T.greenText, marginBottom: 6 }}>
+                <Check style={iconSize(12, 14)} /> No ad tracking
+              </div>
               <p style={{ fontSize: 11, color: T.text3, lineHeight: 1.55 }}>We never use cookies to serve you ads or sell your data to advertisers.</p>
             </div>
           </div>
@@ -149,14 +165,16 @@ export default function CookiesPage() {
             {/* What are cookies */}
             <div className="section-block fade-up">
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <span style={{ fontSize: 22 }}>🍪</span>
-                <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 400, color: T.text, letterSpacing: "-0.5px" }}>What Are Cookies?</h2>
+                <Cookie style={iconSize(20, 24)} color="#a78bfa" />
+                <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(20px,4vw,26px)", color: T.text, letterSpacing: "-0.5px" }}>What Are Cookies?</h2>
               </div>
               <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.8, marginBottom: 16 }}>
                 Cookies are small text files stored in your browser when you visit a website. They help the site remember who you are and your preferences across visits. CodeBuddy uses cookies sparingly — only what's needed to run the platform and improve your experience.
               </p>
-              <div style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 14, padding: "16px 18px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", marginBottom: 6, letterSpacing: "1px" }}>✦ OUR APPROACH</div>
+              <div style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 10, padding: "16px 18px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 700, color: "#a78bfa", marginBottom: 6, letterSpacing: "1px" }}>
+                  <Sparkles style={iconSize(11, 13)} /> OUR APPROACH
+                </div>
                 <p style={{ fontSize: 13, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.65 }}>We use only first-party cookies and a small number of trusted third-party services. No advertising networks. No cross-site tracking. Your match data stays on CodeBuddy.</p>
               </div>
             </div>
@@ -164,22 +182,22 @@ export default function CookiesPage() {
             {/* Interactive Preferences */}
             <div className="section-block fade-up" style={{ animationDelay: "0.08s" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                <span style={{ fontSize: 22 }}>🎛</span>
-                <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 400, color: T.text, letterSpacing: "-0.5px" }}>Manage Preferences</h2>
+                <SlidersHorizontal style={iconSize(20, 24)} color="#a78bfa" />
+                <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(20px,4vw,26px)", color: T.text, letterSpacing: "-0.5px" }}>Manage Preferences</h2>
               </div>
               <p style={{ fontSize: 13, color: T.text2, marginBottom: 24, lineHeight: 1.7 }}>Toggle the categories below to control which cookies CodeBuddy uses on your device. Essential cookies cannot be disabled as the platform cannot function without them.</p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {cookieTypes.map((ct) => (
-                  <div key={ct.id} style={{ background: T.card, border: `1px solid ${preferences[ct.id] ? "rgba(124,58,237,0.3)" : T.border}`, borderRadius: 16, padding: "18px 20px", transition: "border-color 0.2s" }}>
+                  <div key={ct.id} className="cookie-card" style={{ background: T.card, border: `1px solid ${preferences[ct.id] ? "rgba(124,58,237,0.3)" : T.border}`, borderRadius: 10, padding: "18px 20px" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 20 }}>{ct.icon}</span>
+                        <ct.Icon style={iconSize(18, 20)} color={T.text2} />
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{ct.label}</span>
                             {ct.required && (
-                              <span style={{ fontSize: 9, fontWeight: 700, color: T.greenText, background: T.greenBg, border: `1px solid ${T.greenBorder}`, borderRadius: 99, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Required</span>
+                              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, fontWeight: 700, color: T.greenText, background: T.greenBg, border: `1px solid ${T.greenBorder}`, borderRadius: 6, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Required</span>
                             )}
                           </div>
                           <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>Duration: {ct.duration}</div>
@@ -190,7 +208,7 @@ export default function CookiesPage() {
                     <p style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, marginBottom: 10 }}>{ct.desc}</p>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {ct.examples.map(ex => (
-                        <span key={ex} style={{ fontSize: 10, color: T.text3, background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${T.border}`, borderRadius: 6, padding: "3px 8px", fontFamily: "monospace" }}>{ex}</span>
+                        <span key={ex} style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: T.text3, background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${T.border}`, borderRadius: 6, padding: "3px 8px" }}>{ex}</span>
                       ))}
                     </div>
                   </div>
@@ -198,8 +216,9 @@ export default function CookiesPage() {
               </div>
 
               <div style={{ marginTop: 20, display: "flex", gap: 10, alignItems: "center" }}>
-                <button className="btn-primary" onClick={handleSave} style={{ padding: "11px 24px" }}>
-                  {saved ? "✓ Saved!" : "Save preferences"}
+                <button className="btn-primary" onClick={handleSave} style={{ padding: "11px 24px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  {saved && <CheckCircle2 style={iconSize(14, 16)} />}
+                  {saved ? "Saved!" : "Save preferences"}
                 </button>
                 <button className="btn-ghost" onClick={() => { setPreferences({ essential: true, analytics: true, preferences: true, marketing: false }); setSaved(false); }}>Accept recommended</button>
                 {saved && <span style={{ fontSize: 12, color: T.greenText }}>Your cookie preferences have been updated.</span>}
@@ -209,8 +228,8 @@ export default function CookiesPage() {
             {/* Third party */}
             <div className="section-block fade-up" style={{ animationDelay: "0.12s" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <span style={{ fontSize: 22 }}>🌐</span>
-                <h2 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 400, color: T.text, letterSpacing: "-0.5px" }}>Third-Party Cookies</h2>
+                <Globe style={iconSize(20, 24)} color="#a78bfa" />
+                <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(20px,4vw,26px)", color: T.text, letterSpacing: "-0.5px" }}>Third-Party Cookies</h2>
               </div>
               <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.8, marginBottom: 16 }}>We use a small number of trusted third-party services that may set their own cookies:</p>
               {[
@@ -221,9 +240,9 @@ export default function CookiesPage() {
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: `1px solid ${T.border}`, gap: 12, flexWrap: "wrap" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 2 }}>{tp.name}</div>
-                    <div style={{ fontSize: 12, color: T.text3 }}>{tp.purpose} · <span style={{ fontFamily: "monospace", fontSize: 11 }}>{tp.cookies}</span></div>
+                    <div style={{ fontSize: 12, color: T.text3 }}>{tp.purpose} · <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11 }}>{tp.cookies}</span></div>
                   </div>
-                  <a href={`https://${tp.link}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#a78bfa", textDecoration: "none" }}>{tp.link} ↗</a>
+                  <a href={`https://${tp.link}`} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#a78bfa", textDecoration: "none" }}>{tp.link} <ExternalLink style={iconSize(11, 13)} /></a>
                 </div>
               ))}
             </div>

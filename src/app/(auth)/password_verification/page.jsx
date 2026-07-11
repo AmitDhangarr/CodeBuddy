@@ -4,10 +4,17 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
 import { useThemeStore } from "../../../../store/themeprovider";
-// ─── Theme constants ───────────────────────────────────────────────────────
+import { Mail, Hash, AlertTriangle, Loader2, ArrowRight, ArrowLeft, Check, Eye, EyeOff, ChevronRight, Github, Chrome } from "lucide-react";
+
+const iconSize = (min, max, vw = 3.2) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
+
 const DARK = {
   bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
-  border: "rgba(255,255,255,0.07)", border2: "rgba(255,255,255,0.12)",
+  border: "rgba(255,255,255,0.09)", border2: "rgba(255,255,255,0.14)",
   text: "#e2e2ef", text2: "#9090b0", text3: "#555570",
   card: "rgba(255,255,255,0.025)",
   input: "rgba(255,255,255,0.05)", inputBorder: "rgba(255,255,255,0.09)",
@@ -16,11 +23,9 @@ const DARK = {
   otpBg: "rgba(255,255,255,0.05)",
 };
 
-
-
 const LIGHT = {
   bg: "#f5f5f9", bg2: "#ffffff", bg3: "#eeeef5",
-  border: "rgba(0,0,0,0.08)", border2: "rgba(0,0,0,0.15)",
+  border: "rgba(0,0,0,0.09)", border2: "rgba(0,0,0,0.16)",
   text: "#1a1a2e", text2: "#555570", text3: "#9090b0",
   card: "#ffffff",
   input: "#ffffff", inputBorder: "rgba(0,0,0,0.12)",
@@ -30,11 +35,11 @@ const LIGHT = {
 };
 
 const STATIC_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
   ::-webkit-scrollbar{width:4px}
   ::-webkit-scrollbar-thumb{border-radius:99px;background:rgba(124,58,237,0.3)}
-  input{font-family:'Instrument Sans',sans-serif}
+  input{font-family:'Inter',sans-serif}
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -45,20 +50,22 @@ const STATIC_CSS = `
   .slide-down{animation:slideDown 0.3s cubic-bezier(0.16,1,0.3,1) both}
   .shake{animation:shake 0.4s ease}
   .spin{animation:spin 0.9s linear infinite;display:inline-block}
-  .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:12px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:-0.1px;box-shadow:0 6px 24px rgba(124,58,237,0.3)}
-  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.45)}
-  .btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
-  .btn-ghost{background:transparent;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s}
-  .btn-icon{background:transparent;border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
-  .method-btn{border-radius:13px;padding:14px 16px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:12px;width:100%;text-align:left;font-family:inherit}
-  .method-btn:hover{transform:translateY(-1px)}
-  .auth-input{border-radius:11px;font-size:14px;outline:none;transition:border-color 0.2s;width:100%;font-family:'Instrument Sans',sans-serif;padding:10px 14px;border-width:1px;border-style:solid}
+  .btn-primary{background:#7c3aed;border:1px solid #7c3aed;color:white;padding:12px 24px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:filter 0.15s ease;letter-spacing:-0.1px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .btn-primary:hover{filter:brightness(1.1)}
+  .btn-primary:active{filter:brightness(0.95)}
+  .btn-primary:disabled{opacity:0.5;cursor:not-allowed;filter:none}
+  .btn-ghost{background:transparent;border:none;cursor:pointer;font-family:inherit;transition:filter 0.15s ease;display:inline-flex;align-items:center;gap:5px}
+  .btn-ghost:hover{filter:brightness(1.3)}
+  .btn-icon{background:transparent;border-radius:8px;cursor:pointer;transition:filter 0.15s ease;display:flex;align-items:center;justify-content:center}
+  .method-btn{border-radius:8px;padding:14px 16px;cursor:pointer;transition:border-color 0.15s ease,background 0.15s ease;display:flex;align-items:center;gap:12px;width:100%;text-align:left;font-family:inherit}
+  .method-btn:hover{border-color:rgba(139,92,246,0.22) !important}
+  .auth-input{border-radius:8px;font-size:14px;outline:none;transition:border-color 0.15s ease;width:100%;font-family:'Inter',sans-serif;padding:10px 14px;border-width:1px;border-style:solid}
   .auth-input:focus{border-color:rgba(124,58,237,0.6) !important}
   .auth-input::placeholder{opacity:0.5}
-  .otp-box{border-radius:11px;font-size:22px;font-weight:700;text-align:center;outline:none;width:48px;height:54px;border-width:1.5px;border-style:solid;transition:border-color 0.2s,transform 0.15s;font-family:'Instrument Sans',sans-serif;caret-color:#a855f7}
-  .otp-box:focus{border-color:rgba(124,58,237,0.7) !important;transform:scale(1.06)}
+  .otp-box{border-radius:8px;font-size:22px;font-weight:700;text-align:center;outline:none;width:48px;height:54px;border-width:1.5px;border-style:solid;transition:border-color 0.15s ease;font-family:'JetBrains Mono',monospace;caret-color:#a855f7}
+  .otp-box:focus{border-color:rgba(124,58,237,0.7) !important}
   @media(max-width:480px){.otp-box{width:40px;height:48px;font-size:18px}}
-  .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:opacity 0.15s;opacity:0.45}
+  .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:opacity 0.15s ease;opacity:0.45}
   .eye-btn:hover{opacity:0.9}
 `;
 
@@ -69,19 +76,6 @@ const Logo = ({ fill }) => (
   </svg>
 );
 
-const EyeIcon = ({ open, color }) => open ? (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-  </svg>
-) : (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-    <line x1="1" y1="1" x2="23" y2="23" />
-  </svg>
-);
-
-// ─── OTP ─────────────────────────────────────────────────────────────────────
 const OTP_LEN = 6;
 
 function OtpInput({ otp, setOtp, inputRefs, T }) {
@@ -133,19 +127,17 @@ function CountdownRing({ seconds, total, color }) {
         strokeDasharray={circ} strokeDashoffset={circ * (1 - seconds / total)}
         strokeLinecap="round" style={{ transition: "stroke-dashoffset 1s linear" }} />
       <text x="18" y="18" textAnchor="middle" dominantBaseline="central"
-        fill={color} fontSize="10" fontWeight="700" fontFamily="'Instrument Sans',sans-serif"
+        fill={color} fontSize="10" fontWeight="700" fontFamily="'JetBrains Mono',monospace"
         style={{ transform: "rotate(90deg)", transformOrigin: "18px 18px" }}>{seconds}</text>
     </svg>
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function PasswordVerify() {
   const router = useRouter();
-   const { dark, toggleDark } = useThemeStore();
+  const { dark, toggleDark } = useThemeStore();
   const [view, setView] = useState("verify");
 
-  // User email from Supabase session
   const [email, setEmail] = useState("");
 
   useEffect(() => {
@@ -154,7 +146,6 @@ export default function PasswordVerify() {
     });
   }, []);
 
-  // Provider
   const [provider, setProvider] = useState(null);
   useEffect(() => {
     const p = localStorage.getItem("Oauth");
@@ -162,19 +153,16 @@ export default function PasswordVerify() {
     setProvider(p);
   }, []);
 
-  // Verify view state
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [shaking, setShaking] = useState(false);
 
-  // Forgot flow
   const [forgotMethod, setForgotMethod] = useState(null);
   const [resetEmail, setResetEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
 
-  // OTP flow
   const [otp, setOtp] = useState(Array(OTP_LEN).fill(""));
   const [otpError, setOtpError] = useState("");
   const [countdown, setCountdown] = useState(59);
@@ -182,7 +170,6 @@ export default function PasswordVerify() {
   const otpRefs = useRef([]);
   const timerRef = useRef(null);
 
-  // Reset password
   const [newPass, setNewPass] = useState("");
   const [newConfirm, setNewConfirm] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -197,7 +184,6 @@ export default function PasswordVerify() {
     setTimeout(() => setShaking(false), 450);
   };
 
-  // OTP countdown
   useEffect(() => {
     if (view !== "otp") return;
     setCountdown(59); setCanResend(false);
@@ -212,7 +198,6 @@ export default function PasswordVerify() {
     if (view === "otp") setTimeout(() => otpRefs.current[0]?.focus(), 200);
   }, [view]);
 
-  // ── API call — returns { success, message? } from response body ────────────
   const callAuthApi = async (payload) => {
     try {
       const res = await fetch("/api/auth", {
@@ -221,14 +206,13 @@ export default function PasswordVerify() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      return data; // { success: true } or { success: false, message: "..." }
+      return data;
     } catch (err) {
       console.error("Auth error:", err);
       return { success: false, message: "Network error. Please check your connection." };
     }
   };
 
-  // ── Verify password — fully bound to API response ─────────────────────────
   const handleVerify = async () => {
     if (!password) { setError("Please enter your password"); triggerShake(); return; }
     setSubmitting(true);
@@ -239,10 +223,8 @@ export default function PasswordVerify() {
     setSubmitting(false);
 
     if (result?.success === true) {
-      // ✅ API said success → go to dashboard
       router.push("/dashboard");
     } else {
-      // ❌ API said failure → show inline error, stay on page
       const msg = result?.message || "Incorrect password. Try again.";
       if (/invalid.*(login|credentials|password)/i.test(msg) || /wrong/i.test(msg)) {
         setError("Incorrect password. Try again.");
@@ -253,14 +235,12 @@ export default function PasswordVerify() {
     }
   };
 
-  // ── Send reset email ──────────────────────────────────────────────────────
   const handleSendEmail = () => {
     if (!resetEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return;
     setSubmitting(true);
     setTimeout(() => { setSubmitting(false); setEmailSent(true); }, 900);
   };
 
-  // ── OTP ───────────────────────────────────────────────────────────────────
   const handleSendOtp = () => {
     setSubmitting(true);
     setTimeout(() => { setSubmitting(false); setView("otp"); }, 800);
@@ -287,7 +267,6 @@ export default function PasswordVerify() {
     }, 900);
   };
 
-  // ── Reset password ────────────────────────────────────────────────────────
   const handleReset = () => {
     const e = {};
     if (newPass.length < 8) e.pass = "Min 8 characters";
@@ -298,38 +277,33 @@ export default function PasswordVerify() {
     setTimeout(() => { setSubmitting(false); setView("success"); }, 1000);
   };
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
   const card = (children) => (
-    <div style={{ borderRadius: 18, padding: "28px 28px 24px", background: T.card, border: `1px solid ${T.border}` }}>
+    <div style={{ borderRadius: 10, padding: "28px 28px 24px", background: T.card, border: `1px solid ${T.border}` }}>
       {children}
     </div>
   );
 
   const heading = (title, sub) => (
     <div style={{ marginBottom: 22 }}>
-      <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: "clamp(20px,5vw,24px)", color: T.text, marginBottom: 5 }}>{title}</h1>
+      <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(20px,5vw,24px)", letterSpacing: "-1px", color: T.text, marginBottom: 5 }}>{title}</h1>
       {sub && <p style={{ fontSize: 12, color: T.text3, lineHeight: 1.6 }}>{sub}</p>}
     </div>
   );
 
-  const errMsg = (msg) => msg ? <div style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>⚠ {msg}</div> : null;
+  const errMsg = (msg) => msg ? <div style={{ fontSize: 11, color: "#f87171", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}><AlertTriangle style={iconSize(11, 12)} /> {msg}</div> : null;
 
-  const backBtn = (to, label = "← Back") => (
+  const backBtn = (to, label = "Back") => (
     <button className="btn-ghost"
       onClick={() => { setView(to); setError(""); setOtpError(""); setForgotMethod(null); setEmailSent(false); }}
-      style={{ color: T.text3, fontSize: 12, marginTop: 14, display: "block", margin: "14px auto 0" }}>
-      {label}
+      style={{ color: T.text3, fontSize: 12, marginTop: 14, display: "flex", margin: "14px auto 0" }}>
+      <ArrowLeft style={iconSize(11, 12)} /> {label}
     </button>
   );
 
-
-
-  // ─── Views ────────────────────────────────────────────────────────────────
   const renderVerify = () => card(
-    
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 7, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${T.border}`, borderRadius: 99, padding: "5px 13px 5px 8px", fontSize: 12, color: T.text2, width: "fit-content", marginBottom: 18 }}>
-        <span style={{ fontSize: 15 }}>{provider === "Google" ? "G" : "⌥"}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", border: `1px solid ${T.border}`, borderRadius: 6, padding: "5px 13px 5px 8px", fontSize: 12, color: T.text2, width: "fit-content", marginBottom: 18 }}>
+        {provider === "Google" ? <Chrome style={iconSize(14, 15)} /> : <Github style={iconSize(14, 15)} />}
         <span>Signed in via <strong style={{ color: T.text }}>{provider}</strong></span>
       </div>
 
@@ -349,21 +323,20 @@ export default function PasswordVerify() {
             autoFocus
           />
           <button className="eye-btn" onClick={() => setShowPass(p => !p)} tabIndex={-1} aria-label={showPass ? "Hide" : "Show"}>
-            <EyeIcon open={showPass} color={T.text} />
+            {showPass ? <EyeOff style={{ ...iconSize(15, 16), color: T.text }} /> : <Eye style={{ ...iconSize(15, 16), color: T.text }} />}
           </button>
         </div>
         {errMsg(error)}
       </div>
 
       <button className="btn-primary" style={{ width: "100%", padding: 13 }} onClick={handleVerify} disabled={submitting}>
-        {submitting ? <span className="spin">⌛</span> : "Verify & continue →"}
+        {submitting ? <Loader2 className="spin" style={iconSize(14, 15)} /> : <>Verify & continue <ArrowRight style={iconSize(13, 14)} /></>}
       </button>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, flexWrap: "wrap", gap: 8 }}>
         <button className="btn-ghost" onClick={() => router.push("/forgot_password")} style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>
           Forgot password?
         </button>
-      
       </div>
     </>
   );
@@ -375,28 +348,28 @@ export default function PasswordVerify() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button className="method-btn" onClick={() => setForgotMethod("email")}
             style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", border: `1px solid ${T.border}`, color: T.text }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>📧</div>
+            <div style={{ width: 38, height: 38, borderRadius: 8, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Mail style={{ ...iconSize(16, 18), color: "#a78bfa" }} /></div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 2 }}>Email reset link</div>
               <div style={{ fontSize: 11, color: T.text3 }}>We'll send a link to your inbox</div>
             </div>
-            <svg style={{ marginLeft: "auto", flexShrink: 0 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <ChevronRight style={{ marginLeft: "auto", flexShrink: 0, ...iconSize(13, 14), color: T.text3 }} strokeWidth={2} />
           </button>
           <button className="method-btn" onClick={() => setForgotMethod("otp")}
             style={{ background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", border: `1px solid ${T.border}`, color: T.text }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🔢</div>
+            <div style={{ width: 38, height: 38, borderRadius: 8, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Hash style={{ ...iconSize(16, 18), color: "#a78bfa" }} /></div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 2 }}>One-time code (OTP)</div>
               <div style={{ fontSize: 11, color: T.text3 }}>6-digit code sent to your phone / email</div>
             </div>
-            <svg style={{ marginLeft: "auto", flexShrink: 0 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <ChevronRight style={{ marginLeft: "auto", flexShrink: 0, ...iconSize(13, 14), color: T.text3 }} strokeWidth={2} />
           </button>
         </div>
       ) : forgotMethod === "email" ? (
         <div className="slide-down">
           {emailSent ? (
             <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>📬</div>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><Mail style={{ ...iconSize(32, 40), color: "#a78bfa" }} /></div>
               <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 6 }}>Check your inbox</div>
               <div style={{ fontSize: 12, color: T.text3, lineHeight: 1.6 }}>We sent a reset link to <strong style={{ color: T.text }}>{resetEmail || maskedEmail}</strong>. It expires in 15 minutes.</div>
               <button className="btn-ghost" style={{ color: "#a78bfa", fontSize: 12, marginTop: 14, fontWeight: 600 }} onClick={() => { setEmailSent(false); setResetEmail(""); }}>
@@ -412,24 +385,24 @@ export default function PasswordVerify() {
                   style={{ background: T.input, borderColor: T.inputBorder, color: T.text }} autoFocus />
               </div>
               <button className="btn-primary" style={{ width: "100%", padding: 13 }} onClick={handleSendEmail} disabled={submitting}>
-                {submitting ? <span className="spin">⌛</span> : "Send reset link →"}
+                {submitting ? <Loader2 className="spin" style={iconSize(14, 15)} /> : <>Send reset link <ArrowRight style={iconSize(13, 14)} /></>}
               </button>
             </>
           )}
-          <button className="btn-ghost" onClick={() => setForgotMethod(null)} style={{ color: T.text3, fontSize: 12, marginTop: 14, display: "block", margin: "14px auto 0" }}>
-            ← Other options
+          <button className="btn-ghost" onClick={() => setForgotMethod(null)} style={{ color: T.text3, fontSize: 12, marginTop: 14, display: "flex", margin: "14px auto 0" }}>
+            <ArrowLeft style={iconSize(11, 12)} /> Other options
           </button>
         </div>
       ) : (
         <div className="slide-down">
-          <div style={{ background: dark ? "rgba(124,58,237,0.07)" : "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.18)", borderRadius: 11, padding: "12px 14px", marginBottom: 18, fontSize: 12, color: T.text2, lineHeight: 1.6 }}>
+          <div style={{ background: dark ? "rgba(124,58,237,0.07)" : "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.18)", borderRadius: 10, padding: "12px 14px", marginBottom: 18, fontSize: 12, color: T.text2, lineHeight: 1.6 }}>
             We'll send a 6-digit code to <strong style={{ color: T.text }}>{maskedEmail}</strong>
           </div>
           <button className="btn-primary" style={{ width: "100%", padding: 13 }} onClick={handleSendOtp} disabled={submitting}>
-            {submitting ? <span className="spin">⌛</span> : "Send OTP →"}
+            {submitting ? <Loader2 className="spin" style={iconSize(14, 15)} /> : <>Send OTP <ArrowRight style={iconSize(13, 14)} /></>}
           </button>
-          <button className="btn-ghost" onClick={() => setForgotMethod(null)} style={{ color: T.text3, fontSize: 12, marginTop: 14, display: "block", margin: "14px auto 0" }}>
-            ← Other options
+          <button className="btn-ghost" onClick={() => setForgotMethod(null)} style={{ color: T.text3, fontSize: 12, marginTop: 14, display: "flex", margin: "14px auto 0" }}>
+            <ArrowLeft style={iconSize(11, 12)} /> Other options
           </button>
         </div>
       )}
@@ -444,10 +417,10 @@ export default function PasswordVerify() {
         <div className={shaking ? "shake" : ""}>
           <OtpInput otp={otp} setOtp={v => { setOtp(v); setOtpError(""); }} inputRefs={otpRefs} T={T} />
         </div>
-        {otpError && <div style={{ textAlign: "center", fontSize: 11, color: "#f87171", marginTop: 10 }}>⚠ {otpError}</div>}
+        {otpError && <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 5, fontSize: 11, color: "#f87171", marginTop: 10 }}><AlertTriangle style={iconSize(11, 12)} /> {otpError}</div>}
       </div>
       <button className="btn-primary" style={{ width: "100%", padding: 13 }} onClick={handleVerifyOtp} disabled={submitting || otp.join("").length < OTP_LEN}>
-        {submitting ? <span className="spin">⌛</span> : "Verify code →"}
+        {submitting ? <Loader2 className="spin" style={iconSize(14, 15)} /> : <>Verify code <ArrowRight style={iconSize(13, 14)} /></>}
       </button>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 18 }}>
         {canResend ? (
@@ -472,7 +445,7 @@ export default function PasswordVerify() {
           <input className="auth-input" type={showNew ? "text" : "password"} placeholder="New password…" value={newPass}
             onChange={e => { setNewPass(e.target.value); setResetError(p => { const n = { ...p }; delete n.pass; return n; }); }}
             style={{ paddingRight: 44, background: T.input, borderColor: resetError.pass ? "rgba(248,113,113,0.5)" : T.inputBorder, color: T.text }} autoFocus />
-          <button className="eye-btn" onClick={() => setShowNew(p => !p)} tabIndex={-1}><EyeIcon open={showNew} color={T.text} /></button>
+          <button className="eye-btn" onClick={() => setShowNew(p => !p)} tabIndex={-1}>{showNew ? <EyeOff style={{ ...iconSize(15, 16), color: T.text }} /> : <Eye style={{ ...iconSize(15, 16), color: T.text }} />}</button>
         </div>
         {errMsg(resetError.pass)}
       </div>
@@ -482,29 +455,33 @@ export default function PasswordVerify() {
           <input className="auth-input" type={showNewC ? "text" : "password"} placeholder="Repeat…" value={newConfirm}
             onChange={e => { setNewConfirm(e.target.value); setResetError(p => { const n = { ...p }; delete n.confirm; return n; }); }}
             style={{ paddingRight: 44, background: T.input, borderColor: resetError.confirm ? "rgba(248,113,113,0.5)" : (newConfirm && newConfirm === newPass ? "rgba(34,197,94,0.45)" : T.inputBorder), color: T.text }} />
-          <button className="eye-btn" onClick={() => setShowNewC(p => !p)} tabIndex={-1}><EyeIcon open={showNewC} color={T.text} /></button>
+          <button className="eye-btn" onClick={() => setShowNewC(p => !p)} tabIndex={-1}>{showNewC ? <EyeOff style={{ ...iconSize(15, 16), color: T.text }} /> : <Eye style={{ ...iconSize(15, 16), color: T.text }} />}</button>
         </div>
         {errMsg(resetError.confirm)}
         {newConfirm && newConfirm === newPass && !resetError.confirm && (
           <div style={{ fontSize: 11, color: "#22c55e", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+            <Check style={iconSize(12, 13)} strokeWidth={2.5} />
             Passwords match
           </div>
         )}
       </div>
       <button className="btn-primary" style={{ width: "100%", padding: 13 }} onClick={handleReset} disabled={submitting}>
-        {submitting ? <span className="spin">⌛</span> : "Update password →"}
+        {submitting ? <Loader2 className="spin" style={iconSize(14, 15)} /> : <>Update password <ArrowRight style={iconSize(13, 14)} /></>}
       </button>
     </>
   );
 
   const renderSuccess = () => card(
     <div style={{ textAlign: "center", padding: "12px 0" }}>
-      <div style={{ fontSize: 48, marginBottom: 14 }}>🎉</div>
-      <h1 style={{ fontFamily: "'Instrument Serif',serif", fontSize: 24, color: T.text, marginBottom: 6 }}>Password updated!</h1>
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Check style={{ ...iconSize(28, 32), color: "#22c55e" }} strokeWidth={2.5} />
+        </div>
+      </div>
+      <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 24, letterSpacing: "-1px", color: T.text, marginBottom: 6 }}>Password updated!</h1>
       <p style={{ fontSize: 12, color: T.text3, marginBottom: 22, lineHeight: 1.6 }}>You're all set. You can now sign in with your new password.</p>
       <button className="btn-primary" style={{ padding: "12px 32px" }} onClick={() => router.push("/dashboard")}>
-        Go to dashboard →
+        Go to dashboard <ArrowRight style={iconSize(13, 14)} />
       </button>
     </div>
   );
@@ -512,7 +489,7 @@ export default function PasswordVerify() {
   const viewMap = { verify: renderVerify, forgot: renderForgot, otp: renderOtp, reset: renderReset, success: renderSuccess };
 
   return (
-    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <style>{STATIC_CSS}</style>
 
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none" }}>
@@ -522,11 +499,10 @@ export default function PasswordVerify() {
       <nav style={{ padding: "0 clamp(16px,5vw,28px)", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 100, background: T.navBg, backdropFilter: "blur(20px)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
           <Logo fill={T.logoFill} />
-          <span style={{ fontFamily: "'Instrument Serif',serif", fontSize: 16, color: T.text }}>CodeBuddy</span>
+          <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: "-0.3px", color: T.text }}>CodeBuddy</span>
         </Link>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-         
-          <button className="btn-ghost" onClick={() => router.back()} style={{ color: T.text3, fontSize: 13, padding: "4px 8px" }}>← Back</button>
+          <button className="btn-ghost" onClick={() => router.back()} style={{ color: T.text3, fontSize: 13, padding: "4px 8px" }}><ArrowLeft style={iconSize(12, 13)} /> Back</button>
         </div>
       </nav>
 

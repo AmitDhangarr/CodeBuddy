@@ -10,6 +10,25 @@ import {
   validateGithubUrl,
   LIMITS,
 } from "../../../lib/validation";
+import {
+  AlertTriangle, X, Star, Check, Github, Palette, Settings2, Wrench,
+  PenTool, Bot, Smartphone, Cloud, Handshake, GraduationCap, Sprout,
+  MapPin, Link2, Sparkles, PartyPopper, Rocket, ArrowLeft, ArrowRight,
+  Loader2, Plus,
+} from "lucide-react";
+
+const iconSize = (min, max, vw = 3.2) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
+
+const BtnLabel = ({ children, Icon = ArrowRight, min = 11, max = 14 }) => (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+    {children}
+    <Icon style={iconSize(min, max)} />
+  </span>
+);
 
 const hsl  = (h, s = 70, l = 60) => `hsl(${h},${s}%,${l}%)`;
 const hsla = (h, s = 70, l = 60, a = 0.12) => `hsla(${h},${s}%,${l}%,${a})`;
@@ -18,8 +37,6 @@ function getGithubValidationError(url, { required = false } = {}) {
   const err = validateGithubUrl(url, { required });
   return err || null;
 }
-
-// ─── India locations ───────────────────────────────────────────────────────
 
 const INDIA_STATES = [
   "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
@@ -58,16 +75,19 @@ const MAJOR_CITIES = {
 
 const PROJECT_STATES = ["Active", "Completed", "Archived", "In Progress", "Paused", "Open Source"];
 
-// ─── Sub-components ────────────────────────────────────────────────────────
-
 const Lbl = ({ children, T }) => (
-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: T.text3, marginBottom: 7 }}>
+  <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", letterSpacing: "1px", textTransform: "uppercase", color: T.text3, marginBottom: 7 }}>
     {children}
   </div>
 );
 
 const Err = ({ msg }) =>
-  msg ? <div style={{ fontSize: 11, color: "#f87171", marginTop: 5 }}>⚠ {msg}</div> : null;
+  msg ? (
+    <div style={{ fontSize: 11, color: "#f87171", marginTop: 5, display: "flex", alignItems: "center", gap: 5 }}>
+      <AlertTriangle style={iconSize(11, 11)} />
+      {msg}
+    </div>
+  ) : null;
 
 const Field = ({ label, id, type = "text", placeholder, value, onChange, error, hint, prefix, T, clrErr, required }) => (
   <div style={{ marginBottom: 18 }}>
@@ -96,12 +116,10 @@ const Field = ({ label, id, type = "text", placeholder, value, onChange, error, 
   </div>
 );
 
-// ─── Logo ──────────────────────────────────────────────────────────────────
-
 const LogoIcon = ({ dark }) => (
   <div className="ob-logo" style={{
     width: 30, height: 30, borderRadius: 8,
-    background: "linear-gradient(135deg,#7c3aed,#a855f7)",
+    background: "#7c3aed",
     display: "flex", alignItems: "center", justifyContent: "center",
     overflow: "hidden", flexShrink: 0
   }}>
@@ -112,8 +130,6 @@ const LogoIcon = ({ dark }) => (
   </div>
 );
 
-// ─── Skill list ────────────────────────────────────────────────────────────
-
 const SKILLS_ALL = [
   "React","Next.js","TypeScript","Node.js","Python","Rust","Go",
   "UI/UX Design","Figma","GraphQL","PostgreSQL","MongoDB","Redis",
@@ -122,10 +138,8 @@ const SKILLS_ALL = [
   "Django","FastAPI","Express.js","Prisma","Firebase","Supabase","Redis","tRPC"
 ];
 
-// ─── Steps ─────────────────────────────────────────────────────────────────
 const STEPS = ["Identity", "Role", "Your Skills", "You Need", "Location", "Projects", "Review"];
 
-// ─── Empty project template ───────────────────────────────────────────────
 const emptyProject = () => ({
   id: Date.now() + Math.random(),
   name: "",
@@ -137,8 +151,6 @@ const emptyProject = () => ({
   state: "Active",
   skillSearch: "",
 });
-
-// ─── ProjectCard ──────────────────────────────────────────────────────────
 
 const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, errors }) => {
   const upd = (k, v) => onChange({ ...project, [k]: v });
@@ -153,9 +165,8 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
     s.toLowerCase().includes((project.skillSearch || "").toLowerCase())
   );
 
-  // ── live GitHub URL validation on blur ──────────────────────────────────
   const handleGithubBlur = () => {
-    if (!project.githubUrl.trim()) return; // empty allowed unless isFirst
+    if (!project.githubUrl.trim()) return;
     const err = getGithubValidationError(project.githubUrl);
     if (err) onChange({ ...project, _githubErr: err });
     else onChange({ ...project, _githubErr: null });
@@ -167,34 +178,33 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
     <div style={{
       background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
       border: `1px solid ${isFirst ? "rgba(124,58,237,0.3)" : T.border}`,
-      borderRadius: 16,
+      borderRadius: 10,
       padding: "18px 18px 14px",
       marginBottom: 14,
       position: "relative",
     }}>
-      {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{
-            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+            fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", padding: "2px 8px", borderRadius: 6,
             background: isFirst ? "rgba(124,58,237,0.15)" : dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
             color: isFirst ? "#c4a8ff" : T.text3,
             border: `1px solid ${isFirst ? "rgba(124,58,237,0.3)" : T.border}`,
-            textTransform: "uppercase", letterSpacing: "0.8px"
+            textTransform: "uppercase", letterSpacing: "0.8px",
+            display: "inline-flex", alignItems: "center", gap: 4
           }}>
-            {isFirst ? "★ Required" : `Project ${index + 1}`}
+            {isFirst ? <><Star style={iconSize(10, 10)} fill="#c4a8ff" /> Required</> : `Project ${index + 1}`}
           </span>
         </div>
         {!isFirst && (
           <button
             onClick={onRemove}
-            style={{ background: "none", border: "none", color: T.text3, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 4 }}
+            style={{ background: "none", border: "none", color: T.text3, cursor: "pointer", lineHeight: 1, padding: 4, display: "flex" }}
             title="Remove project"
-          >✕</button>
+          ><X style={iconSize(14, 14)} /></button>
         )}
       </div>
 
-      {/* Name + State row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 10, marginBottom: 12 }}>
         <div>
           <label style={{ fontSize: 11, fontWeight: 600, color: T.text2, display: "block", marginBottom: 5 }}>
@@ -222,7 +232,6 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
         </div>
       </div>
 
-      {/* Description */}
       <div style={{ marginBottom: 12 }}>
         <label style={{ fontSize: 11, fontWeight: 600, color: T.text2, display: "block", marginBottom: 5 }}>Short description</label>
         <textarea
@@ -234,15 +243,14 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
         />
       </div>
 
-      {/* GitHub + Branch + Stars */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 80px", gap: 10, marginBottom: 12 }}>
         <div>
           <label style={{ fontSize: 11, fontWeight: 600, color: T.text2, display: "block", marginBottom: 5 }}>
             GitHub URL {isFirst && <span style={{ color: "#f87171" }}>*</span>}
           </label>
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 12 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={T.text3}><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 013-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.21.7.83.58C20.57 21.79 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", display: "flex" }}>
+              <Github style={iconSize(14, 14)} color={T.text3} />
             </span>
             <input
               className="input"
@@ -250,7 +258,6 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
               value={project.githubUrl}
               onChange={e => {
                 upd("githubUrl", e.target.value);
-                // clear inline error while typing
                 if (project._githubErr) onChange({ ...project, githubUrl: e.target.value, _githubErr: null });
               }}
               onBlur={handleGithubBlur}
@@ -262,7 +269,9 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
           </div>
           <Err msg={githubError} />
           {!githubError && project.githubUrl.trim() && (
-            <div style={{ fontSize: 11, color: "#4ade80", marginTop: 4 }}>✓ Valid GitHub URL</div>
+            <div style={{ fontSize: 11, color: "#4ade80", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+              <Check style={iconSize(11, 11)} strokeWidth={2.5} /> Valid GitHub URL
+            </div>
           )}
         </div>
         <div>
@@ -275,7 +284,9 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
           />
         </div>
         <div>
-          <label style={{ fontSize: 11, fontWeight: 600, color: T.text2, display: "block", marginBottom: 5 }}>⭐ Stars</label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: T.text2, display: "flex", alignItems: "center", gap: 3, marginBottom: 5 }}>
+            <Star style={iconSize(10, 10)} /> Stars
+          </label>
           <input
             className="input"
             type="number"
@@ -287,7 +298,6 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
         </div>
       </div>
 
-      {/* Skills used */}
       <div>
         <label style={{ fontSize: 11, fontWeight: 600, color: T.text2, display: "block", marginBottom: 5 }}>
           Skills used <span style={{ color: T.text3, fontWeight: 400 }}>({project.skills.length}/8)</span>
@@ -299,12 +309,12 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
                 key={s}
                 onClick={() => toggleSkill(s)}
                 style={{
-                  padding: "3px 9px", borderRadius: 99, fontSize: 11, fontWeight: 600,
+                  padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 600,
                   background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.3)",
                   color: "#c4a8ff", cursor: "pointer", display: "flex", alignItems: "center", gap: 4
                 }}
               >
-                {s} <span style={{ opacity: 0.6, fontSize: 10 }}>✕</span>
+                {s} <X style={{ ...iconSize(9, 9), opacity: 0.6 }} />
               </span>
             ))}
           </div>
@@ -338,8 +348,6 @@ const ProjectCard = ({ project, index, isFirst, T, dark, onChange, onRemove, err
   );
 };
 
-// ─── Main component ────────────────────────────────────────────────────────
-
 function OnBoarding() {
   const [onboardStep, setOnboardStep] = useState(0);
   const [formData, setFormData] = useState({
@@ -347,9 +355,7 @@ function OnBoarding() {
     name: "", handle: "", bio: "",
     role: "", lookingFor: "Collaborator",
     skillsHave: [], skillsNeed: [],
-    // Location
     state: "", city: "", pincode: "", remote: false,
-    // Projects
     projects: [emptyProject()],
   });
   const [errors, setErrors]         = useState({});
@@ -364,17 +370,15 @@ function OnBoarding() {
   const updateForm  = useSignupStore(state => state.updateForm);
   const router      = useRouter();
 
-  // ── Theme ────────────────────────────────────────────────────────────────
-
   const DARK = {
     bg: "#060608", bg2: "#0e0e18", bg3: "#14141f",
-    border: "rgba(255,255,255,0.07)", border2: "rgba(255,255,255,0.12)",
+    border: "rgba(255,255,255,0.09)", border2: "rgba(255,255,255,0.14)",
     text: "#e2e2ef", text2: "#9090b0", text3: "#555570",
     card: "rgba(255,255,255,0.025)", cardHover: "rgba(255,255,255,0.045)",
-    input: "rgba(255,255,255,0.05)", inputBorder: "rgba(255,255,255,0.09)",
+    input: "rgba(255,255,255,0.05)", inputBorder: "rgba(255,255,255,0.11)",
     glass: "rgba(6,6,8,0.85)",
-    shadow: "0 20px 60px rgba(0,0,0,0.5)",
-    msgMe: "linear-gradient(135deg,rgba(124,58,237,0.4),rgba(100,60,200,0.3))",
+    shadow: "none",
+    msgMe: "#7c3aed",
     msgThem: "rgba(255,255,255,0.06)",
     navBg: "rgba(6,6,8,0.9)",
     skillHaveBg: "rgba(110,224,110,0.1)", skillHaveBorder: "rgba(110,224,110,0.25)", skillHaveText: "#7de87d",
@@ -385,13 +389,13 @@ function OnBoarding() {
   };
   const LIGHT = {
     bg: "#f5f5f9", bg2: "#ffffff", bg3: "#eeeef5",
-    border: "rgba(0,0,0,0.08)", border2: "rgba(0,0,0,0.15)",
+    border: "rgba(0,0,0,0.1)", border2: "rgba(0,0,0,0.16)",
     text: "#1a1a2e", text2: "#555570", text3: "#9090b0",
     card: "#ffffff", cardHover: "#f8f8fc",
-    input: "#ffffff", inputBorder: "rgba(0,0,0,0.12)",
+    input: "#ffffff", inputBorder: "rgba(0,0,0,0.13)",
     glass: "rgba(245,245,249,0.92)",
-    shadow: "0 20px 60px rgba(0,0,0,0.12)",
-    msgMe: "linear-gradient(135deg,#7c3aed,#9333ea)",
+    shadow: "none",
+    msgMe: "#7c3aed",
     msgThem: "#f0f0f8",
     navBg: "rgba(245,245,249,0.95)",
     skillHaveBg: "rgba(34,197,94,0.1)", skillHaveBorder: "rgba(34,197,94,0.3)", skillHaveText: "#16a34a",
@@ -403,15 +407,13 @@ function OnBoarding() {
 
   const T = dark ? DARK : LIGHT;
 
-  // ── CSS ──────────────────────────────────────────────────────────────────
-
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
     ::-webkit-scrollbar{width:4px;height:4px}
     ::-webkit-scrollbar-track{background:transparent}
     ::-webkit-scrollbar-thumb{background:${dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"};border-radius:99px}
-    input,textarea,select{font-family:'Instrument Sans',sans-serif}
+    input,textarea,select{font-family:'Inter',sans-serif}
     textarea{resize:none}
     select option{background:${dark ? "#1a1a2e" : "#fff"}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
@@ -426,43 +428,44 @@ function OnBoarding() {
     .spin{animation:spin 0.9s linear infinite;display:inline-block}
     .slide-down{animation:slideDown 0.35s cubic-bezier(0.16,1,0.3,1) both}
     .pulse{animation:pulse 1.8s ease-in-out infinite}
-    .card{background:${T.card};border:1px solid ${T.border};border-radius:18px;transition:all 0.25s}
-    .card:hover{background:${T.cardHover};border-color:${T.border2};transform:translateY(-2px);box-shadow:${T.shadow}}
-    .card-flat{background:${T.card};border:1px solid ${T.border};border-radius:18px}
-    .btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:11px 24px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:-0.1px;box-shadow:0 6px 24px rgba(124,58,237,0.3)}
-    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(124,58,237,0.45)}
-    .btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
-    .btn-ghost{background:transparent;border:1px solid ${T.border};color:${T.text2};padding:9px 18px;border-radius:11px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s}
+    .card{background:${T.card};border:1px solid ${T.border};border-radius:10px;transition:border-color 0.15s ease,background 0.15s ease}
+    .card:hover{background:${T.cardHover};border-color:rgba(139,92,246,0.22)}
+    .card-flat{background:${T.card};border:1px solid ${T.border};border-radius:10px}
+    .btn-primary{background:#7c3aed;border:1px solid #7c3aed;color:white;padding:11px 24px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:filter 0.15s ease;letter-spacing:-0.1px}
+    .btn-primary:hover{filter:brightness(1.1)}
+    .btn-primary:active{filter:brightness(0.95)}
+    .btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+    .btn-ghost{background:transparent;border:1px solid ${T.border};color:${T.text2};padding:9px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:border-color 0.15s ease,color 0.15s ease}
     .btn-ghost:hover{border-color:${T.border2};color:${T.text}}
-    .btn-icon{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:8px;border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
+    .btn-icon{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:8px;border-radius:8px;cursor:pointer;transition:border-color 0.15s ease,color 0.15s ease;display:flex;align-items:center;justify-content:center}
     .btn-icon:hover{border-color:${T.border2};color:${T.text}}
-    .input{background:${T.input};border:1px solid ${T.inputBorder};color:${T.text};padding:10px 14px;border-radius:11px;font-size:13px;outline:none;transition:all 0.2s;width:100%}
+    .input{background:${T.input};border:1px solid ${T.inputBorder};color:${T.text};padding:10px 14px;border-radius:8px;font-size:13px;outline:none;transition:border-color 0.15s ease,background 0.15s ease;width:100%}
     .input:focus{border-color:rgba(124,58,237,0.6);background:${dark ? "rgba(255,255,255,0.07)" : "rgba(124,58,237,0.04)"}}
     .input::placeholder{color:${T.text3}}
-    .select{background:${T.input};border:1px solid ${T.inputBorder};color:${T.text};padding:8px 12px;border-radius:10px;font-size:13px;font-family:inherit;outline:none;cursor:pointer}
-    .nav-btn{background:none;border:none;color:${T.text3};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;padding:8px 13px;border-radius:10px;display:flex;align-items:center;gap:7px;transition:all 0.2s}
+    .select{background:${T.input};border:1px solid ${T.inputBorder};color:${T.text};padding:8px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;cursor:pointer}
+    .nav-btn{background:none;border:none;color:${T.text3};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;padding:8px 13px;border-radius:8px;display:flex;align-items:center;gap:7px;transition:color 0.15s ease,background 0.15s ease}
     .nav-btn:hover{color:${T.text};background:${dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}}
-    .pill{padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
+    .pill{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600}
     .skill-have{background:${T.skillHaveBg};border:1px solid ${T.skillHaveBorder};color:${T.skillHaveText}}
     .skill-need{background:${T.skillNeedBg};border:1px solid ${T.skillNeedBorder};color:${T.skillNeedText}}
-    .skill-chip{padding:6px 13px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${T.border};background:transparent;color:${T.text3};transition:all 0.15s;font-family:inherit}
+    .skill-chip{padding:6px 13px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${T.border};background:transparent;color:${T.text3};transition:border-color 0.15s ease,color 0.15s ease,background 0.15s ease;font-family:inherit}
     .skill-chip:hover:not(:disabled){border-color:rgba(124,58,237,0.4);color:${T.text};background:rgba(124,58,237,0.08)}
     .skill-chip:disabled{cursor:not-allowed;background:${T.mutedChip};border-color:${T.border};color:${T.mutedChipText};opacity:0.5}
     .skill-chip.sel-have{background:${T.skillHaveBg};border-color:${T.skillHaveBorder};color:${T.skillHaveText}}
     .skill-chip.sel-need{background:${T.skillNeedBg};border-color:${T.skillNeedBorder};color:${T.skillNeedText}}
     .skill-chip.conflict{cursor:not-allowed;background:${T.mutedChip};border-color:${T.border};color:${T.mutedChipText};opacity:0.4;text-decoration:line-through}
-    .role-card{background:${T.input};border:1px solid ${T.border};border-radius:14px;padding:14px 18px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:13px}
+    .role-card{background:${T.input};border:1px solid ${T.border};border-radius:10px;padding:14px 18px;cursor:pointer;transition:border-color 0.15s ease;display:flex;align-items:center;gap:13px}
     .role-card:hover{border-color:rgba(124,58,237,0.3)}
     .role-card.on{background:${dark ? "rgba(124,58,237,0.1)" : "rgba(124,58,237,0.07)"};border-color:rgba(124,58,237,0.4)}
-    .look-card{background:${T.input};border:1px solid ${T.border};border-radius:14px;padding:15px;cursor:pointer;transition:all 0.2s;text-align:center}
+    .look-card{background:${T.input};border:1px solid ${T.border};border-radius:10px;padding:15px;cursor:pointer;transition:border-color 0.15s ease;text-align:center}
     .look-card:hover{border-color:rgba(124,58,237,0.3)}
     .look-card.on{background:${dark ? "rgba(124,58,237,0.1)" : "rgba(124,58,237,0.07)"};border-color:rgba(124,58,237,0.4)}
-    .banner-error{background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.22);border-radius:13px;padding:14px 16px;display:flex;align-items:flex-start;gap:11px;margin-top:16px}
-    .banner-success{background:rgba(110,224,110,0.07);border:1px solid rgba(110,224,110,0.22);border-radius:13px;padding:14px 16px;display:flex;align-items:flex-start;gap:11px;margin-top:16px}
-    .state-chip{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ${T.border};background:transparent;color:${T.text3};transition:all 0.15s;font-family:inherit}
+    .banner-error{background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.22);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:11px;margin-top:16px}
+    .banner-success{background:rgba(110,224,110,0.07);border:1px solid rgba(110,224,110,0.22);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:11px;margin-top:16px}
+    .state-chip{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ${T.border};background:transparent;color:${T.text3};transition:border-color 0.15s ease,color 0.15s ease;font-family:inherit}
     .state-chip:hover{border-color:rgba(124,58,237,0.4);color:${T.text}}
     .state-chip.on{background:rgba(124,58,237,0.12);border-color:rgba(124,58,237,0.4);color:#c4a8ff}
-    .toggle-wrap{display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border-radius:11px;border:1px solid ${T.border};background:${T.input};transition:all 0.2s}
+    .toggle-wrap{display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1px solid ${T.border};background:${T.input};transition:border-color 0.15s ease}
     .toggle-wrap:hover{border-color:rgba(124,58,237,0.3)}
     @media(max-width:600px){
       .ob-nav{padding:0 14px !important;height:52px !important}
@@ -484,8 +487,6 @@ function OnBoarding() {
     }
   `;
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-
   const upd    = (k, v) => setFormData(p => ({ ...p, [k]: v }));
   const clrErr = k => setErrors(p => { const n = { ...p }; delete n[k]; return n; });
 
@@ -495,7 +496,6 @@ function OnBoarding() {
     else if (cur.length < 6) upd(key, [...cur, skill]);
   };
 
-  // Project helpers
   const updateProject = (id, updated) =>
     upd("projects", formData.projects.map(p => p.id === id ? updated : p));
   const removeProject = (id) =>
@@ -505,10 +505,7 @@ function OnBoarding() {
     upd("projects", [...formData.projects, emptyProject()]);
   };
 
-  // Cities for selected state
   const citiesForState = MAJOR_CITIES[formData.state] || [];
-
-  // ── Submit ───────────────────────────────────────────────────────────────
 
   const handleSubmission = async (payload) => {
     setApiError("");
@@ -539,8 +536,6 @@ function OnBoarding() {
     }
   };
 
-  // ── Step validation ───────────────────────────────────────────────────────
-
   const handleOnboardNext = () => {
     const e = {};
 
@@ -555,19 +550,16 @@ function OnBoarding() {
     if (onboardStep === 2 && formData.skillsHave.length === 0) e.skillsHave = "Add at least one skill";
     if (onboardStep === 3 && formData.skillsNeed.length === 0) e.skillsNeed = "Add at least one skill";
 
-    // Location step (index 4)
     if (onboardStep === 4) {
       if (!formData.state) e.state = "Select a state";
       const pinErr = validatePincode(formData.pincode);
       if (pinErr) e.pincode = pinErr;
     }
 
-    // Projects step (index 5) — first project mandatory
     if (onboardStep === 5) {
       const first = formData.projects[0];
       if (!first.name.trim()) e["proj_0_name"] = "Project name required";
 
-      // GitHub URL required on first project
       if (!first.githubUrl.trim()) {
         e["proj_0_githubUrl"] = "GitHub URL required";
       } else {
@@ -591,7 +583,6 @@ function OnBoarding() {
       return;
     }
 
-    // Final step — submit
     setSubmitting(true);
     setApiError("");
     setApiSuccess(false);
@@ -615,7 +606,6 @@ function OnBoarding() {
       },
       projects: formData.projects.map(({ skillSearch, _githubErr, ...rest }) => ({
         ...rest,
-        // Normalise GitHub URL — ensure https:// prefix
         githubUrl: rest.githubUrl && !rest.githubUrl.startsWith("http")
           ? "https://" + rest.githubUrl
           : rest.githubUrl,
@@ -626,47 +616,43 @@ function OnBoarding() {
     handleSubmission(payload);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  const headingStyle = { fontFamily: "'Inter',sans-serif", fontWeight: 700, letterSpacing: "-1.4px" };
 
   return (
-    <div style={{ fontFamily: "'Instrument Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", background: T.bg, color: T.text, minHeight: "100vh" }}>
       <style>{css}</style>
 
-      {/* Ambient glow */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none" }}>
         <div style={{ position: "absolute", top: "-10%", right: 0, width: 500, height: 500, borderRadius: "50%", background: `radial-gradient(circle,${dark ? "hsla(259,70%,35%,0.1)" : "hsla(259,70%,60%,0.05)"} 0%,transparent 65%)` }} />
       </div>
 
-      {/* ── Nav ── */}
       <nav className="ob-nav" style={{ padding: "0 28px", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${T.border}`, background: T.navBg, backdropFilter: "blur(20px)", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <LogoIcon dark={dark} />
-          <span className="ob-nav-title" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 16, color: T.text }}>CodeBuddy</span>
+          <span className="ob-nav-title" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, letterSpacing: "-0.4px", fontSize: 16, color: T.text }}>CodeBuddy</span>
         </div>
         <div className="ob-nav-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span className="ob-step-text" style={{ fontSize: 12, color: T.text3 }}>Step {onboardStep + 1} / {STEPS.length}</span>
+          <span className="ob-step-text" style={{ fontSize: 12, fontFamily: "'JetBrains Mono',monospace", color: T.text3 }}>Step {onboardStep + 1} / {STEPS.length}</span>
         </div>
       </nav>
 
-      {/* ── Progress bar ── */}
       <div style={{ height: 3, background: T.border }}>
-        <div style={{ height: "100%", background: "linear-gradient(90deg,#7c3aed,#a855f7)", transition: "width 0.4s cubic-bezier(0.34,1.56,0.64,1)", width: `${(onboardStep / (STEPS.length - 1)) * 100}%` }} />
+        <div style={{ height: "100%", background: "#7c3aed", transition: "width 0.3s ease", width: `${(onboardStep / (STEPS.length - 1)) * 100}%` }} />
       </div>
 
       <div className="ob-content" style={{ maxWidth: 580, margin: "0 auto", padding: "44px 20px", position: "relative", zIndex: 1 }}>
 
-        {/* ── Step dots ── */}
         <div className="ob-step-dots" style={{ display: "flex", justifyContent: "center", gap: 5, marginBottom: 36 }}>
           {STEPS.map((s, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <div className="ob-step-dot" style={{
-                width: 26, height: 26, borderRadius: 99, display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 700, transition: "all 0.3s",
-                background: i < onboardStep ? "linear-gradient(135deg,#7c3aed,#a855f7)" : i === onboardStep ? dark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.1)" : T.bg3,
+                width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", transition: "background 0.15s ease,border-color 0.15s ease",
+                background: i < onboardStep ? "#7c3aed" : i === onboardStep ? dark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.1)" : T.bg3,
                 border: i === onboardStep ? "1px solid rgba(124,58,237,0.5)" : `1px solid ${T.border}`,
                 color: i <= onboardStep ? "#c4a8ff" : T.text3
               }}>
-                {i < onboardStep ? "✓" : i + 1}
+                {i < onboardStep ? <Check style={iconSize(12, 12)} strokeWidth={3} /> : i + 1}
               </div>
               {i < STEPS.length - 1 && (
                 <div className="ob-step-connector" style={{ width: 14, height: 1, background: i < onboardStep ? "rgba(124,58,237,0.5)" : T.border }} />
@@ -677,10 +663,9 @@ function OnBoarding() {
 
         <div className="fade-up" key={onboardStep}>
 
-          {/* ─────────────────── Step 0 – Identity ─────────────────── */}
           {onboardStep === 0 && (
             <>
-              <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>Set up your profile</h2>
+              <h2 className="ob-h2" style={{ ...headingStyle, fontSize: 28, color: T.text, marginBottom: 6 }}>Set up your profile</h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 28 }}>Tell us who you are so we can find your best matches.</p>
               <Field label="Full name" id="name" placeholder="Aanya Sharma" value={formData.name} onChange={v => upd("name", v)} error={errors.name} T={T} clrErr={clrErr} required />
               <Field label="Username" id="handle" placeholder="aanya.dev" value={formData.handle} onChange={v => upd("handle", v)} error={errors.handle} prefix="@" T={T} clrErr={clrErr} required />
@@ -696,34 +681,33 @@ function OnBoarding() {
                   onChange={e => upd("bio", e.target.value)}
                   style={{ borderColor: errors.bio ? "rgba(248,113,113,0.5)" : undefined }}
                 />
-                {errors.bio && <div style={{ fontSize: 11, color: "#f87171", marginTop: 5 }}>⚠ {errors.bio}</div>}
-                <div style={{ fontSize: 10, color: T.text3, marginTop: 4, textAlign: "right" }}>{formData.bio.length}/{LIMITS.BIO_MAX}</div>
+                <Err msg={errors.bio} />
+                <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: T.text3, marginTop: 4, textAlign: "right" }}>{formData.bio.length}/{LIMITS.BIO_MAX}</div>
               </div>
             </>
           )}
 
-          {/* ─────────────────── Step 1 – Role ─────────────────── */}
           {onboardStep === 1 && (
             <>
-              <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>What's your role?</h2>
+              <h2 className="ob-h2" style={{ ...headingStyle, fontSize: 28, color: T.text, marginBottom: 6 }}>What's your role?</h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 22 }}>Helps us show you the most relevant matches.</p>
               <div className="ob-roles-grid" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
                 {[
-                  { v: "Frontend Developer",   i: "🎨", d: "UI, components, design systems" },
-                  { v: "Backend Developer",    i: "⚙️", d: "APIs, databases, infrastructure" },
-                  { v: "Full Stack Developer", i: "🔧", d: "Both frontend and backend" },
-                  { v: "Design Engineer",      i: "✏️", d: "UI/UX, Figma, design systems" },
-                  { v: "ML / AI Engineer",     i: "🤖", d: "Models, pipelines, data science" },
-                  { v: "Mobile Developer",     i: "📱", d: "iOS, Android, Flutter" },
-                  { v: "DevOps Engineer",      i: "☁️", d: "Cloud, CI/CD, infrastructure" },
+                  { v: "Frontend Developer",   Icon: Palette,     d: "UI, components, design systems" },
+                  { v: "Backend Developer",    Icon: Settings2,   d: "APIs, databases, infrastructure" },
+                  { v: "Full Stack Developer", Icon: Wrench,      d: "Both frontend and backend" },
+                  { v: "Design Engineer",      Icon: PenTool,     d: "UI/UX, Figma, design systems" },
+                  { v: "ML / AI Engineer",     Icon: Bot,         d: "Models, pipelines, data science" },
+                  { v: "Mobile Developer",     Icon: Smartphone,  d: "iOS, Android, Flutter" },
+                  { v: "DevOps Engineer",      Icon: Cloud,       d: "Cloud, CI/CD, infrastructure" },
                 ].map(r => (
                   <div key={r.v} className={`role-card ob-role-card ${formData.role === r.v ? "on" : ""}`} onClick={() => { upd("role", r.v); clrErr("role"); }}>
-                    <span style={{ fontSize: 20 }}>{r.i}</span>
+                    <r.Icon style={{ ...iconSize(18, 22), color: formData.role === r.v ? "#c4a8ff" : T.text2 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: formData.role === r.v ? "#c4a8ff" : T.text }}>{r.v}</div>
                       <div style={{ fontSize: 11, color: T.text3, marginTop: 1 }}>{r.d}</div>
                     </div>
-                    {formData.role === r.v && <span style={{ color: "#7c3aed", fontSize: 15 }}>✓</span>}
+                    {formData.role === r.v && <Check style={{ ...iconSize(15, 15), color: "#7c3aed" }} strokeWidth={2.5} />}
                   </div>
                 ))}
               </div>
@@ -731,9 +715,9 @@ function OnBoarding() {
               <div style={{ marginTop: 20 }}>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.text2, marginBottom: 10 }}>Looking for</label>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-                  {[{ v: "Collaborator", i: "🤝" }, { v: "Mentor", i: "🎓" }, { v: "Mentee", i: "🌱" }].map(l => (
+                  {[{ v: "Collaborator", Icon: Handshake }, { v: "Mentor", Icon: GraduationCap }, { v: "Mentee", Icon: Sprout }].map(l => (
                     <div key={l.v} className={`look-card ${formData.lookingFor === l.v ? "on" : ""}`} onClick={() => upd("lookingFor", l.v)}>
-                      <div style={{ fontSize: 22, marginBottom: 6 }}>{l.i}</div>
+                      <l.Icon style={{ ...iconSize(20, 24), marginBottom: 6, color: formData.lookingFor === l.v ? "#c4a8ff" : T.text2 }} />
                       <div style={{ fontSize: 12, fontWeight: 600, color: formData.lookingFor === l.v ? "#c4a8ff" : T.text }}>{l.v}</div>
                     </div>
                   ))}
@@ -742,10 +726,9 @@ function OnBoarding() {
             </>
           )}
 
-          {/* ─────────────────── Step 2 – Skills HAVE ─────────────────── */}
           {onboardStep === 2 && (
             <>
-              <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>What can you build?</h2>
+              <h2 className="ob-h2" style={{ ...headingStyle, fontSize: 28, color: T.text, marginBottom: 6 }}>What can you build?</h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 20 }}>Select up to 6 skills you're strong in.</p>
               {formData.skillsHave.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
@@ -753,7 +736,7 @@ function OnBoarding() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                     {formData.skillsHave.map(s => (
                       <span key={s} className="pill skill-have" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }} onClick={() => toggleSkill("skillsHave", s)}>
-                        {s} <span style={{ opacity: 0.6, fontSize: 10 }}>✕</span>
+                        {s} <X style={{ ...iconSize(9, 9), opacity: 0.6 }} />
                       </span>
                     ))}
                   </div>
@@ -776,10 +759,9 @@ function OnBoarding() {
             </>
           )}
 
-          {/* ─────────────────── Step 3 – Skills NEED ─────────────────── */}
           {onboardStep === 3 && (
             <>
-              <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>What do you need?</h2>
+              <h2 className="ob-h2" style={{ ...headingStyle, fontSize: 28, color: T.text, marginBottom: 6 }}>What do you need?</h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 20 }}>Select skills you're looking for in a collaborator.</p>
               {formData.skillsNeed.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
@@ -787,7 +769,7 @@ function OnBoarding() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                     {formData.skillsNeed.map(s => (
                       <span key={s} className="pill skill-need" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }} onClick={() => toggleSkill("skillsNeed", s)}>
-                        {s} <span style={{ opacity: 0.6, fontSize: 10 }}>✕</span>
+                        {s} <X style={{ ...iconSize(9, 9), opacity: 0.6 }} />
                       </span>
                     ))}
                   </div>
@@ -810,10 +792,9 @@ function OnBoarding() {
             </>
           )}
 
-          {/* ─────────────────── Step 4 – Location ─────────────────── */}
           {onboardStep === 4 && (
             <>
-              <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>Where are you based?</h2>
+              <h2 className="ob-h2" style={{ ...headingStyle, fontSize: 28, color: T.text, marginBottom: 6 }}>Where are you based?</h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 24 }}>Helps surface nearby collaborators and local meetups.</p>
 
               <div style={{ marginBottom: 18 }}>
@@ -882,7 +863,7 @@ function OnBoarding() {
                   onChange={e => upd("pincode", e.target.value.replace(/\D/g, ""))}
                   style={{ maxWidth: 160, borderColor: errors.pincode ? "rgba(248,113,113,0.5)" : undefined }}
                 />
-                {errors.pincode && <div style={{ fontSize: 11, color: "#f87171", marginTop: 5 }}>⚠ {errors.pincode}</div>}
+                <Err msg={errors.pincode} />
               </div>
 
               <label className="toggle-wrap" style={{ display: "flex" }}>
@@ -894,36 +875,35 @@ function OnBoarding() {
                   onClick={() => upd("remote", !formData.remote)}
                   style={{
                     width: 44, height: 24, borderRadius: 12, cursor: "pointer",
-                    background: formData.remote ? "linear-gradient(135deg,#7c3aed,#a855f7)" : dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)",
-                    position: "relative", transition: "background 0.3s", flexShrink: 0
+                    background: formData.remote ? "#7c3aed" : dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)",
+                    position: "relative", transition: "background 0.15s ease", flexShrink: 0
                   }}
                 >
                   <div style={{
                     width: 18, height: 18, borderRadius: "50%", background: "white",
                     position: "absolute", top: 3,
                     left: formData.remote ? 23 : 3,
-                    transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.3)"
+                    transition: "left 0.2s ease",
                   }} />
                 </div>
               </label>
 
-              <div style={{ marginTop: 20, padding: "12px 14px", borderRadius: 12, background: T.aiBg, border: `1px solid ${T.aiBorder}` }}>
+              <div style={{ marginTop: 20, padding: "12px 14px", borderRadius: 10, background: T.aiBg, border: `1px solid ${T.aiBorder}`, display: "flex", gap: 8 }}>
+                <MapPin style={{ ...iconSize(13, 13), color: dark ? "#b0a8d8" : "#6b5b9e", flexShrink: 0, marginTop: 2 }} />
                 <p style={{ fontSize: 12, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.6 }}>
-                  📍 Location is used only for matching and discovery — your exact address is never shared.
+                  Location is used only for matching and discovery — your exact address is never shared.
                 </p>
               </div>
             </>
           )}
 
-          {/* ─────────────────── Step 5 – Projects ─────────────────── */}
           {onboardStep === 5 && (
             <>
-              <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>Showcase your work</h2>
+              <h2 className="ob-h2" style={{ ...headingStyle, fontSize: 28, color: T.text, marginBottom: 6 }}>Showcase your work</h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 8 }}>Add projects to show collaborators what you've built.</p>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, padding: "9px 12px", borderRadius: 10, background: dark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.05)", border: `1px solid ${dark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.15)"}` }}>
-                <span style={{ fontSize: 14 }}>★</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, padding: "9px 12px", borderRadius: 8, background: dark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.05)", border: `1px solid ${dark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.15)"}` }}>
+                <Star style={{ ...iconSize(13, 13), color: dark ? "#c4a8ff" : "#7c3aed" }} />
                 <span style={{ fontSize: 12, color: dark ? "#c4a8ff" : "#7c3aed" }}>
                   The first project is <strong>required</strong> — it anchors your profile in search results.
                 </span>
@@ -951,40 +931,40 @@ function OnBoarding() {
                   onClick={addProject}
                   style={{
                     width: "100%", padding: "12px", border: `1.5px dashed ${T.border2}`,
-                    borderRadius: 14, background: "transparent", color: T.text3,
+                    borderRadius: 8, background: "transparent", color: T.text3,
                     fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                    transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6
+                    transition: "border-color 0.15s ease,color 0.15s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: 6
                   }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.4)"; e.currentTarget.style.color = T.text; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = T.border2; e.currentTarget.style.color = T.text3; }}
                 >
-                  + Add another project
-                  <span style={{ fontSize: 11, opacity: 0.6 }}>({formData.projects.length}/5)</span>
+                  <Plus style={iconSize(13, 13)} />
+                  Add another project
+                  <span style={{ fontSize: 11, opacity: 0.6, fontFamily: "'JetBrains Mono',monospace" }}>({formData.projects.length}/5)</span>
                 </button>
               )}
             </>
           )}
 
-          {/* ─────────────────── Step 6 – Review ─────────────────── */}
           {onboardStep === 6 && (
             <>
-              <h2 className="ob-h2" style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, color: T.text, marginBottom: 6 }}>
-                Looking good, <span style={{ fontStyle: "italic", color: "#a78bfa" }}>{formData.name || "Builder"}</span>!
+              <h2 className="ob-h2" style={{ ...headingStyle, fontSize: 28, color: T.text, marginBottom: 6 }}>
+                Looking good, <span style={{ color: "#a78bfa" }}>{formData.name || "Builder"}</span>!
               </h2>
               <p style={{ fontSize: 13, color: T.text3, marginBottom: 22 }}>Review your profile before we launch matching.</p>
 
               <div className="card-flat" style={{ padding: 22, marginBottom: 12 }}>
                 <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${T.border}` }}>
-                  <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg,rgba(124,58,237,0.2),rgba(168,85,247,0.1))", border: "2px solid rgba(124,58,237,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, color: "#c4b5fd", flexShrink: 0 }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 10, background: "rgba(124,58,237,0.15)", border: "2px solid rgba(124,58,237,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "#c4b5fd", flexShrink: 0 }}>
                     {(formData.name || "?")[0]}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{formData.name || "—"}</div>
-                    <div style={{ fontSize: 12, color: "#7c3aed", marginTop: 2 }}>@{formData.handle || "—"}</div>
+                    <div style={{ fontSize: 12, fontFamily: "'JetBrains Mono',monospace", color: "#7c3aed", marginTop: 2 }}>@{formData.handle || "—"}</div>
                     {formData.role && <div style={{ fontSize: 11, color: T.text3, marginTop: 2 }}>{formData.role}</div>}
                   </div>
                   {formData.lookingFor && (
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 99, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa", flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa", flexShrink: 0 }}>
                       Seeking {formData.lookingFor}
                     </span>
                   )}
@@ -994,11 +974,13 @@ function OnBoarding() {
 
                 {(formData.state || formData.city) && (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14, fontSize: 12, color: T.text2 }}>
-                    <span>📍</span>
+                    <MapPin style={iconSize(13, 13)} />
                     <span>{[formData.city, formData.state].filter(Boolean).join(", ")}</span>
-                    {formData.pincode && <span style={{ color: T.text3 }}>— {formData.pincode}</span>}
+                    {formData.pincode && <span style={{ color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>— {formData.pincode}</span>}
                     {formData.remote && (
-                      <span style={{ padding: "1px 7px", borderRadius: 99, fontSize: 10, fontWeight: 700, background: "rgba(110,224,110,0.1)", border: "1px solid rgba(110,224,110,0.25)", color: "#7de87d" }}>Remote ✓</span>
+                      <span style={{ padding: "1px 7px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(110,224,110,0.1)", border: "1px solid rgba(110,224,110,0.25)", color: "#7de87d", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                        Remote <Check style={iconSize(9, 9)} strokeWidth={3} />
+                      </span>
                     )}
                   </div>
                 )}
@@ -1029,24 +1011,32 @@ function OnBoarding() {
                     <div key={proj.id} style={{
                       background: dark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.02)",
                       border: `1px solid ${T.border}`,
-                      borderRadius: 12, padding: "12px 14px", marginBottom: 8
+                      borderRadius: 10, padding: "12px 14px", marginBottom: 8
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{proj.name}</span>
-                        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 99, background: dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)", color: T.text3 }}>{proj.state}</span>
-                        {proj.stars && <span style={{ fontSize: 11, color: "#fbbf24" }}>⭐ {proj.stars}</span>}
-                        {i === 0 && <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(124,58,237,0.12)", color: "#c4a8ff", border: "1px solid rgba(124,58,237,0.25)" }}>★ Primary</span>}
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 6, background: dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)", color: T.text3 }}>{proj.state}</span>
+                        {proj.stars && (
+                          <span style={{ fontSize: 11, color: "#fbbf24", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                            <Star style={iconSize(10, 10)} fill="#fbbf24" /> {proj.stars}
+                          </span>
+                        )}
+                        {i === 0 && (
+                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 6, background: "rgba(124,58,237,0.12)", color: "#c4a8ff", border: "1px solid rgba(124,58,237,0.25)", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                            <Star style={iconSize(9, 9)} fill="#c4a8ff" /> Primary
+                          </span>
+                        )}
                       </div>
                       {proj.description && <p style={{ fontSize: 11, color: T.text3, marginBottom: 6, lineHeight: 1.5 }}>{proj.description}</p>}
                       {proj.githubUrl && (
-                        <div style={{ fontSize: 11, color: dark ? "#7c9aff" : "#3b5bdb", marginBottom: 4 }}>
-                          🔗 {proj.githubUrl} {proj.branch && <span style={{ color: T.text3 }}>({proj.branch})</span>}
+                        <div style={{ fontSize: 11, color: dark ? "#7c9aff" : "#3b5bdb", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Link2 style={iconSize(11, 11)} /> {proj.githubUrl} {proj.branch && <span style={{ color: T.text3 }}>({proj.branch})</span>}
                         </div>
                       )}
                       {proj.skills.length > 0 && (
                         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
                           {proj.skills.map(s => (
-                            <span key={s} style={{ padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 600, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)", color: "#c4a8ff" }}>{s}</span>
+                            <span key={s} style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)", color: "#c4a8ff" }}>{s}</span>
                           ))}
                         </div>
                       )}
@@ -1056,24 +1046,25 @@ function OnBoarding() {
               )}
 
               {!apiSuccess && (
-                <div style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 10, padding: "12px 14px", display: "flex", gap: 8 }}>
+                  <Sparkles style={{ ...iconSize(13, 13), color: dark ? "#b0a8d8" : "#6b5b9e", flexShrink: 0, marginTop: 2 }} />
                   <p style={{ fontSize: 12, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.6 }}>
-                    ✦ Once you submit, AI matching starts immediately. You'll see your first matches in seconds.
+                    Once you submit, AI matching starts immediately. You'll see your first matches in seconds.
                   </p>
                 </div>
               )}
 
               {apiError && (
                 <div className="banner-error slide-down">
-                  <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>⚠️</span>
+                  <AlertTriangle style={{ ...iconSize(17, 17), flexShrink: 0, color: "#f87171" }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#f87171", marginBottom: 3 }}>
                       {apiError.toLowerCase().includes("already exists") ? "Account already exists" : "Something went wrong"}
                     </div>
                     <div style={{ fontSize: 12, color: dark ? "#fca5a5" : "#b91c1c", lineHeight: 1.55 }}>{apiError}</div>
                     {apiError.toLowerCase().includes("already exists") && (
-                      <button onClick={() => router.push("/signin")} style={{ marginTop: 8, background: "none", border: "none", padding: 0, fontSize: 12, fontWeight: 700, color: "#f87171", cursor: "pointer", textDecoration: "underline", fontFamily: "inherit" }}>
-                        Sign in to your existing account →
+                      <button onClick={() => router.push("/signin")} style={{ marginTop: 8, background: "none", border: "none", padding: 0, fontSize: 12, fontWeight: 700, color: "#f87171", cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        Sign in to your existing account <ArrowRight style={iconSize(11, 11)} />
                       </button>
                     )}
                   </div>
@@ -1082,7 +1073,7 @@ function OnBoarding() {
 
               {apiSuccess && (
                 <div className="banner-success slide-down">
-                  <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>🎉</span>
+                  <PartyPopper style={{ ...iconSize(17, 17), flexShrink: 0, color: "#7de87d" }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#7de87d", marginBottom: 3 }}>
                       Welcome to CodeBuddy, {formData.name}!
@@ -1091,7 +1082,7 @@ function OnBoarding() {
                       Your developer profile is live and matching has begun. Taking you to sign in…
                     </div>
                     <div style={{ marginTop: 10, height: 2, borderRadius: 99, background: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 99, background: "linear-gradient(90deg,#7de87d,#4ade80)", animation: "progressBar 2.8s linear forwards" }} />
+                      <div style={{ height: "100%", borderRadius: 99, background: "#4ade80", animation: "progressBar 2.8s linear forwards" }} />
                     </div>
                     <style>{`@keyframes progressBar{from{width:0%}to{width:100%}}`}</style>
                   </div>
@@ -1100,21 +1091,20 @@ function OnBoarding() {
             </>
           )}
 
-          {/* ── Nav buttons ── */}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28 }}>
             {onboardStep > 0 ? (
-              <button className="btn-ghost" onClick={() => { setOnboardStep(p => p - 1); setApiError(""); setApiSuccess(false); }} disabled={submitting || apiSuccess}>
-                ← Back
+              <button className="btn-ghost" onClick={() => { setOnboardStep(p => p - 1); setApiError(""); setApiSuccess(false); }} disabled={submitting || apiSuccess} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <ArrowLeft style={iconSize(12, 12)} /> Back
               </button>
             ) : <div />}
 
             {!apiSuccess && (
               <button className="btn-primary" onClick={handleOnboardNext} disabled={submitting}>
                 {submitting
-                  ? <><span className="spin">⟳</span>&nbsp; Creating profile…</>
+                  ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Loader2 className="spin" style={iconSize(14, 14)} /> Creating profile…</span>
                   : onboardStep === STEPS.length - 1
-                    ? "🚀 Launch profile →"
-                    : "Continue →"
+                    ? <BtnLabel Icon={Rocket}>Launch profile</BtnLabel>
+                    : <BtnLabel>Continue</BtnLabel>
                 }
               </button>
             )}
