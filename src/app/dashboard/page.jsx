@@ -234,11 +234,28 @@ export default function Dashboard() {
     .card{background:${T.card};border:1px solid ${T.border};border-radius:10px;transition:border-color 0.15s ease,background 0.15s ease}
     .card:hover{background:${T.cardHover};border-color:${T.border2}}
     .card-flat{background:${T.card};border:1px solid ${T.border};border-radius:10px}
+    .notif-backdrop{display:none}
     @media(max-width:768px){
       .db-main{padding:16px 12px !important}
       .desk-nav{display:none !important}
       .mob-bottom-nav{display:flex !important}
       .db-main{padding-bottom:80px !important}
+
+      /* Notifications panel becomes a fixed sheet under the header instead
+         of a dropdown pinned to the bell icon, so it can't overflow the
+         viewport on narrow screens. */
+      .notif-panel{
+        position:fixed !important;
+        top:66px !important;
+        left:8px !important;
+        right:8px !important;
+        width:auto !important;
+        max-height:calc(100vh - 96px) !important;
+        overflow-y:auto !important;
+      }
+      .notif-backdrop{
+        display:block !important;
+      }
     }
     @media(min-width:769px){.mob-bottom-nav{display:none !important}}
     .mob-bottom-nav{
@@ -296,24 +313,32 @@ export default function Dashboard() {
               {unread > 0 && <span style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, background: "#ef4444", borderRadius: "50%", border: `2px solid ${T.bg}` }} />}
             </button>
             {notifOpen && (
-              <div className="card-flat fade-in" style={{ position: "absolute", right: 0, top: 42, width: 300, zIndex: 300, overflow: "hidden" }}>
-                <div style={{ padding: "13px 16px 10px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Notifications</span>
-                    {unread > 0 && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", padding: "1px 6px", borderRadius: 6, background: "#7c3aed", color: "white" }}>{unread} new</span>}
-                  </div>
-                  <button onClick={() => setNotifs(p => p.map(n => ({ ...n, read: true })))} style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 11, fontFamily: "inherit", fontWeight: 600 }}>Mark all read</button>
-                </div>
-                {notifs.map((n, i) => (
-                  <div key={n.id} style={{ padding: "11px 16px", borderBottom: i < notifs.length - 1 ? `1px solid ${T.border}` : "none", display: "flex", gap: 10, background: n.read ? "transparent" : dark ? "rgba(124,58,237,0.04)" : "rgba(124,58,237,0.03)", cursor: "pointer" }} onClick={() => setNotifs(p => p.map(x => x.id === n.id ? { ...x, read: true } : x))}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.read ? T.text3 : hsl(n.hue), marginTop: 5, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, color: n.read ? T.text3 : T.text, lineHeight: 1.4 }}>{n.text}</div>
-                      <div style={{ fontSize: 10, color: T.text3, marginTop: 3, fontFamily: "'JetBrains Mono',monospace" }}>{n.time}</div>
+              <>
+                {/* Tap-outside-to-close backdrop — mobile only (hidden on desktop via CSS) */}
+                <div
+                  className="notif-backdrop"
+                  onClick={() => setNotifOpen(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 290, background: "rgba(0,0,0,0.35)" }}
+                />
+                <div className="card-flat fade-in notif-panel" style={{ position: "absolute", right: 0, top: 42, width: 300, zIndex: 300, overflow: "hidden", background: T.card }}>
+                  <div style={{ padding: "13px 16px 10px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Notifications</span>
+                      {unread > 0 && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", padding: "1px 6px", borderRadius: 6, background: "#7c3aed", color: "white" }}>{unread} new</span>}
                     </div>
+                    <button onClick={() => setNotifs(p => p.map(n => ({ ...n, read: true })))} style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontSize: 11, fontFamily: "inherit", fontWeight: 600 }}>Mark all read</button>
                   </div>
-                ))}
-              </div>
+                  {notifs.map((n, i) => (
+                    <div key={n.id} style={{ padding: "11px 16px", borderBottom: i < notifs.length - 1 ? `1px solid ${T.border}` : "none", display: "flex", gap: 10, background: n.read ? "transparent" : dark ? "rgba(124,58,237,0.04)" : "rgba(124,58,237,0.03)", cursor: "pointer" }} onClick={() => setNotifs(p => p.map(x => x.id === n.id ? { ...x, read: true } : x))}>
+                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: n.read ? T.text3 : hsl(n.hue), marginTop: 5, flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, color: n.read ? T.text3 : T.text, lineHeight: 1.4 }}>{n.text}</div>
+                        <div style={{ fontSize: 10, color: T.text3, marginTop: 3, fontFamily: "'JetBrains Mono',monospace" }}>{n.time}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 

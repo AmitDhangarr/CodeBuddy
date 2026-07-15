@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useThemeStore } from "../../../../store/themeprovider";
-import { Mail, CheckCircle2, Heart, ArrowLeft, ArrowRight } from "lucide-react";
+import { Mail, CheckCircle2, Heart, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
 const iconSize = (min, max, vw = 3.2) => ({
   width: `clamp(${min}px, ${vw}vw, ${max}px)`,
@@ -137,15 +137,32 @@ const POSTS = [
 
 const TAGS = ["All", "Product", "Engineering", "Design", "Community", "Growth", "Culture"];
 
+// Matches your route: app/api/newsletter/route.js -> inserts into the "newsletter" table
+const NEWSLETTER_API_URL = "/api/newsletter_subscription";
+
+const validateEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+
+// Your API forwards the raw Supabase error back to the client on failure.
+// A repeat email hits Postgres' unique-constraint violation (code 23505) if
+// the `email` column has a unique index — detect that and treat it as a
+// "already subscribed" case instead of a hard error.
+const isDuplicateError = (err) => {
+  if (!err) return false;
+  const code = err.code || err?.details?.code;
+  const message = (err.message || err.details || err.hint || "").toString().toLowerCase();
+  return code === "23505" || message.includes("duplicate key") || message.includes("already exists");
+};
+
 export default function Blog() {
   const { dark, toggleDark } = useThemeStore();
   const [activeTag, setActiveTag] = useState("All");
   const [activePost, setActivePost] = useState(null);
 
   const [subEmail, setSubEmail] = useState("");
-  const [subState, setSubState] = useState("idle");
+  const [subState, setSubState] = useState("idle"); // idle | submitting | success | duplicate | error
   const [subError, setSubError] = useState("");
   const [subscribedEmails, setSubscribedEmails] = useState([]);
+  const [shake, setShake] = useState(false);
 
   const T = dark ? {
     bg: "#07070f", bg2: "#0d0d1a",
@@ -169,11 +186,17 @@ export default function Blog() {
     ::-webkit-scrollbar{width:4px}
     ::-webkit-scrollbar-thumb{background:${dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)"};border-radius:99px}
     @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes popIn{0%{transform:scale(0.4);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
+    @keyframes shakeX{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
     .fade-up{animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both}
+    .spin-icon{animation:spin 0.7s linear infinite}
+    .pop-in{animation:popIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both}
+    .shake-el{animation:shakeX 0.4s ease}
     .btn-primary{background:#7c3aed;border:1px solid #7c3aed;color:white;padding:11px 24px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:filter 0.15s ease;display:inline-flex;align-items:center;gap:8px}
     .btn-primary:hover{filter:brightness(1.1)}
     .btn-primary:active{filter:brightness(0.95)}
-    .btn-primary:disabled{opacity:0.6;cursor:not-allowed;filter:none}
+    .btn-primary:disabled{opacity:0.7;cursor:not-allowed;filter:none}
     .btn-ghost{background:transparent;border:1px solid ${T.border};color:${T.text2};padding:9px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:border-color 0.15s ease,color 0.15s ease;display:inline-flex;align-items:center;gap:6px}
     .btn-ghost:hover{border-color:${T.border2};color:${T.text}}
     .btn-icon{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:8px;border-radius:8px;cursor:pointer;transition:border-color 0.15s ease,color 0.15s ease;display:flex;align-items:center;justify-content:center}
@@ -230,7 +253,10 @@ export default function Blog() {
     setActivePost(null);
   };
 
-  const validateEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+  const triggerShake = () => {
+    setShake(true);
+    window.setTimeout(() => setShake(false), 400);
+  };
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
@@ -239,11 +265,13 @@ export default function Blog() {
     if (!trimmed) {
       setSubError("Enter your email to subscribe.");
       setSubState("idle");
+      triggerShake();
       return;
     }
     if (!validateEmail(trimmed)) {
       setSubError("That email doesn't look right.");
       setSubState("idle");
+      triggerShake();
       return;
     }
     if (subscribedEmails.includes(trimmed.toLowerCase())) {
@@ -254,17 +282,37 @@ export default function Blog() {
 
     setSubError("");
     setSubState("submitting");
+
     try {
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (Math.random() < 0.06) reject(new Error("network"));
-          else resolve();
-        }, 1000);
+      const res = await fetch(NEWSLETTER_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed, subscribed: true }),
       });
-      setSubscribedEmails(prev => [...prev, trimmed.toLowerCase()]);
+
+      let payload = null;
+      try {
+        payload = await res.json();
+      } catch {
+        // non-JSON response, fall through to generic error below
+      }
+
+      if (!payload?.success) {
+        if (isDuplicateError(payload?.error)) {
+          setSubscribedEmails((prev) =>
+            prev.includes(trimmed.toLowerCase()) ? prev : [...prev, trimmed.toLowerCase()]
+          );
+          setSubState("duplicate");
+          return;
+        }
+        throw new Error(payload?.error?.message || "Request failed");
+      }
+
+      setSubscribedEmails((prev) => [...prev, trimmed.toLowerCase()]);
       setSubState("success");
     } catch {
       setSubState("error");
+      triggerShake();
     }
   };
 
@@ -458,7 +506,7 @@ export default function Blog() {
 
               {subState === "success" ? (
                 <div style={{ padding: "8px 0" }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                  <div className="pop-in" style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
                     <CheckCircle2 style={{ ...iconSize(20, 22), color: "#22c55e" }} strokeWidth={2} />
                   </div>
                   <h2 style={{ fontFamily: "'Inter',sans-serif", fontSize: "clamp(20px,4vw,28px)", fontWeight: 700, color: T.text, letterSpacing: "-0.8px", marginBottom: 10 }}>You're subscribed</h2>
@@ -466,6 +514,17 @@ export default function Blog() {
                     We sent a confirmation to <strong style={{ color: T.text }}>{subscribedEmails[subscribedEmails.length - 1]}</strong>. New posts land in your inbox twice a month.
                   </p>
                   <button className="btn-ghost" onClick={resetSub}>Subscribe another email</button>
+                </div>
+              ) : subState === "duplicate" ? (
+                <div style={{ padding: "8px 0" }}>
+                  <div className="pop-in" style={{ width: 48, height: 48, borderRadius: "50%", background: T.surfaceA, border: `1px solid ${T.surfaceBorder}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                    <Mail style={{ ...iconSize(20, 22), color: "#a78bfa" }} strokeWidth={1.75} />
+                  </div>
+                  <h2 style={{ fontFamily: "'Inter',sans-serif", fontSize: "clamp(20px,4vw,28px)", fontWeight: 700, color: T.text, letterSpacing: "-0.8px", marginBottom: 10 }}>You're already subscribed</h2>
+                  <p style={{ fontSize: 13, color: T.text2, marginBottom: 22, maxWidth: 340, margin: "0 auto 22px" }}>
+                    <strong style={{ color: T.text }}>{subEmail.trim()}</strong> is already on the list. Nothing more to do here.
+                  </p>
+                  <button className="btn-ghost" onClick={resetSub}>Use a different email</button>
                 </div>
               ) : (
                 <>
@@ -479,7 +538,7 @@ export default function Blog() {
                     No spam. No marketing fluff. Just honest engineering and product writing, twice a month.
                   </p>
                   <form onSubmit={handleSubscribe} noValidate>
-                    <div style={{ display: "flex", gap: 10, maxWidth: 400, margin: "0 auto", flexWrap: "wrap", alignItems: "flex-start" }}>
+                    <div className={shake ? "shake-el" : ""} style={{ display: "flex", gap: 10, maxWidth: 400, margin: "0 auto", flexWrap: "wrap", alignItems: "flex-start" }}>
                       <div style={{ flex: 1, minWidth: 200, textAlign: "left" }}>
                         <input
                           className={`newsletter-input${subError ? " has-error" : ""}`}
@@ -490,11 +549,12 @@ export default function Blog() {
                           onChange={(e) => { setSubEmail(e.target.value); if (subError) setSubError(""); if (subState !== "idle") setSubState("idle"); }}
                         />
                         {subError && <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600, marginTop: 6 }}>{subError}</div>}
-                        {subState === "duplicate" && <div style={{ fontSize: 11, color: T.text2, fontWeight: 600, marginTop: 6 }}>That email's already subscribed.</div>}
                         {subState === "error" && <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600, marginTop: 6 }}>Couldn't subscribe — check your connection and try again.</div>}
                       </div>
                       <button type="submit" className="btn-primary" style={{ whiteSpace: "nowrap" }} disabled={subState === "submitting"}>
-                        {subState === "submitting" ? "Subscribing…" : <>Subscribe <ArrowRight style={iconSize(13, 14)} /></>}
+                        {subState === "submitting"
+                          ? <><Loader2 style={iconSize(13, 14)} className="spin-icon" /> Subscribing…</>
+                          : <>Subscribe <ArrowRight style={iconSize(13, 14)} /></>}
                       </button>
                     </div>
                   </form>

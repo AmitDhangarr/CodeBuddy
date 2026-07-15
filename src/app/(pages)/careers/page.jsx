@@ -40,41 +40,101 @@ const BENEFITS = [
 
 const DEPTS = ["All", "Engineering", "Design", "Growth", "Community"];
 
-const APPLICATION_API_URL = "https://your-api.com/api/applications";
+// Two distinct endpoints, matching the two API routes:
+// - job_application table -> used when applying to a specific open role
+// - reach_out table -> used for the general "don't see your role" application
+const JOB_APPLICATION_API_URL = "/api/job_application";
+const REACH_OUT_API_URL = "/api/reachout";
+
+// ---- Validation helpers ----
+const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+// Accepts things like +91 98765 43210, 9876543210, (123) 456-7890 etc. 7-15 digits total.
+const isValidPhone = (v) => {
+  const digits = v.replace(/[^\d]/g, "");
+  return digits.length >= 7 && digits.length <= 15;
+};
+const isValidUrl = (v) => {
+  try {
+    const u = new URL(v);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+function validateForm(form) {
+  const errors = {};
+
+  if (!form.fullname.trim()) {
+    errors.fullname = "Full name is required.";
+  } else if (form.fullname.trim().length < 2) {
+    errors.fullname = "Full name looks too short.";
+  }
+
+  if (!form.email.trim()) {
+    errors.email = "Email is required.";
+  } else if (!isValidEmail(form.email)) {
+    errors.email = "Enter a valid email address.";
+  }
+
+  if (form.phone.trim() && !isValidPhone(form.phone)) {
+    errors.phone = "Enter a valid phone number.";
+  }
+
+  if (form.link.trim() && !isValidUrl(form.link)) {
+    errors.link = "Enter a valid URL (starting with http:// or https://).";
+  }
+
+  if (form.cover_letter.trim() && form.cover_letter.trim().length < 20) {
+    errors.cover_letter = "Tell us a little more — at least 20 characters.";
+  }
+
+  return errors;
+}
 
 function ApplicationForm({ job, T, dark, onClose }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", portfolio: "", message: "" });
+  const [form, setForm] = useState({ fullname: "", email: "", phone: "", link: "", cover_letter: "" });
+  const [touched, setTouched] = useState({});
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const markTouched = (k) => () => setTouched((t) => ({ ...t, [k]: true }));
 
   const isGeneral = !job;
-  const isValid = form.name.trim() && /\S+@\S+\.\S+/.test(form.email);
+  const errors = validateForm(form);
+  const isValid = Object.keys(errors).length === 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({ fullname: true, email: true, phone: true, link: true, cover_letter: true });
     if (!isValid || status === "submitting") return;
+
     setStatus("submitting");
     setErrorMsg("");
+
+    const endpoint = isGeneral ? REACH_OUT_API_URL : JOB_APPLICATION_API_URL;
+    const role = isGeneral ? "General Application" : job.title;
+
     try {
-      const res = await fetch(APPLICATION_API_URL, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          portfolio: form.portfolio,
-          message: form.message,
-          role: job ? job.title : "General Application",
-          department: job ? job.dept : "General",
-          type: isGeneral ? "general" : "job",
-          jobId: job ? job.id : null,
-          submittedAt: new Date().toISOString(),
+          fullname: form.fullname.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          link: form.link.trim(),
+          cover_letter: form.cover_letter.trim(),
+          role,
         }),
       });
-      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error?.message || `Request failed with status ${res.status}`);
+      }
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -82,18 +142,21 @@ function ApplicationForm({ job, T, dark, onClose }) {
     }
   };
 
-  const inputStyle = {
+  const inputStyle = (hasError) => ({
     width: "100%",
     padding: "10px 13px",
     borderRadius: 8,
-    border: `1px solid ${T.border2}`,
+    border: `1px solid ${hasError ? "#f87171" : T.border2}`,
     background: dark ? "rgba(255,255,255,0.03)" : "#fff",
     color: T.text,
     fontFamily: "inherit",
     fontSize: 13,
     outline: "none",
-  };
+  });
   const labelStyle = { fontSize: 11, fontWeight: 700, color: T.text2, marginBottom: 6, display: "block", letterSpacing: "0.3px" };
+  const fieldErrorStyle = { fontSize: 11, color: "#f87171", marginTop: 5 };
+
+  const showError = (key) => touched[key] && errors[key];
 
   return (
     <div
@@ -146,31 +209,65 @@ function ApplicationForm({ job, T, dark, onClose }) {
               </h3>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <label style={labelStyle}>Full name *</label>
-                <input style={inputStyle} type="text" value={form.name} onChange={update("name")} placeholder="Jane Doe" required />
+                <input
+                  style={inputStyle(showError("fullname"))}
+                  type="text"
+                  value={form.fullname}
+                  onChange={update("fullname")}
+                  onBlur={markTouched("fullname")}
+                  placeholder="Jane Doe"
+                />
+                {showError("fullname") && <div style={fieldErrorStyle}>{errors.fullname}</div>}
               </div>
               <div>
                 <label style={labelStyle}>Email *</label>
-                <input style={inputStyle} type="email" value={form.email} onChange={update("email")} placeholder="jane@example.com" required />
+                <input
+                  style={inputStyle(showError("email"))}
+                  type="email"
+                  value={form.email}
+                  onChange={update("email")}
+                  onBlur={markTouched("email")}
+                  placeholder="jane@example.com"
+                />
+                {showError("email") && <div style={fieldErrorStyle}>{errors.email}</div>}
               </div>
               <div>
                 <label style={labelStyle}>Phone</label>
-                <input style={inputStyle} type="tel" value={form.phone} onChange={update("phone")} placeholder="+91 98765 43210" />
+                <input
+                  style={inputStyle(showError("phone"))}
+                  type="tel"
+                  value={form.phone}
+                  onChange={update("phone")}
+                  onBlur={markTouched("phone")}
+                  placeholder="+91 98765 43210"
+                />
+                {showError("phone") && <div style={fieldErrorStyle}>{errors.phone}</div>}
               </div>
               <div>
                 <label style={labelStyle}>Portfolio / Resume / LinkedIn URL</label>
-                <input style={inputStyle} type="url" value={form.portfolio} onChange={update("portfolio")} placeholder="https://..." />
+                <input
+                  style={inputStyle(showError("link"))}
+                  type="url"
+                  value={form.link}
+                  onChange={update("link")}
+                  onBlur={markTouched("link")}
+                  placeholder="https://..."
+                />
+                {showError("link") && <div style={fieldErrorStyle}>{errors.link}</div>}
               </div>
               <div>
                 <label style={labelStyle}>Why are you a great fit?</label>
                 <textarea
-                  style={{ ...inputStyle, resize: "vertical", minHeight: 90, fontFamily: "inherit" }}
-                  value={form.message}
-                  onChange={update("message")}
+                  style={{ ...inputStyle(showError("cover_letter")), resize: "vertical", minHeight: 90, fontFamily: "inherit" }}
+                  value={form.cover_letter}
+                  onChange={update("cover_letter")}
+                  onBlur={markTouched("cover_letter")}
                   placeholder="Tell us a bit about yourself and why you're interested..."
                 />
+                {showError("cover_letter") && <div style={fieldErrorStyle}>{errors.cover_letter}</div>}
               </div>
 
               {status === "error" && (
@@ -182,11 +279,11 @@ function ApplicationForm({ job, T, dark, onClose }) {
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={!isValid || status === "submitting"}
+                disabled={status === "submitting"}
                 style={{
                   marginTop: 6,
-                  opacity: !isValid || status === "submitting" ? 0.6 : 1,
-                  cursor: !isValid || status === "submitting" ? "not-allowed" : "pointer",
+                  opacity: status === "submitting" ? 0.6 : 1,
+                  cursor: status === "submitting" ? "not-allowed" : "pointer",
                 }}
               >
                 {status === "submitting" ? "Submitting..." : <>Submit application <ArrowRight style={iconSize(13, 14)} /></>}

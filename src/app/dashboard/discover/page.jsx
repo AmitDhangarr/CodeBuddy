@@ -23,6 +23,7 @@ const iconSize = (min, max, vw = 3) => ({
 });
 
 const PROFILES_PER_PAGE = 9;
+const MOBILE_BREAKPOINT = 640;
 
 const ACTION_TO_STATUS = {
   disconnect: "declined",
@@ -30,6 +31,17 @@ const ACTION_TO_STATUS = {
   block:      "blocked",
   unblock:    "unblocked",
 };
+
+// Demo-only ticker items for the running text strip. Purely presentational —
+// not wired to real data.
+const DEMO_TICKER_ITEMS = [
+  "🔥 Sarah Chen has a 92% match score",
+  "🤝 Connection received from Alex Kim",
+  "⭐ Priya Patel has an 87% match score",
+  "🤝 Connection received from Jordan Lee",
+  "🔥 Marcus Webb has a 78% match score",
+  "🤝 Connection received from Dana Osei",
+];
 
 function normalizeProfile(profile) {
   let location = "";
@@ -205,6 +217,62 @@ async function callConnectionResponse(receiverId, status) {
   return json;
 }
 
+// ── Running ticker strip ────────────────────────────────────────────────────
+// Demo-only left-to-right marquee sitting just above the search/filter bar.
+// Content is duplicated back-to-back and animated from -50% to 0% so it
+// reads as continuously entering from the left edge and exiting to the right.
+function LiveTicker({ T, dark }) {
+  const text = DEMO_TICKER_ITEMS.join("   •   ");
+  return (
+    <div
+      style={{
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        background: dark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.06)",
+        border: `1px solid ${T?.border}`,
+        borderRadius: 8,
+        padding: "8px 0",
+        marginBottom: 14,
+        maxWidth: "100%",
+      }}
+    >
+      <div
+        style={{
+          display: "inline-flex",
+          animation: "marqueeLTR 22s linear infinite",
+          willChange: "transform",
+        }}
+      >
+        <span
+          style={{
+            paddingRight: 48,
+            fontSize: "clamp(11px, 2.8vw, 13px)",
+            fontWeight: 600,
+            color: "#a78bfa",
+            fontFamily: "'JetBrains Mono',monospace",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {text}
+        </span>
+        <span
+          aria-hidden="true"
+          style={{
+            paddingRight: 48,
+            fontSize: "clamp(11px, 2.8vw, 13px)",
+            fontWeight: 600,
+            color: "#a78bfa",
+            fontFamily: "'JetBrains Mono',monospace",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {text}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── View Profile Confirm Modal ──────────────────────────────────────────────
 // Rendered through a portal straight into document.body so it always
 // positions correctly relative to the real viewport — independent of any
@@ -266,7 +334,7 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const cardH = Math.min(cardRef.current?.offsetHeight ?? 320, MODAL_MAX_HEIGHT);
-      const cardW = MODAL_WIDTH;
+      const cardW = Math.min(MODAL_WIDTH, vw - MODAL_MARGIN * 2);
 
       // Prefer placing it just below the button; flip above if no room.
       let top = renderedAnchor.buttonRect.bottom + MODAL_MARGIN;
@@ -279,7 +347,7 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
       let left = renderedAnchor.x - cardW / 2;
       left = Math.max(MODAL_MARGIN, Math.min(left, Math.max(MODAL_MARGIN, vw - cardW - MODAL_MARGIN)));
 
-      setPos({ top, left });
+      setPos({ top, left, cardW });
     };
 
     compute();
@@ -322,7 +390,7 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
           border: `1px solid ${T?.border}`,
           borderRadius: 14,
           padding: "28px 26px",
-          width: MODAL_WIDTH,
+          width: usingAnchor ? pos.cardW : MODAL_WIDTH,
           maxWidth: `calc(100vw - ${MODAL_MARGIN * 2}px)`,
           maxHeight: `min(${MODAL_MAX_HEIGHT}px, calc(100vh - ${MODAL_MARGIN * 2}px))`,
           overflowY: "auto",
@@ -447,6 +515,22 @@ export default function DiscoverTab({
   const [toast, setToast]               = useState(null);
   const [confirmUser, setConfirmUser]   = useState(null); // user pending the "view profile" confirm modal
   const [confirmAnchor, setConfirmAnchor] = useState(null); // viewport position of the button that opened the modal
+  const [isMobile, setIsMobile]         = useState(false);
+
+  // Track viewport width so list mode can be disabled on mobile and the
+  // grid/list toggle can hide the list option there.
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // List mode isn't available on mobile — force grid whenever we cross into
+  // the mobile breakpoint (e.g. resizing down, or rotating a device).
+  useEffect(() => {
+    if (isMobile && view === "list") setView("grid");
+  }, [isMobile, view]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -616,6 +700,7 @@ export default function DiscoverTab({
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PROFILES_PER_PAGE));
   const paginated  = filtered.slice((page - 1) * PROFILES_PER_PAGE, page * PROFILES_PER_PAGE);
+  const effectiveView = isMobile ? "grid" : view;
 
   const scoreColor = (score) => {
     if (score >= 80) return "#4ade80";
@@ -663,7 +748,7 @@ export default function DiscoverTab({
           borderRadius: 10, padding: "12px 16px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
           display: "flex", alignItems: "center", gap: 10,
-          animation: "toastIn 0.25s ease both", minWidth: 220, maxWidth: 320,
+          animation: "toastIn 0.25s ease both", minWidth: 220, maxWidth: "calc(100vw - 40px)",
         }}>
           <span style={{ color: toast.type === "success" ? "#4ade80" : toast.type === "warn" ? "#f59e0b" : "#818cf8", display: "flex" }}>
             {toast.type === "success"
@@ -690,9 +775,9 @@ export default function DiscoverTab({
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20, gap: 14, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: "#7c3aed", marginBottom: 6, fontFamily: "'JetBrains Mono',monospace" }}>
-            <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#22c55e", marginRight: 7, verticalAlign: "middle" }} />
-            Live Matching
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: "#7c3aed", marginBottom: 6, fontFamily: "'JetBrains Mono',monospace", display: "flex", alignItems: "center" }}>
+            <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#22c55e", marginRight: 7, animation: "blink 1.4s ease-in-out infinite" }} />
+            <span style={{ animation: "blink 1.4s ease-in-out infinite" }}>Live Matching</span>
           </div>
           <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 26, color: T?.text, letterSpacing: "-0.6px", lineHeight: 1.15 }}>Discover Builders</h1>
           <p style={{ fontSize: 13, color: T?.text3, marginTop: 4 }}><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>{filtered.length}</span> builders ranked by your match score</p>
@@ -700,14 +785,18 @@ export default function DiscoverTab({
         <div style={{ display: "flex", gap: 6 }}>
           {[
             { v: "grid", Icon: LayoutGrid },
-            { v: "list", Icon: List },
+            // List mode is desktop-only — hidden entirely on mobile.
+            ...(isMobile ? [] : [{ v: "list", Icon: List }]),
           ].map(({ v, Icon }) => (
-            <button key={v} onClick={() => setView(v)} style={{ ...btn, display: "flex", alignItems: "center", justifyContent: "center", padding: "7px 12px", borderRadius: 8, background: view === v ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)") : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T?.border}`, color: view === v ? "#a78bfa" : T?.text3 }}>
+            <button key={v} onClick={() => setView(v)} style={{ ...btn, display: "flex", alignItems: "center", justifyContent: "center", padding: "7px 12px", borderRadius: 8, background: effectiveView === v ? (dark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.1)") : "transparent", border: `1px solid ${effectiveView === v ? "rgba(124,58,237,0.4)" : T?.border}`, color: effectiveView === v ? "#a78bfa" : T?.text3 }}>
               <Icon style={iconSize(14, 16)} />
             </button>
           ))}
         </div>
       </div>
+
+      {/* Running ticker — demo only, sits just above the search bar */}
+      <LiveTicker T={T} dark={dark} />
 
       {/* Filters */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20, alignItems: "center" }}>
@@ -778,9 +867,9 @@ export default function DiscoverTab({
         </div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: view === "list" ? "1fr" : "repeat(auto-fill,minmax(300px,1fr))", gap: view === "list" ? 10 : 16, alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: effectiveView === "list" ? "1fr" : "repeat(auto-fill,minmax(280px,1fr))", gap: effectiveView === "list" ? 10 : 16, alignItems: "start" }}>
             {paginated.map((u, i) => (
-              view === "list"
+              effectiveView === "list"
                 ? <ListCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} onViewProfile={handleRequestViewProfile} setProfiles={setProfiles} />
                 : <GridCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} onViewProfile={handleRequestViewProfile} onFavourite={handleFavourite} setProfiles={setProfiles} />
             ))}
@@ -794,6 +883,12 @@ export default function DiscoverTab({
         @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
         @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
         @keyframes spin    { to { transform:rotate(360deg); } }
+        @keyframes blink   { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+        @keyframes marqueeLTR { from { transform: translateX(-50%); } to { transform: translateX(0%); } }
+
+        @media (max-width: ${MOBILE_BREAKPOINT}px) {
+          .card { padding: 14px !important; }
+        }
       `}</style>
     </div>
   );
@@ -847,7 +942,7 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
 
       {aiText[u.id] && <ResizableAIBox text={aiText[u.id]} dark={dark} T={T} />}
 
-      <div style={{ display: "flex", gap: 6, marginTop: "auto" }}>
+      <div style={{ display: "flex", gap: 6, marginTop: "auto", flexWrap: "wrap" }}>
         <StatusButton connectionStatus={u.connectionStatus} onClick={() => onConnect(u)} />
         <button onClick={() => onFavourite(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: "transparent", border: `1px solid ${isFav ? "rgba(248,113,113,0.3)" : T?.border}`, color: isFav ? "#f87171" : T?.text3, borderRadius: 8, cursor: "pointer", transition: "border-color 0.15s,color 0.15s" }}>
           <Heart style={{ ...iconSize(13, 15), fill: isFav ? "#f87171" : "none" }} />
@@ -870,10 +965,10 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
   );
 }
 
-// ── List Card ─────────────────────────────────────────────────────────────────
+// ── List Card (desktop only — not rendered on mobile) ──────────────────────
 function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, onViewProfile }) {
   return (
-    <div className="card fade-up" style={{ padding: "14px 18px", display: "flex", gap: 14, alignItems: "center", animationDelay: `${i * 0.04}s` }}>
+    <div className="card fade-up" style={{ padding: "14px 18px", display: "flex", gap: 14, alignItems: "center", animationDelay: `${i * 0.04}s`, flexWrap: "wrap" }}>
       <div style={{ position: "relative", flexShrink: 0 }}>
         <Avatar u={u} size={42} radius={9} T={T} dark={dark} />
         <div style={{ position: "absolute", bottom: -1, right: -1, width: 7, height: 7, borderRadius: "50%", background: u.online ? "#22c55e" : "#57575f", border: `2px solid ${dark ? "#0a0a0f" : "#fafafa"}` }} />

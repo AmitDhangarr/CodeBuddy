@@ -4,10 +4,22 @@ import { useState } from "react";
 import { useThemeStore } from "../../../../store/themeprovider";
 import {
   Lock, Shield, Key, Server, Eye, ShieldAlert, Landmark, Search, ClipboardList,
-  Mail, Sparkles, CheckCircle2, XCircle, ArrowRight, ExternalLink,
+  Mail, Sparkles, CheckCircle2, XCircle, ArrowRight, ExternalLink, ChevronDown, AlertCircle,
 } from "lucide-react";
 
-const VULN_REPORT_API_URL = "https://your-api.com/api/security-reports";
+const VULN_REPORT_API_URL = "/api/security_vulnerabilites";
+
+const VULN_TYPES = [
+  "Authentication / Authorization",
+  "Data Exposure / PII Leak",
+  "Injection (SQL, XSS, etc.)",
+  "Broken Access Control",
+  "Other",
+];
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_DESCRIPTION_LENGTH = 20;
+const MAX_DESCRIPTION_LENGTH = 5000;
 
 const iconSize = (min, max, vw = 3.2) => ({
   width: `clamp(${min}px, ${vw}vw, ${max}px)`,
@@ -17,6 +29,7 @@ const iconSize = (min, max, vw = 3.2) => ({
 
 const RADIUS = { control: 8, pill: 6, card: 10, modal: 14 };
 const ACCENT = "#7c3aed";
+const ERROR_COLOR = "#f87171";
 
 const BtnLabel = ({ children, Icon = ArrowRight, min = 11, max = 14 }) => (
   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -25,10 +38,35 @@ const BtnLabel = ({ children, Icon = ArrowRight, min = 11, max = 14 }) => (
   </span>
 );
 
+function validateReport({ type, description, email }) {
+  const errors = {};
+
+  if (!VULN_TYPES.includes(type)) {
+    errors.type = "Please select a vulnerability type.";
+  }
+
+  const trimmedDescription = description.trim();
+  if (trimmedDescription.length === 0) {
+    errors.description = "Please describe the vulnerability.";
+  } else if (trimmedDescription.length < MIN_DESCRIPTION_LENGTH) {
+    errors.description = `Please provide at least ${MIN_DESCRIPTION_LENGTH} characters (currently ${trimmedDescription.length}).`;
+  } else if (trimmedDescription.length > MAX_DESCRIPTION_LENGTH) {
+    errors.description = `Description is too long (max ${MAX_DESCRIPTION_LENGTH} characters).`;
+  }
+
+  const trimmedEmail = email.trim();
+  if (trimmedEmail.length > 0 && !EMAIL_RE.test(trimmedEmail)) {
+    errors.email = "Please enter a valid email address.";
+  }
+
+  return errors;
+}
+
 export default function SecurityPage() {
   const { dark, toggleDark } = useThemeStore();
   const [reportExpanded, setReportExpanded] = useState(false);
   const [formState, setFormState] = useState({ type: "", description: "", email: "" });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [submitStatus, setSubmitStatus] = useState("idle");
   const [submitError, setSubmitError] = useState("");
@@ -77,7 +115,15 @@ export default function SecurityPage() {
     .sec-input{width:100%;background:${T.input};border:1px solid ${T.inputBorder};border-radius:${RADIUS.control}px;padding:11px 14px;color:${T.text};font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color 0.15s ease;resize:vertical}
     .sec-input:focus{border-color:rgba(124,58,237,0.5)}
     .sec-input::placeholder{color:${T.text3}}
-    .sec-select{width:100%;background:${T.input};border:1px solid ${T.inputBorder};border-radius:${RADIUS.control}px;padding:11px 14px;color:${T.text};font-family:'Inter',sans-serif;font-size:13px;outline:none;appearance:none;cursor:pointer}
+    .sec-input.has-error{border-color:${ERROR_COLOR}}
+    .sec-select{width:100%;background:${T.input};border:1px solid ${T.inputBorder};border-radius:${RADIUS.control}px;padding:11px 40px 11px 14px;color:${T.text};font-family:'Inter',sans-serif;font-size:13px;outline:none;appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:pointer;transition:border-color 0.15s ease}
+    .sec-select:focus{border-color:rgba(124,58,237,0.5)}
+    .sec-select.has-error{border-color:${ERROR_COLOR}}
+    .sec-select:invalid{color:${T.text3}}
+    .select-wrap{position:relative}
+    .select-chevron{position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:${T.text3}}
+    .field-error{display:flex;align-items:center;gap:5px;font-size:11.5px;color:${ERROR_COLOR};margin-top:6px}
+    .char-count{font-size:11px;color:${T.text3};text-align:right;margin-top:4px}
     .status-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;animation:pulse 2.5s ease-in-out infinite;flex-shrink:0}
     @media(max-width:768px){.layout{grid-template-columns:1fr!important}.sidebar{display:none!important}.pillar-grid{grid-template-columns:1fr!important}}
   `;
@@ -89,9 +135,30 @@ export default function SecurityPage() {
     </svg>
   );
 
+  const updateField = (key) => (e) => {
+    const value = e.target.value;
+    setFormState((p) => ({ ...p, [key]: value }));
+    // Clear that field's error as soon as the user starts fixing it
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitStatus === "submitting") return;
+
+    const errors = validateReport(formState);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setSubmitStatus("idle");
+      setSubmitError("");
+      return;
+    }
+
     setSubmitStatus("submitting");
     setSubmitError("");
     try {
@@ -100,12 +167,26 @@ export default function SecurityPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: formState.type,
-          description: formState.description,
-          email: formState.email,
+          description: formState.description.trim(),
+          email: formState.email.trim(),
           submittedAt: new Date().toISOString(),
         }),
       });
-      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+
+      const result = await res.json().catch(() => ({}));
+
+      if (!res.ok || result?.success === false) {
+        // result.error may sometimes come back as an object (e.g. a raw
+        // Supabase error) instead of a string — guard against that so we
+        // never end up throwing/displaying "[object Object]".
+        const rawError = result?.error;
+        const errorMessage =
+          typeof rawError === "string"
+            ? rawError
+            : rawError?.message || `Request failed with status ${res.status}`;
+        throw new Error(errorMessage);
+      }
+
       setSubmitted(true);
       setSubmitStatus("idle");
     } catch (err) {
@@ -258,25 +339,56 @@ export default function SecurityPage() {
                 <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(20px,4vw,26px)", color: T.text, letterSpacing: "-0.5px" }}>Report a Vulnerability</h2>
               </div>
               {!submitted ? (
-                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: 6, fontFamily: "'JetBrains Mono',monospace" }}>Vulnerability Type</label>
-                    <select className="sec-select" value={formState.type} onChange={e => setFormState(p => ({ ...p, type: e.target.value }))} required>
-                      <option value="" disabled>Select a type...</option>
-                      <option>Authentication / Authorization</option>
-                      <option>Data Exposure / PII Leak</option>
-                      <option>Injection (SQL, XSS, etc.)</option>
-                      <option>Broken Access Control</option>
-                      <option>Other</option>
-                    </select>
+                    <div className="select-wrap">
+                      <select
+                        className={`sec-select${fieldErrors.type ? " has-error" : ""}`}
+                        value={formState.type}
+                        onChange={updateField("type")}
+                        aria-invalid={!!fieldErrors.type}
+                      >
+                        <option value="" disabled>Select a type...</option>
+                        {VULN_TYPES.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="select-chevron" style={iconSize(14, 16, 2.4)} />
+                    </div>
+                    {fieldErrors.type && (
+                      <div className="field-error"><AlertCircle style={iconSize(12, 13, 2)} />{fieldErrors.type}</div>
+                    )}
                   </div>
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: 6, fontFamily: "'JetBrains Mono',monospace" }}>Description & Steps to Reproduce</label>
-                    <textarea className="sec-input" rows={5} placeholder="Describe the vulnerability and how to reproduce it. Include URLs, affected endpoints, or screenshots if possible." value={formState.description} onChange={e => setFormState(p => ({ ...p, description: e.target.value }))} required />
+                    <textarea
+                      className={`sec-input${fieldErrors.description ? " has-error" : ""}`}
+                      rows={5}
+                      maxLength={MAX_DESCRIPTION_LENGTH}
+                      placeholder="Describe the vulnerability and how to reproduce it. Include URLs, affected endpoints, or screenshots if possible."
+                      value={formState.description}
+                      onChange={updateField("description")}
+                      aria-invalid={!!fieldErrors.description}
+                    />
+                    <div className="char-count">{formState.description.trim().length}/{MAX_DESCRIPTION_LENGTH}</div>
+                    {fieldErrors.description && (
+                      <div className="field-error"><AlertCircle style={iconSize(12, 13, 2)} />{fieldErrors.description}</div>
+                    )}
                   </div>
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: 6, fontFamily: "'JetBrains Mono',monospace" }}>Your Email (optional, for follow-up)</label>
-                    <input className="sec-input" type="email" placeholder="researcher@example.com" value={formState.email} onChange={e => setFormState(p => ({ ...p, email: e.target.value }))} />
+                    <input
+                      className={`sec-input${fieldErrors.email ? " has-error" : ""}`}
+                      type="email"
+                      placeholder="researcher@example.com"
+                      value={formState.email}
+                      onChange={updateField("email")}
+                      aria-invalid={!!fieldErrors.email}
+                    />
+                    {fieldErrors.email && (
+                      <div className="field-error"><AlertCircle style={iconSize(12, 13, 2)} />{fieldErrors.email}</div>
+                    )}
                   </div>
 
                   {submitStatus === "error" && (

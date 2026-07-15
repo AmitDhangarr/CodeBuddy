@@ -182,6 +182,12 @@ export default function ProfileTab({
 
   async function handleAddProject(ev) {
     ev.preventDefault();
+
+    if (!apiProfile?.id) {
+      setSaveError("Your profile hasn't finished loading yet. Please try again in a moment.");
+      return;
+    }
+
     const e = validateForm();
     if (Object.keys(e).length > 0) { setFormErrors(e); return; }
     setFormErrors({});
@@ -194,10 +200,11 @@ export default function ProfileTab({
       : rawUrl;
 
     try {
-      const res  = await fetch("/api/projects", {
+      const res  = await fetch("/api/project", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          profileId:   apiProfile.id,
           name:        form.name.trim(),
           description: form.description.trim(),
           github_url:  normUrl,
@@ -208,7 +215,7 @@ export default function ProfileTab({
         }),
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.message ?? "Failed to save project");
+      if (!json.success) throw new Error(json.error ?? json.message ?? "Failed to save project");
 
       const newProj = mapProject(json.project ?? {
         ...form,
@@ -290,7 +297,7 @@ export default function ProfileTab({
     RENDER
   ══════════════════════════════════════════════════════════════════════ */
   return (
-    <div className="fade-up" style={{ maxWidth: 720, margin: "0 auto", fontFamily: "'Inter',sans-serif" }}>
+    <div className="fade-up profile-tab-root" style={{ maxWidth: 720, margin: "0 auto", fontFamily: "'Inter',sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
@@ -304,6 +311,37 @@ export default function ProfileTab({
         .skill-quick-btn:hover { border-color:rgba(124,58,237,.35) !important; background:rgba(124,58,237,.07) !important; color:${T?.text} !important; }
         .conn-card:hover { border-color:${T?.border2} !important; }
         .conn-card { transition: border-color .15s ease; }
+
+        /* ── mobile responsiveness ───────────────────────────────────── */
+        @media (max-width: 640px) {
+          .profile-tab-root { padding: 0 4px; }
+          .card-flat { padding: 16px !important; border-radius: 12px !important; }
+
+          .profile-header-row { flex-wrap: wrap; }
+          .profile-header-avatar { width: 56px !important; height: 56px !important; }
+          .profile-edit-btn { width: 100%; justify-content: center; margin-top: 4px; }
+
+          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; row-gap: 16px; }
+          .stats-grid > div:nth-child(2n) { border-right: none !important; }
+          .stats-grid > div:nth-child(1),
+          .stats-grid > div:nth-child(2) { border-bottom: 1px solid ${T?.border}; padding-bottom: 12px; }
+
+          .skills-row { grid-template-columns: 1fr !important; }
+
+          .activity-overview-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+          .form-row-name-stars { grid-template-columns: 1fr !important; }
+          .form-row-url-branch { grid-template-columns: 1fr !important; }
+
+          .form-actions-row { flex-direction: column-reverse; }
+          .form-actions-row button { width: 100%; justify-content: center; }
+
+          .conn-actions-row { flex-direction: column; }
+          .conn-actions-row button { width: 100%; }
+
+          .profile-tabs-row { gap: 2px !important; }
+          .profile-tabs-row button { padding: 7px 11px !important; font-size: 12px !important; }
+        }
       `}</style>
 
       {/* error banner */}
@@ -330,8 +368,8 @@ export default function ProfileTab({
             : "linear-gradient(135deg,rgba(124,58,237,.04),transparent 60%)",
         }} />
 
-        <div style={{ display:"flex", gap:20, alignItems:"flex-start", position:"relative" }}>
-          <div style={{
+        <div className="profile-header-row" style={{ display:"flex", gap:20, alignItems:"flex-start", position:"relative" }}>
+          <div className="profile-header-avatar" style={{
             width:70, height:70, borderRadius:14, flexShrink:0,
             background:"rgba(124,58,237,.14)",
             border:"1px solid rgba(124,58,237,.3)",
@@ -381,7 +419,7 @@ export default function ProfileTab({
             )}
           </div>
 
-          <button onClick={() => setDashPage("settings")} style={{
+          <button className="profile-edit-btn" onClick={() => setDashPage("settings")} style={{
             display:"inline-flex", alignItems:"center", gap:6,
             background:"transparent", border:`1px solid ${T?.border}`,
             color:T?.text2, padding:"7px 16px", borderRadius:8,
@@ -390,7 +428,7 @@ export default function ProfileTab({
         </div>
 
         {/* stats row */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", marginTop:22, paddingTop:18, borderTop:`1px solid ${T?.border}` }}>
+        <div className="stats-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", marginTop:22, paddingTop:18, borderTop:`1px solid ${T?.border}` }}>
           {[
             { v: loading ? "—" : String(totalConnections), l:"Connections" },
             { v: loading ? "—" : String(projects.length),  l:"Projects" },
@@ -406,7 +444,7 @@ export default function ProfileTab({
       </div>
 
       {/* ══ SKILLS ROW ══ */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
+      <div className="skills-row" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         <div className="card-flat" style={{ padding:16 }}>
           <Lbl T={T}>Skills I Have</Lbl>
           <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:10 }}>
@@ -455,7 +493,7 @@ export default function ProfileTab({
       {/* ══ ANALYTICS OVERVIEW ══ */}
       <div className="card-flat" style={{ padding:16, marginBottom:14 }}>
         <Lbl T={T}>Activity Overview</Lbl>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginTop:12 }}>
+        <div className="activity-overview-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginTop:12 }}>
           {[
             {
               Icon:Handshake, label:"Connections", value: loading ? "—" : String(totalConnections),
@@ -498,7 +536,7 @@ export default function ProfileTab({
 
       {/* ══ TABS ══ */}
       <div className="card-flat" style={{ padding:20 }}>
-        <div style={{ display:"flex", gap:4, marginBottom:18, borderBottom:`1px solid ${T?.border}`, paddingBottom:12, overflowX:"auto" }}>
+        <div className="profile-tabs-row" style={{ display:"flex", gap:4, marginBottom:18, borderBottom:`1px solid ${T?.border}`, paddingBottom:12, overflowX:"auto" }}>
           {["projects","endorsements","activity","connections"].map(t => (
             <button key={t} onClick={() => setProfileTab(t)} style={{
               background: profileTab===t ? (dark ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.06)") : "none",
@@ -545,7 +583,7 @@ export default function ProfileTab({
                         <span style={{ fontSize:22 }}>{p.img}</span>
                         <div>
                           <div style={{ fontSize:14, fontWeight:700, color:T?.text }}>{p.n}</div>
-                          <div style={{ fontSize:11, color:T?.text3, marginTop:1 }}>
+                          <div style={{ fontSize:11, color:T?.text3, marginTop:1, wordBreak:"break-all" }}>
                             {p.url && p.url !== "#"
                               ? p.url.replace("https://","")
                               : `github.com/${currentUser.handle}/${p.n.toLowerCase().replace(/ /g,"-")}`
@@ -604,7 +642,7 @@ export default function ProfileTab({
                 </div>
 
                 <form onSubmit={handleAddProject} style={{ padding:"20px 20px 18px", display:"flex", flexDirection:"column", gap:16 }}>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 160px", gap:10 }}>
+                  <div className="form-row-name-stars" style={{ display:"grid", gridTemplateColumns:"1fr 160px", gap:10 }}>
                     <div>
                       <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>
                         Project Name <span style={{ color:"#f87171" }}>*</span>
@@ -644,7 +682,7 @@ export default function ProfileTab({
                     />
                   </div>
 
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 110px", gap:10 }}>
+                  <div className="form-row-url-branch" style={{ display:"grid", gridTemplateColumns:"1fr 110px", gap:10 }}>
                     <div>
                       <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:5, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>GitHub URL</label>
                       <div style={{ position:"relative" }}>
@@ -677,7 +715,7 @@ export default function ProfileTab({
 
                   <div>
                     <label style={{ fontSize:11, fontWeight:700, color:T?.text3, letterSpacing:".04em", display:"block", marginBottom:8, textTransform:"uppercase", fontFamily:"'JetBrains Mono',monospace" }}>State</label>
-                    <div style={{ display:"flex", gap:6 }}>
+                    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                       {PROJECT_STATES.map(s => {
                         const sc = stateColors[s] ?? stateColors.Building;
                         const on = form.state === s;
@@ -752,13 +790,13 @@ export default function ProfileTab({
                     </div>
                   )}
 
-                  <div style={{ display:"flex", gap:8, justifyContent:"flex-end", paddingTop:4 }}>
+                  <div className="form-actions-row" style={{ display:"flex", gap:8, justifyContent:"flex-end", paddingTop:4 }}>
                     <button type="button" onClick={() => { setShowAddForm(false); setForm(BLANK_FORM); setSaveError(null); setFormErrors({}); }} style={{
                       padding:"9px 18px", background:"transparent", border:`1px solid ${T?.border}`,
                       color:T?.text2, borderRadius:8, cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
                     }}>Cancel</button>
                     <button type="submit" disabled={saving || !form.name.trim()} style={{
-                      display:"inline-flex", alignItems:"center", gap:6,
+                      display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6,
                       padding:"9px 22px",
                       background: form.name.trim() ? "#7c3aed" : (dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.06)"),
                       border: form.name.trim() ? "1px solid #7c3aed" : "1px solid transparent", borderRadius:8,
@@ -806,7 +844,7 @@ export default function ProfileTab({
                   <div style={{ width:38, height:38, borderRadius:8, flexShrink:0, background: dark ? "rgba(124,58,237,.15)" : "rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"#a78bfa", fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>
                     {e.skill[0]}
                   </div>
-                  <div style={{ flex:1 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
                       <span style={{ fontSize:11, color:T?.text3 }}>endorsed you for</span>
                       <span style={{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6, background:T?.skillHaveBg, border:`1px solid ${T?.skillHaveBorder}`, color:T?.skillHaveText }}>{e.skill}</span>
@@ -838,10 +876,10 @@ export default function ProfileTab({
                   <div style={{ width:32, height:32, borderRadius:8, flexShrink:0, background:`hsla(${a.hue},70%,60%,${dark?.1:.08})`, display:"flex", alignItems:"center", justifyContent:"center", color:hsl(a.hue) }}>
                     <a.Icon style={iconSize(14, 16)} />
                   </div>
-                  <span style={{ fontSize:12, color:T?.text2, flex:1 }}>
+                  <span style={{ fontSize:12, color:T?.text2, flex:1, minWidth:0 }}>
                     {a.a} <span style={{ color:T?.text, fontWeight:600 }}>{a.t}</span>
                   </span>
-                  <span style={{ fontSize:10, color:T?.text3, fontFamily:"'JetBrains Mono',monospace" }}>{a.time}</span>
+                  <span style={{ fontSize:10, color:T?.text3, fontFamily:"'JetBrains Mono',monospace", flexShrink:0 }}>{a.time}</span>
                 </div>
               ))
             }
@@ -963,7 +1001,7 @@ export default function ProfileTab({
                               </div>
                             )}
 
-                            <div style={{ display:"flex", gap:7 }}>
+                            <div className="conn-actions-row" style={{ display:"flex", gap:7 }}>
                               <button
                                 onClick={() => setDashPage?.("messages")}
                                 style={{

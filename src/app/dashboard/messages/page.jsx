@@ -8,45 +8,10 @@ import {
   BellOff, Bell, Ban, Flag, Volume2, VolumeX, Download, Square, WifiOff, RotateCcw,
 } from "lucide-react";
 
-/* ============================================================
-   SETUP
-   1. Run schema.sql in your Supabase project (SQL Editor).
-   2. Set env vars (Next.js: .env.local):
-        NEXT_PUBLIC_SUPABASE_URL=...
-        NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-   3. Enable Realtime on "messages" table in Supabase Dashboard.
-   4. Drop <MessagesTab /> into your app and pass:
-        currentUser   -> { id, name, hue, skillsHave, skillsNeed, ... }
-        convos        -> array of conversation objects (may include
-                          unread_count: number, muted: boolean)
-        setConvos     -> setState for convos
-        activeConvo   -> currently selected convo (or null)
-        setActiveConvo-> setState for activeConvo
-        dark          -> boolean
-        T             -> theme object (optional)
-
-   FRONTEND FEATURES IN THIS FILE (no server changes required to see
-   them work locally): reply-to, edit/delete (optimistic), attachments
-   + image lightbox, voice notes (MediaRecorder), rich text (bold /
-   italic / inline code / auto-links), date dividers, delivery ticks +
-   retry-on-fail, unread badges, mute toggle, sound toggle, offline
-   banner, "new messages" jump pill, per-conversation draft memory,
-   keyboard shortcuts.
-
-   TODO(server) markers throughout call out the schema / storage /
-   endpoint work needed to persist these beyond the current session:
-     - messages: add columns `attachments jsonb`, `reply_to jsonb`,
-       `edited boolean default false`, `deleted boolean default false`
-     - a Storage bucket (e.g. "chat-uploads") + upload helper to
-       replace the local blob: URLs used for attachments/voice notes
-     - a `conversation_members` (or similar) table to persist
-       `muted` / `unread_count` instead of the in-memory state below
-     - block/report endpoints for the header menu actions
-   ============================================================ */
-
 const EMOJI_REACTIONS = ["👍", "❤️", "🔥", "👀", "🚀"];
 const LIMITS = { MESSAGE_MAX: 2000, MAX_ATTACHMENTS: 6 };
 const TYPING_THROTTLE_MS = 1500;
+const TOAST_DURATION_MS = 2400;
 
 function validateMessage(text, attachmentCount = 0) {
   const trimmed = (text || "").trim();
@@ -345,6 +310,7 @@ export default function MessagesTab({
   currentUser,
   convos, setConvos,
   activeConvo, setActiveConvo,
+  onViewProfile, 
 }) {
   const theme = T || (dark ? DEFAULT_THEME_DARK : DEFAULT_THEME_LIGHT);
   const windowWidth = useWindowWidth();
@@ -378,11 +344,16 @@ export default function MessagesTab({
 
   // New: presence-adjacent UI state (frontend-only for now)
   const [mutedConvos, setMutedConvos] = useState({});
+  const [blockedConvos, setBlockedConvos] = useState({});
+  const [reportedConvos, setReportedConvos] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasNewBelow, setHasNewBelow] = useState(false);
+
+  // New: toast confirmations (mute / block / unblock / report)
+  const [toast, setToast] = useState(null);
 
   const chatEndRef = useRef(null);
   const messagesScrollRef = useRef(null);
@@ -396,10 +367,20 @@ export default function MessagesTab({
   const streamRef = useRef(null);
   const recordTimerRef = useRef(null);
   const discardRecordingRef = useRef(false);
+  const toastTimerRef = useRef(null);
 
   useAutoResize(textareaRef, msgInput);
 
   const currentConvo = convos?.find((c) => c.id === activeConvo?.id) ?? convos?.[0] ?? null;
+
+  /* ── Toast helper — brief animated confirmation for mute/block/report ── */
+  const showToast = useCallback((Icon, label) => {
+    clearTimeout(toastTimerRef.current);
+    setToast({ Icon, label, key: Date.now() });
+    toastTimerRef.current = setTimeout(() => setToast(null), TOAST_DURATION_MS);
+  }, []);
+
+  useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
   /* Open a convo — save/restore per-conversation draft in memory */
   const openConvo = useCallback((c) => {
@@ -775,11 +756,29 @@ export default function MessagesTab({
     return () => window.removeEventListener("keydown", onKey);
   }, [lightboxUrl]);
 
-  /* ── Mute / header menu ───────────────────────────────────────────── */
+  /* ── Mute / block / report — each confirms with an animated toast ───── */
   const toggleMute = (convoId) => {
     // TODO(server): persist mute state per member instead of local-only
-    setMutedConvos((p) => ({ ...p, [convoId]: !p[convoId] }));
+    const willMute = !mutedConvos[convoId];
+    setMutedConvos((p) => ({ ...p, [convoId]: willMute }));
     setShowHeaderMenu(false);
+    showToast(willMute ? BellOff : Bell, willMute ? "Conversation muted" : "Conversation unmuted");
+  };
+
+  const toggleBlock = (convoId) => {
+    // TODO(server): block endpoint — persist block state server-side
+    const willBlock = !blockedConvos[convoId];
+    setBlockedConvos((p) => ({ ...p, [convoId]: willBlock }));
+    setShowHeaderMenu(false);
+    const name = currentConvo?.user?.name?.split(" ")?.[0] || "User";
+    showToast(willBlock ? Ban : Check, willBlock ? `${name} blocked` : `${name} unblocked`);
+  };
+
+  const reportConversation = (convoId) => {
+    // TODO(server): report endpoint
+    setReportedConvos((p) => ({ ...p, [convoId]: true }));
+    setShowHeaderMenu(false);
+    showToast(Flag, "Conversation reported");
   };
 
   /* ── Helpers ──────────────────────────────────────────────────────── */
@@ -801,6 +800,8 @@ export default function MessagesTab({
   const pinnedMsgId = pinned[currentConvo?.id];
   const pinnedMsg = pinnedMsgId ? messages.find((m) => m.id === pinnedMsgId) : null;
   const isMuted = !!mutedConvos[currentConvo?.id];
+  const isBlocked = !!blockedConvos[currentConvo?.id];
+  const isReported = !!reportedConvos[currentConvo?.id];
 
   const showSidebar = !isMobile || mobilePanel === "list";
   const showChat = !isMobile || mobilePanel === "chat";
@@ -1067,6 +1068,20 @@ export default function MessagesTab({
         @keyframes msgIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
         @keyframes pulseDot { 0%,80%,100% { transform:scale(0.6); opacity:0.4; } 40% { transform:scale(1); opacity:1; } }
         @keyframes recPulse { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
+        @keyframes toastIn {
+          0% { opacity:0; transform:translate(-50%, 10px) scale(0.96); }
+          60% { opacity:1; transform:translate(-50%, -2px) scale(1.01); }
+          100% { opacity:1; transform:translate(-50%, 0) scale(1); }
+        }
+        @keyframes toastOut {
+          from { opacity:1; transform:translate(-50%, 0) scale(1); }
+          to { opacity:0; transform:translate(-50%, 6px) scale(0.98); }
+        }
+        @keyframes toastIconPop {
+          0% { transform:scale(0.5); }
+          60% { transform:scale(1.15); }
+          100% { transform:scale(1); }
+        }
       `}</style>
 
       {!isOnline && (
@@ -1201,14 +1216,17 @@ export default function MessagesTab({
                   </div>
 
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, position: "relative" }}>
-                    <span style={{
-                      ...s.pill, fontSize: 11, fontWeight: 700, padding: "3px 9px",
-                      background: hsla(currentConvo.user.hue, 70, 60, dark ? 0.12 : 0.08),
-                      border: `1px solid ${hsla(currentConvo.user.hue, 70, 60, 0.25)}`,
-                      color: hsl(currentConvo.user.hue), whiteSpace: "nowrap",
-                    }}>
-                      {matchScore}% match
-                    </span>
+                    {/* Match % badge — hidden on mobile to save header space; still shown on tablet/desktop */}
+                    {!isMobile && (
+                      <span style={{
+                        ...s.pill, fontSize: 11, fontWeight: 700, padding: "3px 9px",
+                        background: hsla(currentConvo.user.hue, 70, 60, dark ? 0.12 : 0.08),
+                        border: `1px solid ${hsla(currentConvo.user.hue, 70, 60, 0.25)}`,
+                        color: hsl(currentConvo.user.hue), whiteSpace: "nowrap",
+                      }}>
+                        {matchScore}% match
+                      </span>
+                    )}
 
                     <IconBtn Icon={Search} label="Search messages" onClick={() => setShowMsgSearch((p) => !p)} active={showMsgSearch} dark={dark} T={theme} />
                     <IconBtn Icon={soundEnabled ? Volume2 : VolumeX} label="Toggle sound" onClick={() => setSoundEnabled((p) => !p)} dark={dark} T={theme} />
@@ -1229,8 +1247,8 @@ export default function MessagesTab({
                         }}
                       >
                         <MenuRow icon={isMuted ? Bell : BellOff} label={isMuted ? "Unmute conversation" : "Mute conversation"} onClick={() => toggleMute(currentConvo.id)} theme={theme} />
-                        <MenuRow icon={Ban} label="Block user" onClick={() => { setShowHeaderMenu(false); /* TODO(server): block endpoint */ }} theme={theme} />
-                        <MenuRow icon={Flag} label="Report conversation" onClick={() => { setShowHeaderMenu(false); /* TODO(server): report endpoint */ }} theme={theme} />
+                        <MenuRow icon={isBlocked ? Check : Ban} label={isBlocked ? "Unblock user" : "Block user"} danger={!isBlocked} onClick={() => toggleBlock(currentConvo.id)} theme={theme} />
+                        <MenuRow icon={Flag} label={isReported ? "Reported" : "Report conversation"} onClick={() => !isReported && reportConversation(currentConvo.id)} theme={theme} />
                       </div>
                     )}
                   </div>
@@ -1455,7 +1473,7 @@ export default function MessagesTab({
 
         {/* ══════════════ RIGHT PROFILE PANEL (tablet/desktop) ══════════════ */}
         {showProfile && (
-          <ProfilePanel currentConvo={currentConvo} currentUser={currentUser} theme={theme} dark={dark} matchScore={matchScore} />
+          <ProfilePanel currentConvo={currentConvo} currentUser={currentUser} theme={theme} dark={dark} matchScore={matchScore} onViewProfile={onViewProfile} />
         )}
 
         {/* ══════════════ MOBILE: Full-screen profile panel ══════════════ */}
@@ -1468,11 +1486,40 @@ export default function MessagesTab({
               <span style={{ fontWeight: 600, fontSize: 14, color: theme.text }}>Profile</span>
             </div>
             <div style={{ ...s.scrollbar, flex: 1 }}>
-              <ProfilePanel currentConvo={currentConvo} currentUser={currentUser} theme={theme} dark={dark} matchScore={matchScore} embedded />
+              <ProfilePanel currentConvo={currentConvo} currentUser={currentUser} theme={theme} dark={dark} matchScore={matchScore} embedded onViewProfile={onViewProfile} />
             </div>
           </div>
         )}
       </div>
+
+      {/* ── Toast — animated confirmation for mute / block / report ────── */}
+      {toast && (
+        <div
+          key={toast.key}
+          role="status"
+          style={{
+            position: "fixed",
+            bottom: isMobile ? 88 : 24,
+            left: "50%",
+            zIndex: 400,
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 16px",
+            background: dark ? "#1b1b2c" : "#1f1f27",
+            color: "#fff",
+            border: `1px solid ${dark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.08)"}`,
+            borderRadius: 999,
+            fontSize: 12.5, fontWeight: 600,
+            fontFamily: "'Inter',sans-serif",
+            boxShadow: "0 10px 28px rgba(0,0,0,0.32)",
+            animation: "toastIn 0.3s cubic-bezier(0.16,1,0.3,1) both",
+            pointerEvents: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <toast.Icon style={{ ...iconSize(14, 15, 2), color: "#a78bfa", animation: "toastIconPop 0.35s ease both" }} />
+          {toast.label}
+        </div>
+      )}
 
       {/* ── Lightbox ─────────────────────────────────────────────────── */}
       {lightboxUrl && (
@@ -1591,7 +1638,31 @@ function SendButton({ onClick, disabled, sending, editing }) {
   );
 }
 
-function ProfilePanel({ currentConvo, currentUser, theme, dark, matchScore, embedded }) {
+function ProfilePanel({ currentConvo, currentUser, theme, dark, matchScore, embedded, onViewProfile }) {
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
+  
+  const handleViewFullProfile = async () => {
+    const viewUserId = currentConvo?.user?.id;
+    if (!viewUserId || profileLoading) return;
+    setProfileLoading(true);
+    setProfileError("");
+    try {
+      const res = await fetch(`/api/profile/${viewUserId}`);
+      const json = await res.json();
+      if (!res.ok || json?.error) throw new Error(json?.error || "Failed to load profile.");
+      const profileData = json?.data ?? json?.profile ?? json;
+      onViewProfile?.(viewUserId, profileData);
+    } catch (err) {
+      console.error("Failed to load full profile:", err);
+      setProfileError("Couldn't load profile — try again.");
+      onViewProfile?.(viewUserId);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   const wrap = embedded
     ? { padding: 16, display: "flex", flexDirection: "column", gap: 14 }
     : { width: 210, flexShrink: 0, display: "flex", flexDirection: "column", gap: 0, overflowY: "auto", background: dark ? "rgba(255,255,255,0.03)" : "#fff", border: `1px solid ${theme.border}`, borderRadius: RADIUS.card };
@@ -1643,12 +1714,21 @@ function ProfilePanel({ currentConvo, currentUser, theme, dark, matchScore, embe
         ))}
       </div>
 
-      <button style={{
-        background: "transparent", border: `1px solid ${theme.border}`, color: theme.text2, padding: "8px 10px",
-        borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600,
-        transition: "filter 0.15s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-      }}>
-        View Full Profile
+      {profileError && (
+        <div style={{ fontSize: 10.5, color: theme.danger, textAlign: "center" }}>{profileError}</div>
+      )}
+
+      <button
+        onClick={handleViewFullProfile}
+        disabled={profileLoading}
+        style={{
+          background: "transparent", border: `1px solid ${theme.border}`, color: theme.text2, padding: "8px 10px",
+          borderRadius: RADIUS.control, cursor: profileLoading ? "wait" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600,
+          transition: "filter 0.15s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          opacity: profileLoading ? 0.7 : 1,
+        }}
+      >
+        {profileLoading ? "Loading…" : "View Full Profile"}
       </button>
     </>
   );

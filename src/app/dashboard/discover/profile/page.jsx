@@ -62,6 +62,24 @@ function resolveLocation(loc) {
   return "Remote";
 }
 
+// Get-or-create a 1:1 conversation with another user.
+// Matches the real /api/conversations route: POST body is { user_b_id },
+// user_a_id is derived server-side from the auth cookie, and the response
+// is { data: { id } } — a 200 with the existing row if one's already there,
+// or a 201 with a freshly-created one.
+async function callStartConversation(partnerId) {
+  const res = await fetch("/api/conversations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_b_id: partnerId }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error || "Could not start chat");
+  }
+  return json.data; // { id }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    OTHER PROFILE TAB — read-only view of someone else's profile
 ══════════════════════════════════════════════════════════════════════════ */
@@ -90,6 +108,9 @@ export default function OtherProfileTab({
 
   const [connectionStatus, setConnectionStatus] = useState("none");
   const [connecting, setConnecting] = useState(false);
+
+  const [messaging, setMessaging] = useState(false); // starting a chat with THIS profile's user
+  const [msgError,  setMsgError]  = useState(null);
 
   // Guard: T must be an object — fallback to empty object so dot-access never throws
   const safeT = T && typeof T === "object" ? T : {};
@@ -172,9 +193,25 @@ export default function OtherProfileTab({
     }
   }
 
-  function handleMessage() {
-    if (typeof setActiveConvo === "function") setActiveConvo(viewUserId);
-    if (typeof setDashPage   === "function") setDashPage("messages");
+  // ── Message → new/existing chat ─────────────────────────────────────────
+  // Get-or-creates a conversation with the profile being viewed, then
+  // switches to the Messages tab with that conversation active. Messaging
+  // is a dashboard tab in this app (setDashPage/setActiveConvo), not a real
+  // route, so we don't router.push here — that's reserved for navigating
+  // between actual pages like /discover/profile/[id].
+  async function handleMessage() {
+    if (!viewUserId || messaging) return;
+    setMessaging(true);
+    setMsgError(null);
+    try {
+      const conversation = await callStartConversation(viewUserId);
+      if (typeof setActiveConvo === "function") setActiveConvo(conversation.id);
+      if (typeof setDashPage   === "function") setDashPage("messages");
+    } catch (err) {
+      setMsgError(err?.message || "Could not start a chat.");
+    } finally {
+      setMessaging(false);
+    }
   }
 
   // Returns to the Discover page — this is the other half of the
@@ -244,7 +281,7 @@ export default function OtherProfileTab({
   const skillNeedText   = safeT.skillNeedText   ?? "#f59e0b";
 
   return (
-    <div className="fade-up" style={{ maxWidth: 720, margin: "0 auto", fontFamily: "'Inter',sans-serif" }}>
+    <div className="op-container fade-up" style={{ maxWidth: 720, margin: "0 auto", fontFamily: "'Inter',sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
@@ -255,6 +292,42 @@ export default function OtherProfileTab({
         .back-btn:hover { color:inherit !important; }
         .conn-card:hover { border-color:${border2} !important; }
         .conn-card { transition: border-color .15s ease; }
+
+        /* ── Mobile responsiveness ────────────────────────────────────── */
+        @media (max-width: 640px) {
+          .op-container { padding: 0 12px !important; }
+          .card-flat { padding: 16px !important; border-radius: 12px !important; }
+
+          .profile-header-row { flex-direction: column !important; gap: 14px !important; }
+          .profile-avatar { width: 56px !important; height: 56px !important; font-size: 20px !important; border-radius: 12px !important; }
+          .profile-name { font-size: 19px !important; }
+          .profile-bio { max-width: 100% !important; }
+          .profile-action-wrap { width: 100% !important; margin-top: 4px !important; }
+          .profile-action-wrap button { width: 100% !important; padding: 10px 16px !important; }
+
+          .stats-grid { padding-top: 16px !important; margin-top: 18px !important; }
+          .stat-value { font-size: 16px !important; }
+          .stat-label { font-size: 9.5px !important; }
+
+          .skills-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+          .connections-grid { grid-template-columns: 1fr !important; }
+
+          .tabs-row { gap: 2px !important; }
+          .tabs-row button { padding: 7px 11px !important; font-size: 12px !important; }
+
+          .week-streak-row { gap: 5px !important; height: 42px !important; }
+          .heatmap-grid { gap: 3px !important; }
+          .heatmap-cell { height: 12px !important; }
+
+          .proj-card-header { gap: 6px !important; }
+        }
+
+        @media (max-width: 380px) {
+          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; row-gap: 14px !important; }
+          .stats-grid > div:nth-child(odd) { border-right: none !important; }
+          .stats-grid > div:nth-child(1),
+          .stats-grid > div:nth-child(2) { border-bottom: 1px solid ${border}; padding-bottom: 12px; }
+        }
       `}</style>
 
       {/* ── Back to Discover ── */}
@@ -283,6 +356,20 @@ export default function OtherProfileTab({
         </div>
       )}
 
+      {msgError && (
+        <div style={{
+          padding:"10px 16px", borderRadius:10, marginBottom:14,
+          background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)",
+          fontSize:12, color:"#f87171", display:"flex", gap:8, alignItems:"center",
+        }}>
+          ⚠ {msgError}
+          <button onClick={() => setMsgError(null)} style={{
+            marginLeft:"auto", fontSize:11, color:"#f87171",
+            background:"transparent", border:"none", cursor:"pointer", fontFamily:"'Inter',sans-serif",
+          }}>Dismiss</button>
+        </div>
+      )}
+
       {/* ══ PROFILE CARD ══ */}
       <div className="card-flat" style={{ padding:24, marginBottom:16, position:"relative", overflow:"hidden" }}>
         <div style={{
@@ -292,9 +379,9 @@ export default function OtherProfileTab({
             : "linear-gradient(135deg,rgba(124,58,237,.04),transparent 60%)",
         }} />
 
-        <div style={{ display:"flex", gap:20, alignItems:"flex-start", position:"relative" }}>
+        <div className="profile-header-row" style={{ display:"flex", gap:20, alignItems:"flex-start", position:"relative" }}>
           {/* Avatar */}
-          <div style={{
+          <div className="profile-avatar" style={{
             width:70, height:70, borderRadius:14, flexShrink:0,
             background:"rgba(124,58,237,.14)",
             border:"1px solid rgba(124,58,237,.3)",
@@ -307,7 +394,7 @@ export default function OtherProfileTab({
             {loading ? "…" : initials}
           </div>
 
-          <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ flex:1, minWidth:0, width:"100%" }}>
             {loading ? (
               <>
                 <Sk w="180px" h={22} mb={8} />
@@ -318,7 +405,7 @@ export default function OtherProfileTab({
             ) : (
               <>
                 <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                  <div style={{ fontFamily:"'Inter',sans-serif", fontWeight:700, fontSize:22, color:text, letterSpacing:"-0.4px" }}>
+                  <div className="profile-name" style={{ fontFamily:"'Inter',sans-serif", fontWeight:700, fontSize:22, color:text, letterSpacing:"-0.4px" }}>
                     {profile?.name ?? "Unknown User"}
                   </div>
                   {matchScore != null && (
@@ -337,7 +424,7 @@ export default function OtherProfileTab({
                   {profile?.handle && profile?.role ? " · " : ""}
                   {profile?.role ?? ""}
                 </div>
-                <p style={{ fontSize:13, color:text2, marginTop:8, lineHeight:1.6, maxWidth:460 }}>
+                <p className="profile-bio" style={{ fontSize:13, color:text2, marginTop:8, lineHeight:1.6, maxWidth:460 }}>
                   {profile?.bio ?? ""}
                 </p>
                 <div style={{ display:"flex", gap:7, marginTop:12, flexWrap:"wrap" }}>
@@ -362,31 +449,35 @@ export default function OtherProfileTab({
 
           {/* ── primary action ── */}
           {!loading && (
-            connectionStatus === "connected" ? (
-              <button onClick={handleMessage} style={{
-                background:"transparent", border:`1px solid ${border}`,
-                color:text2, padding:"7px 16px", borderRadius:8,
-                cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600, flexShrink:0,
-              }}>💬 Message</button>
-            ) : connectionStatus === "pending" ? (
-              <button disabled style={{
-                background:"transparent", border:`1px solid ${border}`,
-                color:text3, padding:"7px 16px", borderRadius:8,
-                cursor:"default", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600, flexShrink:0,
-              }}>Pending</button>
-            ) : (
-              <button className="connect-btn" onClick={handleConnect} disabled={connecting} style={{
-                background:"#7c3aed", border:"1px solid #7c3aed",
-                color:"#fff", padding:"7px 18px", borderRadius:8,
-                cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:700, flexShrink:0,
-                transition:"filter .15s",
-              }}>{connecting ? "Sending…" : "🤝 Connect"}</button>
-            )
+            <div className="profile-action-wrap" style={{ flexShrink:0 }}>
+              {connectionStatus === "connected" ? (
+                <button onClick={handleMessage} disabled={messaging} style={{
+                  background:"transparent", border:`1px solid ${border}`,
+                  color:text2, padding:"7px 16px", borderRadius:8,
+                  cursor: messaging ? "wait" : "pointer",
+                  opacity: messaging ? 0.6 : 1,
+                  fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
+                }}>{messaging ? "Starting…" : "💬 Message"}</button>
+              ) : connectionStatus === "pending" ? (
+                <button disabled style={{
+                  background:"transparent", border:`1px solid ${border}`,
+                  color:text3, padding:"7px 16px", borderRadius:8,
+                  cursor:"default", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
+                }}>Pending</button>
+              ) : (
+                <button className="connect-btn" onClick={handleConnect} disabled={connecting} style={{
+                  background:"#7c3aed", border:"1px solid #7c3aed",
+                  color:"#fff", padding:"7px 18px", borderRadius:8,
+                  cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:700,
+                  transition:"filter .15s",
+                }}>{connecting ? "Sending…" : "🤝 Connect"}</button>
+              )}
+            </div>
           )}
         </div>
 
         {/* stats row */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", marginTop:22, paddingTop:18, borderTop:`1px solid ${border}` }}>
+        <div className="stats-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", marginTop:22, paddingTop:18, borderTop:`1px solid ${border}` }}>
           {[
             { v: loading ? "—" : String(totalConnections), l:"Connections" },
             { v: loading ? "—" : String(projects.length),  l:"Projects" },
@@ -394,15 +485,15 @@ export default function OtherProfileTab({
             { v: loading ? "—" : String(mutuals.length),    l:"Mutual" },
           ].map((s, i) => (
             <div key={i} style={{ textAlign:"center", borderRight: i < 3 ? `1px solid ${border}` : "none" }}>
-              <div style={{ fontFamily:"'JetBrains Mono',monospace", fontWeight:700, fontSize:20, color:text }}>{s.v}</div>
-              <div style={{ fontSize:11, color:text3, marginTop:2 }}>{s.l}</div>
+              <div className="stat-value" style={{ fontFamily:"'JetBrains Mono',monospace", fontWeight:700, fontSize:20, color:text }}>{s.v}</div>
+              <div className="stat-label" style={{ fontSize:11, color:text3, marginTop:2 }}>{s.l}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* ══ SKILLS ROW ══ */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
+      <div className="skills-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         <div className="card-flat" style={{ padding:16 }}>
           <Lbl T={safeT}>Skills They Have</Lbl>
           <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:10 }}>
@@ -453,7 +544,7 @@ export default function OtherProfileTab({
             {loading ? "—" : `${weekStreak.filter(d => (d?.count ?? 0) > 0).length} / 7 active days`}
           </span>
         </div>
-        <div style={{ display:"flex", gap:8, alignItems:"flex-end", height:48 }}>
+        <div className="week-streak-row" style={{ display:"flex", gap:8, alignItems:"flex-end", height:48 }}>
           {loading
             ? Array.from({ length:7 }).map((_,i) => (
                 <div key={i} style={{ flex:1, borderRadius:6, background: dark ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.05)", animation:"pulse 1.6s ease-in-out infinite", animationDelay:`${i*60}ms`, height:"100%" }} />
@@ -479,7 +570,7 @@ export default function OtherProfileTab({
 
       {/* ══ 5-WEEK HEATMAP ══ */}
       <div className="card-flat" style={{ padding:16, marginBottom:14 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:8 }}>
           <Lbl T={safeT}>Activity streak (last 5 weeks)</Lbl>
           <div style={{ display:"flex", gap:14 }}>
             <div style={{ textAlign:"right" }}>
@@ -492,18 +583,19 @@ export default function OtherProfileTab({
             </div>
           </div>
         </div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:4 }}>
+        <div className="heatmap-grid" style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:4 }}>
           {["M","T","W","T","F","S","S"].map((d,i) => (
             <div key={i} style={{ fontSize:9, color:text3, textAlign:"center", fontFamily:"'JetBrains Mono',monospace" }}>{d}</div>
           ))}
         </div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
+        <div className="heatmap-grid" style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
           {loading
             ? Array.from({ length:35 }).map((_,i) => (
-                <div key={i} style={{ height:14, borderRadius:3, background: dark ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.05)", animation:"pulse 1.6s ease-in-out infinite", animationDelay:`${i*30}ms` }} />
+                <div key={i} className="heatmap-cell" style={{ height:14, borderRadius:3, background: dark ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.05)", animation:"pulse 1.6s ease-in-out infinite", animationDelay:`${i*30}ms` }} />
               ))
             : streak.map((cell, i) => (
                 <div key={i}
+                  className="heatmap-cell"
                   title={`${cell?.count ?? 0} contribution${(cell?.count ?? 0) !== 1 ? "s" : ""}`}
                   style={{ height:14, borderRadius:3, background:heatColor(cell?.count ?? 0), cursor:"default" }}
                 />
@@ -521,14 +613,14 @@ export default function OtherProfileTab({
 
       {/* ══ TABS ══ */}
       <div className="card-flat" style={{ padding:20 }}>
-        <div style={{ display:"flex", gap:4, marginBottom:18, borderBottom:`1px solid ${border}`, paddingBottom:12, overflowX:"auto" }}>
+        <div className="tabs-row" style={{ display:"flex", gap:4, marginBottom:18, borderBottom:`1px solid ${border}`, paddingBottom:12, overflowX:"auto" }}>
           {["projects","endorsements","activity","connections"].map(t => (
             <button key={t} onClick={() => setProfileTab(t)} style={{
               background: profileTab===t ? (dark ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.06)") : "none",
               border:"none", color: profileTab===t ? text : text3,
               cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:500,
               padding:"7px 15px", borderRadius:8, transition:"background .15s,color .15s",
-              whiteSpace:"nowrap", textTransform:"capitalize",
+              whiteSpace:"nowrap", textTransform:"capitalize", flexShrink:0,
             }}>
               {t}
               {t==="projects"    && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({projects.length})</span>}
@@ -574,15 +666,15 @@ export default function OtherProfileTab({
                           borderRadius:10, border:`1px solid ${border}`,
                         }}
                       >
-                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8, gap:8, flexWrap:"wrap" }}>
+                        <div className="proj-card-header" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8, gap:8, flexWrap:"wrap" }}>
                           <div style={{ display:"flex", gap:10, alignItems:"center" }}>
                             <span style={{ fontSize:22 }}>{p?.img ?? "🗂"}</span>
-                            <div>
+                            <div style={{ minWidth:0 }}>
                               <div style={{ fontSize:14, fontWeight:700, color:text }}>{p?.n ?? "Untitled"}</div>
-                              <div style={{ fontSize:11, color:text3, marginTop:1 }}>{displayUrl}</div>
+                              <div style={{ fontSize:11, color:text3, marginTop:1, wordBreak:"break-all" }}>{displayUrl}</div>
                             </div>
                           </div>
-                          <div style={{ display:"flex", gap:6, alignItems:"center", flexShrink:0 }}>
+                          <div style={{ display:"flex", gap:6, alignItems:"center", flexShrink:0, flexWrap:"wrap" }}>
                             <span style={{
                               fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6,
                               background: isActive ? "rgba(34,197,94,.1)" : "rgba(245,158,11,.1)",
@@ -631,7 +723,7 @@ export default function OtherProfileTab({
                         <div style={{ width:38, height:38, borderRadius:8, flexShrink:0, background: dark ? "rgba(124,58,237,.15)" : "rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"#a78bfa", fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>
                           {skillChar}
                         </div>
-                        <div style={{ flex:1 }}>
+                        <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
                             <span style={{ fontSize:11, color:text3 }}>endorsed for</span>
                             <span style={{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6, background:skillHaveBg, border:`1px solid ${skillHaveBorder}`, color:skillHaveText }}>{e?.skill ?? ""}</span>
@@ -677,11 +769,11 @@ export default function OtherProfileTab({
                         <div style={{ width:32, height:32, borderRadius:8, flexShrink:0, background:`hsla(${hue},70%,60%,${bgAlpha})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, color:hsl(hue) }}>
                           {a?.icon ?? ""}
                         </div>
-                        <span style={{ fontSize:12, color:text2, flex:1 }}>
+                        <span style={{ fontSize:12, color:text2, flex:1, minWidth:0 }}>
                           {a?.a ?? ""}{" "}
                           <span style={{ color:text, fontWeight:600 }}>{a?.t ?? ""}</span>
                         </span>
-                        <span style={{ fontSize:10, color:text3, fontFamily:"'JetBrains Mono',monospace" }}>{a?.time ?? ""}</span>
+                        <span style={{ fontSize:10, color:text3, fontFamily:"'JetBrains Mono',monospace", flexShrink:0 }}>{a?.time ?? ""}</span>
                       </div>
                     );
                   })
@@ -691,7 +783,7 @@ export default function OtherProfileTab({
 
         {/* ── CONNECTIONS tab → mutuals only ── */}
         {profileTab === "connections" && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          <div className="connections-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             {loading
               ? Array.from({ length:4 }).map((_,i) => (
                   <div key={i} style={{ display:"flex", gap:12, alignItems:"center", padding:"12px 14px", borderRadius:10, border:`1px solid ${border}`, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)" }}>
@@ -711,7 +803,7 @@ export default function OtherProfileTab({
                           {nameInitials(m?.name ?? "")}
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:13, fontWeight:700, color:text }}>{m?.name ?? "Unknown"}</div>
+                          <div style={{ fontSize:13, fontWeight:700, color:text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m?.name ?? "Unknown"}</div>
                           <div style={{ fontSize:10, fontWeight:600, marginTop:2, color:text3 }}>Mutual connection</div>
                         </div>
                         {m?.id != null && (
