@@ -140,8 +140,17 @@ export default function Press() {
       .assets-grid{grid-template-columns:1fr!important}
       .stats-row{grid-template-columns:repeat(2,1fr)!important}
       .quotes-grid{grid-template-columns:1fr!important}
+      .press-contact-grid{grid-template-columns:1fr!important;gap:28px!important}
+      .press-contact-grid > div:first-child{text-align:left}
+      .boilerplate-box{padding-top:52px}
+      .copy-btn{top:12px;right:12px}
     }
-    @media(max-width:480px){.nav-ghost{display:none}}
+    @media(max-width:480px){
+      .nav-ghost{display:none}
+      .stats-row{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
+      .asset-card{flex-wrap:wrap}
+      .asset-card > button{width:100%;justify-content:center;margin-top:6px}
+    }
   `;
 
   const boilerplate = `CodeBuddy is a developer matchmaking platform that pairs engineers by complementary skill sets. Founded in Bangalore in 2024, CodeBuddy uses AI to surface builders who fill each other's skill gaps — turning a problem that used to take months into a match that takes minutes. The platform has 3,200+ active builders across 40+ countries, with 847 projects shipped by matched pairs. CodeBuddy is free for indie developers, with Pro and Team plans for serious builders.`;
@@ -303,7 +312,7 @@ export default function Press() {
 
         {/* ── PRESS CONTACT ── */}
         <section style={{ maxWidth: 1060, margin: "0 auto", padding: "0 clamp(16px,5vw,32px) clamp(60px,12vw,100px)" }}>
-          <div style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 10, padding: "clamp(32px,6vw,52px)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}>
+          <div className="press-contact-grid" style={{ background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: 10, padding: "clamp(32px,6vw,52px)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}>
             <div>
               <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 14 }}>Press Contact</div>
               <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "clamp(22px,4vw,32px)", color: T.text, letterSpacing: "-0.5px", lineHeight: 1.15, marginBottom: 14 }}>

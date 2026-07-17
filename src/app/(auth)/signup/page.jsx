@@ -6,7 +6,7 @@ import { useSignupStore } from "../../../../store/UsesignupStore";
 import { supabase } from "../../../lib/supabaseClient";
 import { useThemeStore } from "../../../../store/themeprovider";
 import { validateSignupForm, validateLoginForm } from "../../../lib/validation";
-import { AlertTriangle, Loader2, ArrowRight, ArrowLeft, Eye, EyeOff, Github, Chrome } from "lucide-react";
+import { AlertTriangle, Loader2, ArrowRight, ArrowLeft, Eye, EyeOff, Github, GoogleIcon } from "lucide-react";
 
 const iconSize = (min, max, vw = 3.2) => ({
   width: `clamp(${min}px, ${vw}vw, ${max}px)`,
@@ -307,7 +307,7 @@ function SignUp() {
                   <span>GitHub</span>
                 </button>
                 <button className="social-btn" onClick={handleOAuthGoogle} style={{ background: T.input, border: `1px solid ${T.inputBorder}`, color: T.text }}>
-                  <Chrome style={iconSize(15, 16)} />
+                   <GoogleIcon style={iconSize(15, 16)} />
                   <span>Google</span>
                 </button>
               </div>

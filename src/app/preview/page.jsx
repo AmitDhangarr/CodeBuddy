@@ -409,6 +409,11 @@ export default function DiscoverTab() {
         to   { opacity: 1; }
       }
       .discover-fade-up { animation: discoverFadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+      /* List view is desktop-only: not enough width on mobile to lay out
+         avatar + name + skills + score + actions in a single row. */
+      @media (max-width: 640px) {
+        [data-discover-preview-root] .view-toggle-list { display: none; }
+      }
     `;
     document.head.appendChild(style);
 
@@ -418,6 +423,20 @@ export default function DiscoverTab() {
       document.head.removeChild(fontLink);
       document.head.removeChild(style);
     };
+  }, []);
+
+  // If the viewport shrinks below the mobile breakpoint while List is
+  // active (or on initial mobile load), fall back to Grid automatically.
+  useEffect(() => {
+    const MOBILE_BREAKPOINT = 640;
+    const checkWidth = () => {
+      if (window.innerWidth < MOBILE_BREAKPOINT) {
+        setView(v => (v === "list" ? "grid" : v));
+      }
+    };
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
   }, []);
 
   const users = MOCK_USERS.map((u, i) => ({
@@ -467,7 +486,12 @@ export default function DiscoverTab() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {["grid", "list"].map(v => (
-            <button className="mig-btn" key={v} onClick={() => setView(v)} style={{ ...btn, padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: view === v ? "rgba(124,58,237,0.15)" : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T.cardBorder}`, color: view === v ? "#a78bfa" : T.text3, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <button
+              className={`mig-btn${v === "list" ? " view-toggle-list" : ""}`}
+              key={v}
+              onClick={() => setView(v)}
+              style={{ ...btn, padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: view === v ? "rgba(124,58,237,0.15)" : "transparent", border: `1px solid ${view === v ? "rgba(124,58,237,0.4)" : T.cardBorder}`, color: view === v ? "#a78bfa" : T.text3, display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
               {v === "grid" ? <><LayoutGrid style={iconSize(12, 14)} /> Grid</> : <><List style={iconSize(12, 14)} /> List</>}
             </button>
           ))}
