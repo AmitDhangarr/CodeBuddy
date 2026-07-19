@@ -7,11 +7,12 @@ import {
   validateHandle,
   validateBio,
   validatePlatformUrl,
+  validateGithubProfileUrl,
 } from "../../../lib/validation";
 import {
   User, Pencil, Wrench, Palette, Bell, Lock, Link2,
   Github, Twitter, Linkedin, AlertTriangle, CheckCircle2, X,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Eye, EyeOff,
 } from "lucide-react";
 
 const iconSize = (min, max, vw = 3) => ({
@@ -148,7 +149,10 @@ const Banner = ({ error, success, onDismiss }) => {
   );
 };
 
-const Field = ({ T, label, id, type = "text", placeholder, value, onChange, prefix, error, maxLength }) => (
+const Field = ({
+  T, label, id, type = "text", placeholder, value, onChange, onBlur,
+  prefix, endAdornment, autoComplete, error, maxLength,
+}) => (
   <div style={{ marginBottom: 16 }}>
     <label
       htmlFor={id}
@@ -180,7 +184,8 @@ const Field = ({ T, label, id, type = "text", placeholder, value, onChange, pref
         value={value}
         maxLength={maxLength}
         onChange={e => onChange(e.target.value)}
-        autoComplete={type === "password" ? "new-password" : type === "email" ? "email" : "off"}
+        onBlur={onBlur}
+        autoComplete={autoComplete ?? (type === "password" ? "new-password" : type === "email" ? "email" : "off")}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
         style={{
@@ -188,10 +193,11 @@ const Field = ({ T, label, id, type = "text", placeholder, value, onChange, pref
           border: "none",
           color: T.text,
           fontSize: 13, outline: "none",
-          padding: prefix ? "10px 14px 10px 6px" : "10px 14px",
+          padding: prefix ? "10px 14px 10px 6px" : endAdornment ? "10px 6px 10px 14px" : "10px 14px",
           flex: 1, minWidth: 0, fontFamily: "'Inter',sans-serif", boxSizing: "border-box",
         }}
       />
+      {endAdornment}
     </div>
     <div id={error ? `${id}-error` : undefined}>
       <FieldMsg error={error} />
@@ -278,6 +284,7 @@ export default function SettingsTab({
   const [email, setEmail] = useState("");
   const [originalEmail, setOriginalEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
 
   useEffect(() => {
@@ -301,9 +308,9 @@ export default function SettingsTab({
   });
 
   const [integrations, setIntegrations] = useState({
-    github: { connected: false, connecting: false, url: "", inputVal: "", error: "" },
-    twitter: { connected: false, connecting: false, url: "", inputVal: "", error: "" },
-    linkedin: { connected: false, connecting: false, url: "", inputVal: "", error: "" },
+    github: { connected: false, connecting: false, saving: false, url: "", inputVal: "", error: "" },
+    twitter: { connected: false, connecting: false, saving: false, url: "", inputVal: "", error: "" },
+    linkedin: { connected: false, connecting: false, saving: false, url: "", inputVal: "", error: "" },
   });
 
   const updInt = (key, patch) =>
@@ -359,6 +366,7 @@ export default function SettingsTab({
       } else {
         if (emailChanged) setOriginalEmail(trimmedEmail);
         setPassword("");
+        setShowPassword(false);
         showOk("Account updated successfully.");
         flashSaved();
       }
@@ -472,44 +480,63 @@ export default function SettingsTab({
     }
   };
 
-  const handleIntegrationUpdate = async () => {
-    setLoading(true);
-    clearBanner();
+  // Integrations now save straight into the profile record, one platform at
+  // a time. "Connected" is only shown once the API call actually succeeds —
+  // if it fails, the field stays open with the error and nothing flips.
+  const intOpen = (key) => updInt(key, { connecting: true, inputVal: "", error: "" });
+  const intCancel = (key) => updInt(key, { connecting: false, inputVal: "", error: "", saving: false });
+
+  const intConfirm = async (key, domains) => {
+    const s = integrations[key];
+    const trimmed = s.inputVal.trim();
+    const err = key === "github"
+      ? validateGithubProfileUrl(trimmed, { required: true })
+      : validatePlatformUrl(trimmed, domains);
+    if (err) { updInt(key, { error: err }); return; }
+
+    updInt(key, { saving: true, error: "" });
     try {
       const res = await fetch("/api/settings/integration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          github: integrations.github.url,
-          x: integrations.twitter.url,
-          linkedin: integrations.linkedin.url,
-        }),
+        body: JSON.stringify({ platform: key, url: trimmed }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        showErr(data.message || `Error ${res.status}: Failed to save integrations.`);
-      } else {
-        showOk("Integrations saved.");
-        flashSaved();
+        updInt(key, {
+          saving: false,
+          error: data.error || data.message || `Error ${res.status}: Failed to connect.`,
+        });
+        return;
       }
+      updInt(key, { connected: true, connecting: false, saving: false, url: trimmed, error: "" });
+      showOk(`${PLATFORMS.find(p => p.key === key)?.l ?? "Account"} connected.`);
     } catch {
-      showErr("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+      updInt(key, { saving: false, error: "Network error. Please try again." });
     }
   };
 
-  const intOpen = (key) => updInt(key, { connecting: true, inputVal: "", error: "" });
-  const intCancel = (key) => updInt(key, { connecting: false, inputVal: "", error: "" });
-  const intConfirm = (key, domains) => {
-    const s = integrations[key];
-    const trimmed = s.inputVal.trim();
-    const err = validatePlatformUrl(trimmed, domains);
-    if (err) { updInt(key, { error: err }); return; }
-    updInt(key, { connected: true, connecting: false, url: trimmed, error: "" });
+  const intDisconnect = async (key) => {
+    const prevUrl = integrations[key].url;
+    updInt(key, { saving: true, error: "" });
+    try {
+      const res = await fetch("/api/settings/integration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: key, url: null }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        updInt(key, { saving: false });
+        showErr(data.error || data.message || "Failed to disconnect. Please try again.");
+        return;
+      }
+      updInt(key, { connected: false, url: "", inputVal: "", error: "", saving: false });
+    } catch {
+      updInt(key, { saving: false, url: prevUrl });
+      showErr("Network error. Please try again.");
+    }
   };
-  const intDisconnect = (key) =>
-    updInt(key, { connected: false, url: "", inputVal: "", error: "" });
 
   const profileCompletion = (() => {
     let s = 0;
@@ -708,20 +735,47 @@ export default function SettingsTab({
                   setEmail(v);
                   if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: "" }));
                 }}
+                onBlur={() => {
+                  const trimmed = email.trim();
+                  if (trimmed && trimmed !== originalEmail) {
+                    setFieldErrors(p => ({ ...p, email: validateEmail(trimmed) }));
+                  }
+                }}
                 error={fieldErrors.email}
               />
               <Field
                 T={T}
                 label="New Password"
                 id="s_pass"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Leave blank to keep current password"
                 value={password}
                 onChange={v => {
                   setPassword(v);
                   if (fieldErrors.password) setFieldErrors(p => ({ ...p, password: "" }));
                 }}
+                onBlur={() => {
+                  if (password) {
+                    setFieldErrors(p => ({ ...p, password: validatePassword(password, { required: true }) }));
+                  }
+                }}
+                autoComplete="new-password"
                 error={fieldErrors.password}
+                endAdornment={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                    style={{
+                      display: "flex", alignItems: "center", padding: "0 12px",
+                      background: "transparent", border: "none", cursor: "pointer",
+                      color: T.text3, flexShrink: 0,
+                    }}
+                  >
+                    {showPassword ? <EyeOff style={iconSize(14, 16)} /> : <Eye style={iconSize(14, 16)} />}
+                  </button>
+                }
               />
               {!fieldErrors.password && password && (
                 <div style={{ fontSize: 11, color: T.text3, marginBottom: 12, marginLeft: 2 }}>
@@ -971,13 +1025,7 @@ export default function SettingsTab({
 
           {settingsTab === "notifications" && (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 4 }}>Notification Preferences</h2>
-              <div style={{ fontSize: 11, color: T.text3, marginBottom: 16, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <span style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.25)", padding: "2px 8px", borderRadius: 6, fontWeight: 700, fontSize: 10, fontFamily: "'JetBrains Mono',monospace" }}>
-                  DEMO
-                </span>
-                Preferences are saved locally for preview purposes.
-              </div>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, marginTop: 0, marginBottom: 16 }}>Notification Preferences</h2>
               <Banner error={bannerErr} success={bannerOk} onDismiss={clearBanner} />
               {[
                 { key: "match", l: "New match found", d: "When AI finds a high-scoring match" },
@@ -1037,7 +1085,9 @@ export default function SettingsTab({
               {PLATFORMS.map(int => {
                 const s = integrations[int.key];
                 const liveVal = s.inputVal.trim();
-                const liveError = liveVal ? validatePlatformUrl(liveVal, int.domains) : "";
+                const liveError = liveVal
+                  ? (int.key === "github" ? validateGithubProfileUrl(liveVal, { required: true }) : validatePlatformUrl(liveVal, int.domains))
+                  : "";
                 const isValidLive = liveVal && !liveError;
 
                 return (
@@ -1063,11 +1113,11 @@ export default function SettingsTab({
                       </div>
                       <div className="int-top-row-actions">
                         {s.connected ? (
-                          <button onClick={() => intDisconnect(int.key)} style={{ padding: "7px 16px", background: "transparent", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", borderRadius: 8, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "border-color 0.15s" }}>
-                            Disconnect
+                          <button onClick={() => intDisconnect(int.key)} disabled={s.saving} style={{ padding: "7px 16px", background: "transparent", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", borderRadius: 8, cursor: s.saving ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "border-color 0.15s", opacity: s.saving ? 0.6 : 1 }}>
+                            {s.saving ? "Disconnecting…" : "Disconnect"}
                           </button>
                         ) : s.connecting ? (
-                          <button onClick={() => intCancel(int.key)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 8, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, flexShrink: 0 }}>
+                          <button onClick={() => intCancel(int.key)} disabled={s.saving} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 8, cursor: s.saving ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, flexShrink: 0, opacity: s.saving ? 0.6 : 1 }}>
                             <X style={iconSize(11, 13)} /> Cancel
                           </button>
                         ) : (
@@ -1089,6 +1139,7 @@ export default function SettingsTab({
                               autoFocus
                               placeholder={int.placeholder}
                               value={s.inputVal}
+                              disabled={s.saving}
                               onChange={e => updInt(int.key, { inputVal: e.target.value, error: "" })}
                               onKeyDown={e => {
                                 if (e.key === "Enter") intConfirm(int.key, int.domains);
@@ -1096,16 +1147,16 @@ export default function SettingsTab({
                               }}
                               aria-invalid={!!s.error}
                               aria-describedby={s.error ? `int_${int.key}_error` : undefined}
-                              style={{ width: "100%", padding: "9px 12px", boxSizing: "border-box", background: T.input, border: `1px solid ${s.error ? "#f87171" : isValidLive ? "#4ade80" : T.inputBorder}`, color: T.text, borderRadius: 8, fontSize: 12, fontFamily: "'Inter',sans-serif", outline: "none", transition: "border-color 0.15s" }}
+                              style={{ width: "100%", padding: "9px 12px", boxSizing: "border-box", background: T.input, border: `1px solid ${s.error ? "#f87171" : isValidLive ? "#4ade80" : T.inputBorder}`, color: T.text, borderRadius: 8, fontSize: 12, fontFamily: "'Inter',sans-serif", outline: "none", transition: "border-color 0.15s", opacity: s.saving ? 0.6 : 1 }}
                             />
                             {s.error && <div id={`int_${int.key}_error`} style={{ fontSize: 11, color: "#f87171", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}><AlertTriangle style={iconSize(11, 13)} /> {s.error}</div>}
                             {!s.error && isValidLive && <div style={{ fontSize: 11, color: "#4ade80", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}><CheckCircle2 style={iconSize(11, 13)} /> Looks good</div>}
                             {!s.error && !isValidLive && s.inputVal && <div style={{ fontSize: 11, color: T.text3, marginTop: 5 }}>e.g. {int.placeholder}</div>}
                           </div>
-                          <button className="int-input-btn" onClick={() => intConfirm(int.key, int.domains)} style={{ padding: "9px 16px", background: "#7c3aed", border: "1px solid #7c3aed", color: "white", borderRadius: 8, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700 }}>
-                            Connect
+                          <button className="int-input-btn" onClick={() => intConfirm(int.key, int.domains)} disabled={s.saving} style={{ padding: "9px 16px", background: "#7c3aed", border: "1px solid #7c3aed", color: "white", borderRadius: 8, cursor: s.saving ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, opacity: s.saving ? 0.7 : 1 }}>
+                            {s.saving ? "Connecting…" : "Connect"}
                           </button>
-                          <button className="int-input-btn" onClick={() => intCancel(int.key)} style={{ padding: "9px 14px", background: "transparent", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 8, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12 }}>
+                          <button className="int-input-btn" onClick={() => intCancel(int.key)} disabled={s.saving} style={{ padding: "9px 14px", background: "transparent", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 8, cursor: s.saving ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, opacity: s.saving ? 0.6 : 1 }}>
                             Cancel
                           </button>
                         </div>
@@ -1114,12 +1165,6 @@ export default function SettingsTab({
                   </div>
                 );
               })}
-
-              {Object.values(integrations).some(i => i.connected) && (
-                <button onClick={handleIntegrationUpdate} disabled={loading} style={primaryBtn({ marginTop: 6 })} className="settings-save-btn">
-                  {loading ? "Saving" : saved ? <><CheckCircle2 style={iconSize(13, 15)} /> Saved</> : "Save Integrations"}
-                </button>
-              )}
             </>
           )}
 

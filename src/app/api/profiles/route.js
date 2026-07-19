@@ -48,29 +48,32 @@ export async function GET(request) {
 
     const me = normalizeProfile(meData);
 
-const profilesWithMatchScore = allProfiles
-  .filter((profile) => profile.id !== me.id)
-  .map((profile) => {
-    const normalized = normalizeProfile(profile);
+    const profilesWithMatchScore = allProfiles
+      .filter((profile) => profile.id !== me.id)
+      .map((profile) => {
+        const normalized = normalizeProfile(profile);
 
-    const isFavourited =
-      me.favourites?.some(
-        (fav) => fav.target_id === profile.id && fav.target_type === "profile"
-      ) ?? false;
+        const isFavourited =
+          me.favourites?.some(
+            (fav) => fav.target_id === profile.id && fav.target_type === "profile"
+          ) ?? false;
 
-    const isConnected =
-      profile.connections_from?.some((conn) => conn.to_user_id === me.id) ||
-      profile.connections_to?.some((conn) => conn.from_user_id === me.id) ||
-      false;
+        const connectionRow =
+          profile.connections_from?.find((conn) => conn.to_user_id === me.id) ??
+          profile.connections_to?.find((conn) => conn.from_user_id === me.id) ??
+          null;
 
-    return {
-      ...normalized,
-      matchScore: calculateMatchScore(me, normalized),
-      isFavourited,
-      isConnected,
-    };
-  });
-  
+        const connectionStatus = connectionRow?.status ?? null;
+
+        return {
+          ...normalized,
+          matchScore: calculateMatchScore(me, normalized),
+          isFavourited,
+          connectionStatus,
+          isConnected: connectionStatus === "accepted",
+        };
+      });
+
     return NextResponse.json({ profiles: profilesWithMatchScore });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

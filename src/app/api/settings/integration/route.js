@@ -1,52 +1,83 @@
 import { NextResponse } from "next/server";
-import { supabase } from "../../../../lib/supabaseClient.js";
-import getUser from "../../../../utils/getuser.js";
-import { validatePlatformUrl } from "../../../../lib/validation.js";
+import { supabase } from "../../../../lib/supabaseClient";
+import { validateGithubProfileUrl, validatePlatformUrl } from "../../../../lib/validation";
 
-const PLATFORM_RULES = {
-  github: ["github.com"],
-  x: ["twitter.com", "x.com"],
-  linkedin: ["linkedin.com"],
+// Maps each platform to the column it's saved into on `profiles`.
+// Adjust column names here if your schema differs.
+const PLATFORM_CONFIG = {
+  github:   { column: "github_url",   domains: ["github.com"] },
+  twitter:  { column: "twitter_url",  domains: ["twitter.com", "x.com"] },
+  linkedin: { column: "linkedin_url", domains: ["linkedin.com"] },
 };
 
 export async function POST(request) {
-  try {
-    const body = await request.json();
-    const { userEmail } = await getUser();
-    const { github, x, linkedin } = body;
+  const body = await request.json();
 
-    for (const [key, url] of Object.entries({ github, x, linkedin })) {
-      if (url?.trim()) {
-        const err = validatePlatformUrl(url, PLATFORM_RULES[key]);
-        if (err) {
-          return NextResponse.json({ success: false, message: err }, { status: 400 });
-        }
+  try {
+    const { platform, url } = body;
+
+    const config = PLATFORM_CONFIG[platform];
+    if (!config) {
+      return NextResponse.json(
+        { success: false, error: "Unknown platform." },
+        { status: 400 }
+      );
+    }
+
+    // url === null means "disconnect" — clear the column, skip validation.
+    if (url !== null) {
+      const validationError = platform === "github"
+        ? validateGithubProfileUrl(url, { required: true }) // profile link, e.g. github.com/username — not a repo link
+        : validatePlatformUrl(url, config.domains);
+
+      if (validationError) {
+        return NextResponse.json(
+          { success: false, error: validationError },
+          { status: 400 }
+        );
       }
     }
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        github: github,
-        x: x,
-        linkedin: linkedin,
-      })
-      .eq("email", userEmail);
-    if (error) {
-      console.error("Integration update error:", error);
-      return NextResponse.json({
-        success: false,
-        message: "Error while updating integrations.",
-      }, { status: 500 });
+
+    // ── Identify the logged-in user ────────────────────────────
+    // NOTE: swap this for whatever your other /api/settings/* routes
+    // (account, profile, skills, privacy) already use to resolve the
+    // current user, so this route stays consistent with them.
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated." },
+        { status: 401 }
+      );
     }
-    return NextResponse.json({
-      success: true,
-      message: "Integrations updated successfully.",
-    });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({
-      success: false,
-      message: "Something went wrong. Try again later.",
-    }, { status: 500 });
+
+    // ── Save straight onto the profile row ─────────────────────
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ [config.column]: url })
+      .eq("id", user.id);
+
+    if (updateError) {
+      return NextResponse.json(
+        { success: false, error: updateError.message },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: url ? "Integration connected." : "Integration disconnected.",
+        platform,
+        url,
+      },
+      { status: 200 }
+    );
+
+  } catch (err) {
+    console.error("Integration save error:", err);
+    return NextResponse.json(
+      { success: false, error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
   }
 }

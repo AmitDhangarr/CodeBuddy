@@ -3,8 +3,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { hsl, hsla, calculateMatchScore, Avatar, Lbl } from "../../shared";
 import ProjectPage from "../../../../components/projectpage";
+import {
+  MapPin, Star, MessageSquare, Handshake, Ban, AlertTriangle,
+  ArrowLeft, ArrowRight, Sparkles, Clock,
+} from "lucide-react";
 
-/* ─── helpers ──────────────────────────────────────────────────────────── */
+const iconSize = (min, max, vw = 3) => ({
+  width: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  height: `clamp(${min}px, ${vw}vw, ${max}px)`,
+  flexShrink: 0,
+});
+
 function nameInitials(name = "") {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
@@ -33,7 +42,7 @@ function buildWeekStreak(projects = [], connectionCount = 0) {
 function mapProject(p) {
   if (!p) return null;
   return {
-    id:     p.id ?? null,
+    id:     p.id ?? p.project_id ?? p._id ?? null,
     n:      p.name ?? p.title ?? "Untitled Project",
     d:      p.description ?? "",
     tags:   Array.isArray(p.skills_used) ? p.skills_used : (Array.isArray(p.tags) ? p.tags : []),
@@ -62,11 +71,12 @@ function resolveLocation(loc) {
   return "Remote";
 }
 
-// Get-or-create a 1:1 conversation with another user.
-// Matches the real /api/conversations route: POST body is { user_b_id },
-// user_a_id is derived server-side from the auth cookie, and the response
-// is { data: { id } } — a 200 with the existing row if one's already there,
-// or a 201 with a freshly-created one.
+function normalizeConnectionStatus(raw) {
+  if (raw === "connected") return "accepted";
+  if (raw === "none" || raw == null) return null;
+  return raw;
+}
+
 async function callStartConversation(partnerId) {
   const res = await fetch("/api/conversations", {
     method: "POST",
@@ -77,12 +87,35 @@ async function callStartConversation(partnerId) {
   if (!res.ok) {
     throw new Error(json.error || "Could not start chat");
   }
-  return json.data; // { id }
+  return json.data;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   OTHER PROFILE TAB — read-only view of someone else's profile
-══════════════════════════════════════════════════════════════════════════ */
+async function callSendConnectionRequest(userId) {
+  const res = await fetch("/api/connection", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: userId }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error || "Could not send request");
+  }
+  return json;
+}
+
+async function callConnectionResponse(receiverId, status) {
+  const res = await fetch("/api/connection/response", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ receiverId, status }),
+  });
+  const json = await res.json();
+  if (!res.ok || json.success === false) {
+    throw new Error(json.error || "Request failed");
+  }
+  return json;
+}
+
 export default function OtherProfileTab({
   T,
   dark,
@@ -90,6 +123,7 @@ export default function OtherProfileTab({
   viewUserId,
   setDashPage,
   setActiveConvo,
+  onViewProfile,
 }) {
   const router = useRouter();
 
@@ -106,13 +140,13 @@ export default function OtherProfileTab({
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(null);
 
-  const [connectionStatus, setConnectionStatus] = useState("none");
+  const [connectionStatus, setConnectionStatus] = useState(null);
   const [connecting, setConnecting] = useState(false);
+  const [blocking,   setBlocking]   = useState(false);
 
-  const [messaging, setMessaging] = useState(false); // starting a chat with THIS profile's user
+  const [messaging, setMessaging] = useState(false);
   const [msgError,  setMsgError]  = useState(null);
 
-  // Guard: T must be an object — fallback to empty object so dot-access never throws
   const safeT = T && typeof T === "object" ? T : {};
 
   useEffect(() => {
@@ -163,7 +197,7 @@ export default function OtherProfileTab({
         setEndorsements(Array.isArray(p?.endorsements) ? p.endorsements : []);
         setStreak(buildStreak(mapped, accepted.length));
         setWeekStreak(buildWeekStreak(mapped, accepted.length));
-        setConnectionStatus(p?.connection_status ?? "none");
+        setConnectionStatus(normalizeConnectionStatus(p?.connection_status ?? p?.connectionStatus));
       } catch (err) {
         if (!cancelled) setError(err?.message ?? "An unexpected error occurred.");
       } finally {
@@ -176,29 +210,50 @@ export default function OtherProfileTab({
   }, [viewUserId]);
 
   async function handleConnect() {
-    if (!viewUserId) return;
+    if (!viewUserId || connecting) return;
     setConnecting(true);
+    const prev = connectionStatus;
+    setConnectionStatus("pending");
     try {
-      const res = await fetch("/api/connections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to_user_id: viewUserId }),
-      });
-      const json = await res.json();
-      if (json?.success) setConnectionStatus("pending");
+      const json = await callSendConnectionRequest(viewUserId);
+      const status = json?.action === "added" || json?.success ? "pending" : prev;
+      setConnectionStatus(status);
     } catch {
-      /* swallow */
+      setConnectionStatus(prev);
     } finally {
       setConnecting(false);
     }
   }
 
-  // ── Message → new/existing chat ─────────────────────────────────────────
-  // Get-or-creates a conversation with the profile being viewed, then
-  // switches to the Messages tab with that conversation active. Messaging
-  // is a dashboard tab in this app (setDashPage/setActiveConvo), not a real
-  // route, so we don't router.push here — that's reserved for navigating
-  // between actual pages like /discover/profile/[id].
+  async function handleCancelRequest() {
+    if (!viewUserId || connecting) return;
+    setConnecting(true);
+    const prev = connectionStatus;
+    setConnectionStatus(null);
+    try {
+      await callConnectionResponse(viewUserId, "declined");
+    } catch {
+      setConnectionStatus(prev);
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function handleBlock() {
+    if (!viewUserId || blocking) return;
+    setBlocking(true);
+    const prev = connectionStatus;
+    const next = prev === "blocked" ? null : "blocked";
+    setConnectionStatus(next);
+    try {
+      await callConnectionResponse(viewUserId, prev === "blocked" ? "unblocked" : "blocked");
+    } catch {
+      setConnectionStatus(prev);
+    } finally {
+      setBlocking(false);
+    }
+  }
+
   async function handleMessage() {
     if (!viewUserId || messaging) return;
     setMessaging(true);
@@ -214,12 +269,17 @@ export default function OtherProfileTab({
     }
   }
 
-  // Returns to the Discover page — this is the other half of the
-  // Discover ⇄ Profile round trip (Discover sets viewUserId + navigates
-  // here; this button navigates back without clearing viewUserId, so if
-  // the person returns to this profile again it can still render instantly).
   function handleBack() {
     if (typeof setDashPage === "function") setDashPage("discover");
+  }
+
+  function handleViewMutual(id) {
+    if (id == null) return;
+    if (typeof onViewProfile === "function") {
+      onViewProfile(id);
+    } else {
+      router.push(`/discover/profile/${id}`);
+    }
   }
 
   if (openProjectId) {
@@ -267,7 +327,6 @@ export default function OtherProfileTab({
     }} />
   );
 
-  // Theme fallbacks so undefined T.xxx never produces broken styles
   const border      = safeT.border      ?? "rgba(128,128,128,0.2)";
   const border2     = safeT.border2     ?? "rgba(128,128,128,0.3)";
   const text        = safeT.text        ?? "inherit";
@@ -293,7 +352,6 @@ export default function OtherProfileTab({
         .conn-card:hover { border-color:${border2} !important; }
         .conn-card { transition: border-color .15s ease; }
 
-        /* ── Mobile responsiveness ────────────────────────────────────── */
         @media (max-width: 640px) {
           .op-container { padding: 0 12px !important; }
           .card-flat { padding: 16px !important; border-radius: 12px !important; }
@@ -302,7 +360,7 @@ export default function OtherProfileTab({
           .profile-avatar { width: 56px !important; height: 56px !important; font-size: 20px !important; border-radius: 12px !important; }
           .profile-name { font-size: 19px !important; }
           .profile-bio { max-width: 100% !important; }
-          .profile-action-wrap { width: 100% !important; margin-top: 4px !important; }
+          .profile-action-wrap { width: 100% !important; margin-top: 4px !important; flex-direction: column !important; }
           .profile-action-wrap button { width: 100% !important; padding: 10px 16px !important; }
 
           .stats-grid { padding-top: 16px !important; margin-top: 18px !important; }
@@ -330,7 +388,6 @@ export default function OtherProfileTab({
         }
       `}</style>
 
-      {/* ── Back to Discover ── */}
       {typeof setDashPage === "function" && (
         <button
           className="back-btn"
@@ -342,7 +399,7 @@ export default function OtherProfileTab({
             marginBottom: 14, padding: 0, transition: "color .15s",
           }}
         >
-          ← Back to Discover
+          <ArrowLeft style={iconSize(13,15)} /> Back to Discover
         </button>
       )}
 
@@ -352,7 +409,7 @@ export default function OtherProfileTab({
           background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)",
           fontSize:12, color:"#f87171", display:"flex", gap:8, alignItems:"center",
         }}>
-          ⚠ {error}
+          <AlertTriangle style={iconSize(13,15)} /> {error}
         </div>
       )}
 
@@ -362,7 +419,7 @@ export default function OtherProfileTab({
           background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)",
           fontSize:12, color:"#f87171", display:"flex", gap:8, alignItems:"center",
         }}>
-          ⚠ {msgError}
+          <AlertTriangle style={iconSize(13,15)} /> {msgError}
           <button onClick={() => setMsgError(null)} style={{
             marginLeft:"auto", fontSize:11, color:"#f87171",
             background:"transparent", border:"none", cursor:"pointer", fontFamily:"'Inter',sans-serif",
@@ -370,7 +427,6 @@ export default function OtherProfileTab({
         </div>
       )}
 
-      {/* ══ PROFILE CARD ══ */}
       <div className="card-flat" style={{ padding:24, marginBottom:16, position:"relative", overflow:"hidden" }}>
         <div style={{
           position:"absolute", inset:0, pointerEvents:"none",
@@ -380,7 +436,6 @@ export default function OtherProfileTab({
         }} />
 
         <div className="profile-header-row" style={{ display:"flex", gap:20, alignItems:"flex-start", position:"relative" }}>
-          {/* Avatar */}
           <div className="profile-avatar" style={{
             width:70, height:70, borderRadius:14, flexShrink:0,
             background:"rgba(124,58,237,.14)",
@@ -415,7 +470,7 @@ export default function OtherProfileTab({
                       background:"rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.3)",
                       color:"#c4b5fd",
                     }}>
-                      ✦ <span style={{ fontFamily:"'JetBrains Mono',monospace" }}>{matchScore}%</span> Match
+                      <Sparkles style={iconSize(11,13)} /> <span style={{ fontFamily:"'JetBrains Mono',monospace" }}>{matchScore}%</span> Match
                     </span>
                   )}
                 </div>
@@ -439,44 +494,75 @@ export default function OtherProfileTab({
                       Seeking {profile.skills_need[0]}
                     </span>
                   )}
-                  <span style={{ padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:600, background:skillNeedBg, border:`1px solid ${skillNeedBorder}`, color:skillNeedText }}>
-                    📍 {resolveLocation(profile?.locations)}
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:6, fontSize:11, fontWeight:600, background:skillNeedBg, border:`1px solid ${skillNeedBorder}`, color:skillNeedText }}>
+                    <MapPin style={iconSize(11,13)} /> {resolveLocation(profile?.locations)}
                   </span>
                 </div>
               </>
             )}
           </div>
 
-          {/* ── primary action ── */}
           {!loading && (
-            <div className="profile-action-wrap" style={{ flexShrink:0 }}>
-              {connectionStatus === "connected" ? (
-                <button onClick={handleMessage} disabled={messaging} style={{
-                  background:"transparent", border:`1px solid ${border}`,
-                  color:text2, padding:"7px 16px", borderRadius:8,
-                  cursor: messaging ? "wait" : "pointer",
-                  opacity: messaging ? 0.6 : 1,
+            <div className="profile-action-wrap" style={{ flexShrink:0, display:"flex", gap:8, flexWrap:"wrap" }}>
+              {connectionStatus === "accepted" ? (
+                <>
+                  <button onClick={handleMessage} disabled={messaging} style={{
+                    display:"inline-flex", alignItems:"center", gap:6,
+                    background:"transparent", border:`1px solid ${border}`,
+                    color:text2, padding:"7px 16px", borderRadius:8,
+                    cursor: messaging ? "wait" : "pointer",
+                    opacity: messaging ? 0.6 : 1,
+                    fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
+                  }}>
+                    <MessageSquare style={iconSize(13,15)} /> {messaging ? "Starting…" : "Message"}
+                  </button>
+                  <button onClick={handleBlock} disabled={blocking} style={{
+                    display:"inline-flex", alignItems:"center", gap:6,
+                    background:"transparent", border:"1px solid rgba(239,68,68,0.3)",
+                    color:"#f87171", padding:"7px 16px", borderRadius:8,
+                    cursor: blocking ? "wait" : "pointer",
+                    opacity: blocking ? 0.6 : 1,
+                    fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
+                  }}>
+                    <Ban style={iconSize(13,15)} /> Block
+                  </button>
+                </>
+              ) : connectionStatus === "blocked" ? (
+                <button onClick={handleBlock} disabled={blocking} style={{
+                  display:"inline-flex", alignItems:"center", gap:6,
+                  background:"transparent", border:"1px solid rgba(239,68,68,0.3)",
+                  color:"#f87171", padding:"7px 16px", borderRadius:8,
+                  cursor: blocking ? "wait" : "pointer",
+                  opacity: blocking ? 0.6 : 1,
                   fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
-                }}>{messaging ? "Starting…" : "💬 Message"}</button>
+                }}>
+                  <Ban style={iconSize(13,15)} /> Unblock
+                </button>
               ) : connectionStatus === "pending" ? (
-                <button disabled style={{
+                <button onClick={handleCancelRequest} disabled={connecting} style={{
+                  display:"inline-flex", alignItems:"center", gap:6,
                   background:"transparent", border:`1px solid ${border}`,
                   color:text3, padding:"7px 16px", borderRadius:8,
-                  cursor:"default", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
-                }}>Pending</button>
+                  cursor: connecting ? "wait" : "pointer",
+                  fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:600,
+                }}>
+                  <Clock style={iconSize(13,15)} /> {connecting ? "Cancelling…" : "Pending"}
+                </button>
               ) : (
                 <button className="connect-btn" onClick={handleConnect} disabled={connecting} style={{
+                  display:"inline-flex", alignItems:"center", gap:6,
                   background:"#7c3aed", border:"1px solid #7c3aed",
                   color:"#fff", padding:"7px 18px", borderRadius:8,
                   cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:12, fontWeight:700,
                   transition:"filter .15s",
-                }}>{connecting ? "Sending…" : "🤝 Connect"}</button>
+                }}>
+                  <Handshake style={iconSize(13,15)} /> {connecting ? "Sending…" : "Connect"}
+                </button>
               )}
             </div>
           )}
         </div>
 
-        {/* stats row */}
         <div className="stats-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", marginTop:22, paddingTop:18, borderTop:`1px solid ${border}` }}>
           {[
             { v: loading ? "—" : String(totalConnections), l:"Connections" },
@@ -492,7 +578,6 @@ export default function OtherProfileTab({
         </div>
       </div>
 
-      {/* ══ SKILLS ROW ══ */}
       <div className="skills-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         <div className="card-flat" style={{ padding:16 }}>
           <Lbl T={safeT}>Skills They Have</Lbl>
@@ -518,7 +603,6 @@ export default function OtherProfileTab({
         </div>
       </div>
 
-      {/* ══ AVAILABILITY ══ */}
       <div className="card-flat" style={{ padding:16, marginBottom:14 }}>
         <Lbl T={safeT}>Weekly Availability</Lbl>
         <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:10 }}>
@@ -536,7 +620,6 @@ export default function OtherProfileTab({
         </div>
       </div>
 
-      {/* ══ WEEK STREAK BARS ══ */}
       <div className="card-flat" style={{ padding:16, marginBottom:14 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
           <Lbl T={safeT}>This Week's Activity</Lbl>
@@ -568,7 +651,6 @@ export default function OtherProfileTab({
         </div>
       </div>
 
-      {/* ══ 5-WEEK HEATMAP ══ */}
       <div className="card-flat" style={{ padding:16, marginBottom:14 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:8 }}>
           <Lbl T={safeT}>Activity streak (last 5 weeks)</Lbl>
@@ -611,7 +693,6 @@ export default function OtherProfileTab({
         </div>
       </div>
 
-      {/* ══ TABS ══ */}
       <div className="card-flat" style={{ padding:20 }}>
         <div className="tabs-row" style={{ display:"flex", gap:4, marginBottom:18, borderBottom:`1px solid ${border}`, paddingBottom:12, overflowX:"auto" }}>
           {["projects","endorsements","activity","connections"].map(t => (
@@ -629,7 +710,6 @@ export default function OtherProfileTab({
           ))}
         </div>
 
-        {/* ── PROJECTS tab ── */}
         {profileTab === "projects" && (
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {loading
@@ -681,8 +761,12 @@ export default function OtherProfileTab({
                               border:`1px solid ${isActive ? "rgba(34,197,94,.25)" : "rgba(245,158,11,.25)"}`,
                               color: isActive ? "#4ade80" : "#fbbf24",
                             }}>{p?.status ?? "Building"}</span>
-                            <span style={{ fontSize:11, color:text3, fontFamily:"'JetBrains Mono',monospace" }}>★ {p?.stars ?? 0}</span>
-                            <span style={{ fontSize:11, color:"#a78bfa", fontWeight:600 }}>View →</span>
+                            <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:text3, fontFamily:"'JetBrains Mono',monospace" }}>
+                              <Star style={iconSize(10,12)} /> {p?.stars ?? 0}
+                            </span>
+                            <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:"#a78bfa", fontWeight:600 }}>
+                              View <ArrowRight style={iconSize(10,12)} />
+                            </span>
                           </div>
                         </div>
                         {p?.d && <p style={{ fontSize:12, color:text2, lineHeight:1.55, marginBottom:10 }}>{p.d}</p>}
@@ -700,7 +784,6 @@ export default function OtherProfileTab({
           </div>
         )}
 
-        {/* ── ENDORSEMENTS tab ── */}
         {profileTab === "endorsements" && (
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {loading
@@ -736,7 +819,7 @@ export default function OtherProfileTab({
                     );
                   })
             }
-            {connectionStatus === "connected" && (
+            {connectionStatus === "accepted" && (
               <button className="endorse-btn" style={{
                 padding:"10px", background:"transparent", border:`2px dashed ${border}`,
                 color:text3, borderRadius:10, cursor:"pointer", fontFamily:"'Inter',sans-serif",
@@ -748,7 +831,6 @@ export default function OtherProfileTab({
           </div>
         )}
 
-        {/* ── ACTIVITY tab ── */}
         {profileTab === "activity" && (
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {loading
@@ -781,7 +863,6 @@ export default function OtherProfileTab({
           </div>
         )}
 
-        {/* ── CONNECTIONS tab → mutuals only ── */}
         {profileTab === "connections" && (
           <div className="connections-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             {loading
@@ -808,7 +889,7 @@ export default function OtherProfileTab({
                         </div>
                         {m?.id != null && (
                           <button
-                            onClick={() => router.push(`/discover/profile/${m.id}`)}
+                            onClick={() => handleViewMutual(m.id)}
                             style={{
                               padding:"5px 10px", background:"transparent",
                               border:`1px solid ${border}`, color:text2,

@@ -9,9 +9,10 @@ import {
   Avatar, Lbl,
 } from "../shared";
 import {
-  MapPin, Folder, Star, Heart, Sparkles, MessageSquare, Ban,
+  MapPin, Folder, Star, Heart, Sparkles, MessageSquare,
   CheckCircle2, AlertTriangle, Info, Search, Clock, Check,
   LayoutGrid, List, ArrowLeft, ArrowRight, ExternalLink,
+  Flame, Handshake, ChevronDown,
 } from "lucide-react";
 
 // Responsive icon sizing: scales fluidly between breakpoints instead of a
@@ -28,19 +29,18 @@ const MOBILE_BREAKPOINT = 640;
 const ACTION_TO_STATUS = {
   disconnect: "declined",
   cancel:     "declined",
-  block:      "blocked",
-  unblock:    "unblocked",
 };
 
 // Demo-only ticker items for the running text strip. Purely presentational —
-// not wired to real data.
+// not wired to real data. Each entry carries its own lucide icon instead of
+// an emoji glyph, matching the icon language used everywhere else in the UI.
 const DEMO_TICKER_ITEMS = [
-  "🔥 Sarah Chen has a 92% match score",
-  "🤝 Connection received from Alex Kim",
-  "⭐ Priya Patel has an 87% match score",
-  "🤝 Connection received from Jordan Lee",
-  "🔥 Marcus Webb has a 78% match score",
-  "🤝 Connection received from Dana Osei",
+  { Icon: Flame,     text: "Sarah Chen has a 92% match score" },
+  { Icon: Handshake, text: "Connection received from Alex Kim" },
+  { Icon: Star,      text: "Priya Patel has an 87% match score" },
+  { Icon: Handshake, text: "Connection received from Jordan Lee" },
+  { Icon: Flame,     text: "Marcus Webb has a 78% match score" },
+  { Icon: Handshake, text: "Connection received from Dana Osei" },
 ];
 
 function normalizeProfile(profile) {
@@ -78,7 +78,13 @@ function normalizeProfile(profile) {
     hue: profile.hue ?? ((profile.name?.charCodeAt(0) ?? 0) * 37) % 360,
     online: profile.online ?? false,
     followers: profile.followers ?? 0,
-    connectionStatus: profile.isConnected ? "accepted" : null,
+    // Read the real status string from the API instead of collapsing every
+    // state into a boolean. Falling back to the old isConnected boolean
+    // keeps this working against APIs that haven't been updated yet, but
+    // once the backend returns connectionStatus directly this is what
+    // survives a refresh instead of every pending/blocked row being
+    // flattened into "accepted" or null.
+    connectionStatus: profile.connectionStatus ?? (profile.isConnected ? "accepted" : null),
     isFavourited: profile.isFavourited ?? false,
   };
 }
@@ -98,13 +104,6 @@ function getStatusConfig(connectionStatus) {
         style: { background: "transparent", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b" },
         hoverStyle: { background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.5)", color: "#fbbf24" },
         hoverLabel: " Cancel",
-      };
-    case "blocked":
-      return {
-        label: "Blocked",
-        style: { background: "transparent", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" },
-        hoverStyle: { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.5)", color: "#fca5a5" },
-        hoverLabel: "Unblock",
       };
     default:
       return {
@@ -217,12 +216,80 @@ async function callConnectionResponse(receiverId, status) {
   return json;
 }
 
+// ── Themed select ────────────────────────────────────────────────────────
+// Native <select> elements can't be fully restyled (the open dropdown list
+// is rendered by the OS/browser chrome), but we can theme the closed control
+// completely and hint the browser to paint its native popup dark/light via
+// `colorScheme` so the open list matches the app theme too.
+function ThemedSelect({ T, dark, value, onChange, ariaLabel, children }) {
+  return (
+    <div style={{ position: "relative", display: "inline-flex" }}>
+      <select
+        aria-label={ariaLabel}
+        value={value}
+        onChange={onChange}
+        style={{
+          background: T?.input,
+          border: `1px solid ${T?.inputBorder}`,
+          color: T?.text2,
+          padding: "8px 30px 8px 12px",
+          borderRadius: 8,
+          fontSize: 12,
+          fontFamily: "'Inter',sans-serif",
+          outline: "none",
+          cursor: "pointer",
+          appearance: "none",
+          WebkitAppearance: "none",
+          MozAppearance: "none",
+          colorScheme: dark ? "dark" : "light",
+        }}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        style={{
+          ...iconSize(11, 13),
+          position: "absolute",
+          right: 10,
+          top: "50%",
+          transform: "translateY(-50%)",
+          color: T?.text3,
+          pointerEvents: "none",
+        }}
+      />
+    </div>
+  );
+}
+
 // ── Running ticker strip ────────────────────────────────────────────────────
 // Demo-only left-to-right marquee sitting just above the search/filter bar.
 // Content is duplicated back-to-back and animated from -50% to 0% so it
 // reads as continuously entering from the left edge and exiting to the right.
 function LiveTicker({ T, dark }) {
-  const text = DEMO_TICKER_ITEMS.join("   •   ");
+  const renderItems = (ariaHidden) => (
+    <span style={{ display: "inline-flex", alignItems: "center" }} aria-hidden={ariaHidden || undefined}>
+      {DEMO_TICKER_ITEMS.map(({ Icon, text }, idx) => (
+        <span
+          key={idx}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            paddingRight: 48,
+            fontSize: "clamp(11px, 2.8vw, 13px)",
+            fontWeight: 600,
+            color: "#a78bfa",
+            fontFamily: "'JetBrains Mono',monospace",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <Icon style={{ ...iconSize(12, 14), flexShrink: 0 }} />
+          {text}
+        </span>
+      ))}
+    </span>
+  );
+
   return (
     <div
       style={{
@@ -243,31 +310,8 @@ function LiveTicker({ T, dark }) {
           willChange: "transform",
         }}
       >
-        <span
-          style={{
-            paddingRight: 48,
-            fontSize: "clamp(11px, 2.8vw, 13px)",
-            fontWeight: 600,
-            color: "#a78bfa",
-            fontFamily: "'JetBrains Mono',monospace",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {text}
-        </span>
-        <span
-          aria-hidden="true"
-          style={{
-            paddingRight: 48,
-            fontSize: "clamp(11px, 2.8vw, 13px)",
-            fontWeight: 600,
-            color: "#a78bfa",
-            fontFamily: "'JetBrains Mono',monospace",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {text}
-        </span>
+        {renderItems(false)}
+        {renderItems(true)}
       </div>
     </div>
   );
@@ -449,18 +493,11 @@ function ViewProfileModal({ user, anchor, T, dark, onClose, onLearnMore, onConne
           >
             Cancel
           </button>
-          <button
+          <StatusButton
+            connectionStatus={user_.connectionStatus}
             onClick={() => onConnect(user_)}
-            style={{
-              flex: "1 1 90px", minWidth: 0, padding: "10px 12px", borderRadius: 8,
-              border: `1px solid ${T?.border}`, background: "transparent",
-              color: T?.text2, cursor: "pointer", fontFamily: "'Inter',sans-serif",
-              fontSize: 13, fontWeight: 700, transition: "border-color 0.15s,color 0.15s", whiteSpace: "nowrap",
-              overflow: "hidden", textOverflow: "ellipsis",
-            }}
-          >
-            Connect
-          </button>
+            extraStyle={{ flex: "1 1 90px", minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+          />
           <button
             onClick={() => onLearnMore(user_)}
             style={{
@@ -568,8 +605,6 @@ export default function DiscoverTab({
   useEffect(() => { setPage(1); }, [filterSkill, filterLooking, filterOnline, searchQ, sortBy]);
 
   const handleConnect = async (user) => {
-    if (user.connectionStatus === "blocked") return;
-
     const prev = user.connectionStatus;
 
     if (prev === "accepted" || prev === "pending") {
@@ -604,26 +639,6 @@ export default function DiscoverTab({
     } catch {
       syncUser(user.id, { connectionStatus: prev }, setProfiles);
       showToast("Failed to send request.", "warn");
-    }
-  };
-
-  const handleBlock = async (user) => {
-    const prevStatus = user.connectionStatus;
-    const isBlocked = prevStatus === "blocked";
-    const next = isBlocked ? null : "blocked";
-    const status = isBlocked ? ACTION_TO_STATUS.unblock : ACTION_TO_STATUS.block;
-
-    syncUser(user.id, { connectionStatus: next }, setProfiles);
-
-    try {
-      await callConnectionResponse(user.id, status);
-      showToast(
-        isBlocked ? `${user.name} has been unblocked.` : `${user.name} has been blocked.`,
-        isBlocked ? "success" : "warn"
-      );
-    } catch (err) {
-      syncUser(user.id, { connectionStatus: prevStatus }, setProfiles);
-      showToast(err.message || "Something went wrong.", "warn");
     }
   };
 
@@ -806,20 +821,24 @@ export default function DiscoverTab({
           </span>
           <input aria-label="Search developers" placeholder="Search name, role, skill…" value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text, borderRadius: 8, fontSize: 13, outline: "none", padding: "9px 14px 9px 32px", width: "100%", fontFamily: "'Inter',sans-serif" }} />
         </div>
-        <select aria-label="Filter by skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontFamily: "'Inter',sans-serif", outline: "none", cursor: "pointer" }}>
+
+        <ThemedSelect T={T} dark={dark} ariaLabel="Filter by skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)}>
           <option value="All">All Skills</option>
           {SKILLS_ALL.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select aria-label="Filter by looking for" value={filterLooking} onChange={e => setFilterLooking(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontFamily: "'Inter',sans-serif", outline: "none", cursor: "pointer" }}>
+        </ThemedSelect>
+
+        <ThemedSelect T={T} dark={dark} ariaLabel="Filter by looking for" value={filterLooking} onChange={e => setFilterLooking(e.target.value)}>
           <option value="All">All Roles</option>
           <option>Collaborator</option><option>Mentor</option><option>Mentee</option>
-        </select>
-        <select aria-label="Sort developers" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ background: T?.input, border: `1px solid ${T?.inputBorder}`, color: T?.text2, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontFamily: "'Inter',sans-serif", outline: "none", cursor: "pointer" }}>
+        </ThemedSelect>
+
+        <ThemedSelect T={T} dark={dark} ariaLabel="Sort developers" value={sortBy} onChange={e => setSortBy(e.target.value)}>
           <option value="match">Sort: Match %</option>
           <option value="followers">Sort: Followers</option>
           <option value="projects">Sort: Projects</option>
           <option value="online">Sort: Online First</option>
-        </select>
+        </ThemedSelect>
+
         <button onClick={() => setFilterOnline(p => !p)} style={{ ...btn, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: filterOnline ? (dark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)") : "transparent", border: `1px solid ${filterOnline ? "rgba(34,197,94,0.35)" : T?.border}`, color: filterOnline ? "#4ade80" : T?.text3 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: filterOnline ? "#22c55e" : T?.text3, flexShrink: 0 }} />
           Online only
@@ -870,8 +889,8 @@ export default function DiscoverTab({
           <div style={{ display: "grid", gridTemplateColumns: effectiveView === "list" ? "1fr" : "repeat(auto-fill,minmax(280px,1fr))", gap: effectiveView === "list" ? 10 : 16, alignItems: "start" }}>
             {paginated.map((u, i) => (
               effectiveView === "list"
-                ? <ListCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} onViewProfile={handleRequestViewProfile} setProfiles={setProfiles} />
-                : <GridCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} onBlock={handleBlock} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} onViewProfile={handleRequestViewProfile} onFavourite={handleFavourite} setProfiles={setProfiles} />
+                ? <ListCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} onViewProfile={handleRequestViewProfile} setProfiles={setProfiles} />
+                : <GridCard key={u.id} u={u} i={i} T={T} dark={dark} onConnect={handleConnect} liked={liked} setLiked={setLiked} aiText={aiText} aiLoading={aiLoading} handleAI={handleAI} onMessage={onMessage} scoreColor={scoreColor} onViewProfile={handleRequestViewProfile} onFavourite={handleFavourite} setProfiles={setProfiles} />
             ))}
           </div>
           <Pagination page={page} totalPages={totalPages} onChange={setPage} T={T} dark={dark} />
@@ -895,7 +914,7 @@ export default function DiscoverTab({
 }
 
 // ── Grid Card ─────────────────────────────────────────────────────────────────
-function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, onViewProfile, onFavourite }) {
+function GridCard({ u, i, T, dark, onConnect, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, onViewProfile, onFavourite }) {
   const isFav = u.isFavourited;
   return (
     <div className="card fade-up" style={{ padding: 20, position: "relative", overflow: "hidden", animationDelay: `${i * 0.06}s`, cursor: "default", display: "flex", flexDirection: "column" }}>
@@ -953,9 +972,6 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
         <button onClick={() => onMessage(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 8, cursor: "pointer" }}>
           <MessageSquare style={iconSize(13, 15)} />
         </button>
-        <button onClick={() => onBlock(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T?.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T?.text3, borderRadius: 8, cursor: "pointer" }}>
-          <Ban style={iconSize(13, 15)} />
-        </button>
         {/* Opens the confirm modal — parent decides navigation once the user picks "Learn More" */}
         <button onClick={(e) => onViewProfile?.(u, e)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 8, cursor: "pointer" }}>
           <ExternalLink style={iconSize(13, 15)} />
@@ -966,7 +982,7 @@ function GridCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
 }
 
 // ── List Card (desktop only — not rendered on mobile) ──────────────────────
-function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, onViewProfile }) {
+function ListCard({ u, i, T, dark, onConnect, liked, setLiked, aiText, aiLoading, handleAI, onMessage, scoreColor, onViewProfile }) {
   return (
     <div className="card fade-up" style={{ padding: "14px 18px", display: "flex", gap: 14, alignItems: "center", animationDelay: `${i * 0.04}s`, flexWrap: "wrap" }}>
       <div style={{ position: "relative", flexShrink: 0 }}>
@@ -979,12 +995,10 @@ function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
           <span style={{ fontSize: 11, color: hsl(u.hue), fontWeight: 600 }}>{u.role}</span>
           <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace", padding: "2px 8px", borderRadius: 6, background: hsla(u.hue, 70, 60, dark ? 0.1 : 0.07), border: `1px solid ${hsla(u.hue, 70, 60, 0.22)}`, color: hsl(u.hue) }}>{u.lookingFor}</span>
           {u.connectionStatus && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", padding: "2px 8px", borderRadius: 6, background: u.connectionStatus === "accepted" ? "rgba(74,222,128,0.08)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)", border: `1px solid ${u.connectionStatus === "accepted" ? "rgba(74,222,128,0.25)" : u.connectionStatus === "pending" ? "rgba(245,158,11,0.25)" : "rgba(239,68,68,0.25)"}`, color: u.connectionStatus === "accepted" ? "#4ade80" : u.connectionStatus === "pending" ? "#f59e0b" : "#f87171" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", padding: "2px 8px", borderRadius: 6, background: u.connectionStatus === "accepted" ? "rgba(74,222,128,0.08)" : "rgba(245,158,11,0.08)", border: `1px solid ${u.connectionStatus === "accepted" ? "rgba(74,222,128,0.25)" : "rgba(245,158,11,0.25)"}`, color: u.connectionStatus === "accepted" ? "#4ade80" : "#f59e0b" }}>
               {u.connectionStatus === "accepted"
                 ? <><Check style={iconSize(9, 11)} /> Connected</>
-                : u.connectionStatus === "pending"
-                  ? <><Clock style={iconSize(9, 11)} /> Pending</>
-                  : <><Ban style={iconSize(9, 11)} /> Blocked</>}
+                : <><Clock style={iconSize(9, 11)} /> Pending</>}
             </span>
           )}
         </div>
@@ -1002,9 +1016,6 @@ function ListCard({ u, i, T, dark, onConnect, onBlock, liked, setLiked, aiText, 
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <StatusButton connectionStatus={u.connectionStatus} onClick={() => onConnect(u)} size="small" extraStyle={{ flex: "none", padding: "6px 14px" }} />
-        <button onClick={() => onBlock(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 10px", background: "transparent", border: `1px solid ${u.connectionStatus === "blocked" ? "rgba(239,68,68,0.3)" : T?.border}`, color: u.connectionStatus === "blocked" ? "#f87171" : T?.text3, borderRadius: 8, cursor: "pointer" }}>
-          <Ban style={iconSize(12, 14)} />
-        </button>
         <button onClick={() => onMessage(u)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 10px", background: "transparent", border: `1px solid ${T?.border}`, color: T?.text3, borderRadius: 8, cursor: "pointer" }}>
           <MessageSquare style={iconSize(12, 14)} />
         </button>
