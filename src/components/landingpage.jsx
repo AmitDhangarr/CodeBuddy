@@ -433,7 +433,7 @@ function LandingPage() {
                   </div>
                   <p style={{ fontSize: 11, color: dark ? "#b0a8d8" : "#6b5b9e", lineHeight: 1.55 }}>Your React skills fill Aanya's frontend gap. Her backend depth covers your weakness. Rare two-way match.</p>
                 </div>
-                <Link href={token ? "profile/:id" : "signin"}><button className="btn-primary" style={{ width: "100%" }}><BtnLabel>Connect</BtnLabel></button></Link>
+                <Link href={token ? "/dashboard" : "/signin"}><button className="btn-primary" style={{ width: "100%" }}><BtnLabel>Explore More</BtnLabel></button></Link>
               </div>
             </div>
           </div>

@@ -12,6 +12,7 @@ const EMOJI_REACTIONS = ["👍", "❤️", "🔥", "👀", "🚀"];
 const LIMITS = { MESSAGE_MAX: 2000, MAX_ATTACHMENTS: 6 };
 const TYPING_THROTTLE_MS = 1500;
 const TOAST_DURATION_MS = 2400;
+const STORAGE_BUCKET = "chat-attachments";
 
 function validateMessage(text, attachmentCount = 0) {
   const trimmed = (text || "").trim();
@@ -147,6 +148,33 @@ function getSupabase() {
     catch (e) { _sbErr = e; throw e; }
   }
   return _sb;
+}
+
+/* ── Storage helpers ──────────────────────────────────────────────────
+   Uploads a File to the `chat-attachments` bucket under a per-user
+   folder (required by the storage RLS policy: users can only write to
+   their own `${auth.uid()}/...` prefix), then returns its public URL. ── */
+async function uploadChatFile(file, userId) {
+  const sb = getSupabase();
+  const ext = file.name.split(".").pop();
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+  const { error: uploadError } = await sb.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, { cacheControl: "3600", upsert: false });
+
+  if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+  const { data } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}
+
+function kindFromMime(type) {
+  if (!type) return "file";
+  if (type.startsWith("image/")) return "image";
+  if (type.startsWith("video/")) return "video";
+  if (type.startsWith("audio/")) return "audio";
+  return "file";
 }
 
 function mergeIncomingMessage(prev, incoming) {
@@ -341,6 +369,7 @@ export default function MessagesTab({
   const [attachments, setAttachments] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
+  const [uploading, setUploading] = useState(false);
 
   // New: presence-adjacent UI state (frontend-only for now)
   const [mutedConvos, setMutedConvos] = useState({});
@@ -526,26 +555,51 @@ export default function MessagesTab({
     }
   }, [currentUser?.id]);
 
-  /* ── Attachments ──────────────────────────────────────────────────── */
+  /* ── Attachments ──────────────────────────────────────────────────── 
+     Files are uploaded to Supabase Storage immediately on selection, so
+     what lands in `attachments` state is always a real, persistent
+     public URL — never a temporary blob: URL that dies on refresh. ── */
   const handleAttachClick = () => fileInputRef.current?.click();
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
-    const room = LIMITS.MAX_ATTACHMENTS - attachments.length;
-    const next = files.slice(0, Math.max(0, room)).map((f) => ({
-      id: `att-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      name: f.name, size: f.size, type: f.type,
-      url: URL.createObjectURL(f), // TODO(server): upload to storage bucket, use returned URL
-      kind: f.type.startsWith("image/") ? "image" : "file",
-    }));
-    setAttachments((prev) => [...prev, ...next]);
     e.target.value = "";
+    if (!files.length || !currentUser?.id) return;
+
+    const room = LIMITS.MAX_ATTACHMENTS - attachments.length;
+    const toUpload = files.slice(0, Math.max(0, room));
+    if (!toUpload.length) return;
+
+    setUploading(true);
+    setSendError("");
+    try {
+      const uploaded = await Promise.all(
+        toUpload.map(async (f) => {
+          const { url, path } = await uploadChatFile(f, currentUser.id);
+          return {
+            id: `att-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            name: f.name,
+            size: f.size,
+            type: f.type,
+            url,
+            path,
+            kind: kindFromMime(f.type),
+          };
+        })
+      );
+      setAttachments((prev) => [...prev, ...uploaded]);
+    } catch (err) {
+      setSendError(err?.message || "Failed to upload file.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const removeAttachment = (id) => setAttachments((prev) => prev.filter((a) => a.id !== id));
 
-  /* ── Voice notes (MediaRecorder is a browser API — no server needed
-     to record; persisting the audio beyond this session needs storage) ── */
+  /* ── Voice notes ─────────────────────────────────────────────────────
+     MediaRecorder captures locally, then the resulting blob is uploaded
+     to the same `chat-attachments` bucket as image/file attachments. ── */
   const startRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setSendError("Voice recording isn't supported in this browser.");
@@ -558,15 +612,32 @@ export default function MessagesTab({
       const chunks = [];
       discardRecordingRef.current = false;
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      mr.onstop = () => {
+      mr.onstop = async () => {
         streamRef.current?.getTracks().forEach((t) => t.stop());
         if (discardRecordingRef.current) { discardRecordingRef.current = false; return; }
+
         const blob = new Blob(chunks, { type: "audio/webm" });
-        const url = URL.createObjectURL(blob); // TODO(server): upload blob to storage bucket
-        setAttachments((prev) => [...prev, {
-          id: `voice-${Date.now()}`, name: "Voice message", size: blob.size, type: blob.type,
-          url, kind: "audio", duration: recordSeconds,
-        }]);
+        const file = new File([blob], `voice-${Date.now()}.webm`, { type: "audio/webm" });
+
+        setUploading(true);
+        setSendError("");
+        try {
+          const { url, path } = await uploadChatFile(file, currentUser.id);
+          setAttachments((prev) => [...prev, {
+            id: `voice-${Date.now()}`,
+            name: "Voice message",
+            size: blob.size,
+            type: blob.type,
+            url,
+            path,
+            kind: "audio",
+            duration: recordSeconds,
+          }]);
+        } catch (err) {
+          setSendError(err?.message || "Failed to upload voice message.");
+        } finally {
+          setUploading(false);
+        }
       };
       mr.start();
       mediaRecorderRef.current = mr;
@@ -620,7 +691,6 @@ export default function MessagesTab({
     if (!String(editingId).startsWith("optimistic-")) {
       try {
         const sb = getSupabase();
-        // TODO(server): requires an `edited boolean` column on messages
         const { error } = await sb.from("messages").update({ content: trimmed, edited: true }).eq("id", editingId);
         if (error) throw error;
       } catch (err) {
@@ -636,8 +706,7 @@ export default function MessagesTab({
     if (!String(m.id).startsWith("optimistic-")) {
       try {
         const sb = getSupabase();
-        // TODO(server): requires a `deleted boolean` column (soft delete) on messages
-        const { error } = await sb.from("messages").update({ deleted: true, content: "" }).eq("id", m.id);
+        const { error } = await sb.from("messages").update({ deleted: true, content: "", attachments: [], media_url: null }).eq("id", m.id);
         if (error) throw error;
       } catch (err) {
         setConnError(err?.message || "Couldn't delete on the server — it may reappear on refresh.");
@@ -673,17 +742,28 @@ export default function MessagesTab({
     setSending(true);
     try {
       const sb = getSupabase();
-      // TODO(server): `attachments jsonb` and `reply_to jsonb` columns needed
-      // to actually persist these fields — sending content-only for now so
-      // this still works against the base schema.
+      const atts = pending.attachments || [];
+      // Pick the message_type from the first non-generic attachment kind;
+      // falls back to "text" if there are no attachments or they're all
+      // plain files (kind === "file" still gets stored via `attachments`).
+      const primaryKind = atts.find((a) => ["image", "video", "audio"].includes(a.kind))?.kind;
+      const message_type = primaryKind || "text";
+
       const { data, error } = await sb
         .from("messages")
-        .insert({ conversation_id: pending.conversation_id, sender_id: pending.sender_id, content: pending.content })
+        .insert({
+          conversation_id: pending.conversation_id,
+          sender_id: pending.sender_id,
+          content: pending.content || null,
+          media_url: atts[0]?.url || null,
+          message_type,
+          attachments: atts,
+          reply_to: pending.reply_to,
+        })
         .select().single();
       if (error || !data) throw new Error(error?.message || "Failed to send.");
-      const merged = { ...data, attachments: pending.attachments, reply_to: pending.reply_to };
-      setMessages((prev) => mergeIncomingMessage(prev.filter((m) => m.id !== pending.id), merged));
-      updateConvoPreview(pending.conversation_id, merged);
+      setMessages((prev) => mergeIncomingMessage(prev.filter((m) => m.id !== pending.id), data));
+      updateConvoPreview(pending.conversation_id, data);
       if (soundEnabled) playTone(660, 0.05);
     } catch (err) {
       setMessages((prev) => prev.map((m) => (m.id === pending.id ? { ...m, status: "failed" } : m)));
@@ -697,7 +777,7 @@ export default function MessagesTab({
     if (editingId) return saveEdit();
     const contentErr = validateMessage(msgInput, attachments.length);
     if (contentErr) { setSendError(contentErr); return; }
-    if (!currentConvo || !currentUser?.id || sending) return;
+    if (!currentConvo || !currentUser?.id || sending || uploading) return;
 
     const content = msgInput.trim();
     const atts = attachments;
@@ -709,7 +789,7 @@ export default function MessagesTab({
     draftsRef.current[currentConvo.id] = "";
 
     await deliverMessage(buildOptimisticMsg(content, atts, reply));
-  }, [editingId, saveEdit, msgInput, attachments, currentConvo, currentUser?.id, sending, replyTo, deliverMessage, buildOptimisticMsg]);
+  }, [editingId, saveEdit, msgInput, attachments, currentConvo, currentUser?.id, sending, uploading, replyTo, deliverMessage, buildOptimisticMsg]);
 
   const retrySend = useCallback((m) => {
     setMessages((prev) => prev.filter((x) => x.id !== m.id));
@@ -912,6 +992,14 @@ export default function MessagesTab({
                             key={a.id} src={a.url} alt={a.name}
                             onClick={() => setLightboxUrl(a.url)}
                             style={{ maxWidth: 220, maxHeight: 220, borderRadius: RADIUS.card, cursor: "zoom-in", display: "block", border: `1px solid ${mine ? "rgba(255,255,255,0.25)" : theme.border}` }}
+                          />
+                        );
+                      }
+                      if (a.kind === "video") {
+                        return (
+                          <video
+                            key={a.id} src={a.url} controls
+                            style={{ maxWidth: 240, maxHeight: 220, borderRadius: RADIUS.card, display: "block", border: `1px solid ${mine ? "rgba(255,255,255,0.25)" : theme.border}` }}
                           />
                         );
                       }
@@ -1167,7 +1255,7 @@ export default function MessagesTab({
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
                         <div style={{ fontSize: 11, color: theme.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
                           {lastMsg?.sender_id === currentUser?.id ? "You: " : ""}
-                          {lastMsg?.content ?? ""}
+                          {lastMsg?.content ?? (lastMsg?.message_type && lastMsg.message_type !== "text" ? `[${lastMsg.message_type}]` : "")}
                         </div>
                         {unread > 0 && (
                           <span style={{
@@ -1394,6 +1482,12 @@ export default function MessagesTab({
                 </div>
               )}
 
+              {uploading && (
+                <div style={{ fontSize: 11, color: theme.text2, padding: "6px 10px", borderRadius: RADIUS.control, background: theme.input, border: `1px solid ${theme.inputBorder}`, marginBottom: 8 }}>
+                  Uploading…
+                </div>
+              )}
+
               {!!attachments.length && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                   {attachments.map((a) => (
@@ -1423,7 +1517,7 @@ export default function MessagesTab({
               ) : (
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                   <input ref={fileInputRef} type="file" multiple hidden onChange={handleFileChange} />
-                  <IconBtn Icon={Paperclip} label="Attach files" onClick={handleAttachClick} disabled={!currentConvo || attachments.length >= LIMITS.MAX_ATTACHMENTS} dark={dark} T={theme} />
+                  <IconBtn Icon={Paperclip} label="Attach files" onClick={handleAttachClick} disabled={!currentConvo || uploading || attachments.length >= LIMITS.MAX_ATTACHMENTS} dark={dark} T={theme} />
 
                   <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
                     <textarea
@@ -1457,9 +1551,9 @@ export default function MessagesTab({
                   </div>
 
                   {!msgInput.trim() && !attachments.length && !editingId ? (
-                    <MicButton onClick={startRecording} disabled={!currentConvo} />
+                    <MicButton onClick={startRecording} disabled={!currentConvo || uploading} />
                   ) : (
-                    <SendButton onClick={sendMsg} disabled={(!msgInput.trim() && !attachments.length) || !currentUser?.id || sending} sending={sending} editing={!!editingId} />
+                    <SendButton onClick={sendMsg} disabled={(!msgInput.trim() && !attachments.length) || !currentUser?.id || sending || uploading} sending={sending} editing={!!editingId} />
                   )}
                 </div>
               )}
