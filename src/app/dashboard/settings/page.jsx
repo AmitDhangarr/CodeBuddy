@@ -312,6 +312,39 @@ export default function SettingsTab({
     twitter: { connected: false, connecting: false, saving: false, url: "", inputVal: "", error: "" },
     linkedin: { connected: false, connecting: false, saving: false, url: "", inputVal: "", error: "" },
   });
+  const [integrationsLoading, setIntegrationsLoading] = useState(true);
+
+  // Load saved connections from the DB so state survives a refresh —
+  // without this, `integrations` above always starts all-disconnected.
+  useEffect(() => {
+    async function loadIntegrations() {
+      try {
+        const res = await fetch("/api/settings/integrations");
+        const json = await res.json();
+        if (json.success && json.integrations) {
+          setIntegrations(prev => {
+            const next = { ...prev };
+            for (const key of Object.keys(next)) {
+              const saved = json.integrations[key];
+              if (saved) {
+                next[key] = {
+                  ...next[key],
+                  connected: !!saved.connected,
+                  url: saved.url || "",
+                };
+              }
+            }
+            return next;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load integrations:", err);
+      } finally {
+        setIntegrationsLoading(false);
+      }
+    }
+    loadIntegrations();
+  }, []);
 
   const updInt = (key, patch) =>
     setIntegrations(p => ({ ...p, [key]: { ...p[key], ...patch } }));
@@ -501,8 +534,8 @@ export default function SettingsTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform: key, url: trimmed }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
         updInt(key, {
           saving: false,
           error: data.error || data.message || `Error ${res.status}: Failed to connect.`,
@@ -525,8 +558,8 @@ export default function SettingsTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform: key, url: null }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
         updInt(key, { saving: false });
         showErr(data.error || data.message || "Failed to disconnect. Please try again.");
         return;
@@ -1089,9 +1122,10 @@ export default function SettingsTab({
                   ? (int.key === "github" ? validateGithubProfileUrl(liveVal, { required: true }) : validatePlatformUrl(liveVal, int.domains))
                   : "";
                 const isValidLive = liveVal && !liveError;
+                const disableActions = integrationsLoading || s.saving;
 
                 return (
-                  <div key={int.key} style={{ border: `1px solid ${s.connecting ? T.border2 : T.border}`, borderRadius: 10, padding: "16px 18px", marginBottom: 10, background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)", transition: "border-color 0.15s" }}>
+                  <div key={int.key} style={{ border: `1px solid ${s.connecting ? T.border2 : T.border}`, borderRadius: 10, padding: "16px 18px", marginBottom: 10, background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)", transition: "border-color 0.15s", opacity: integrationsLoading ? 0.6 : 1 }}>
 
                     <div className="int-top-row">
                       <div style={{ width: 38, height: 38, borderRadius: 8, flexShrink: 0, background: s.connected ? `${int.color}22` : dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${s.connected ? `${int.color}44` : T.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: s.connected ? int.color : T.text3, transition: "border-color 0.15s,color 0.15s" }}>
@@ -1113,15 +1147,15 @@ export default function SettingsTab({
                       </div>
                       <div className="int-top-row-actions">
                         {s.connected ? (
-                          <button onClick={() => intDisconnect(int.key)} disabled={s.saving} style={{ padding: "7px 16px", background: "transparent", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", borderRadius: 8, cursor: s.saving ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "border-color 0.15s", opacity: s.saving ? 0.6 : 1 }}>
+                          <button onClick={() => intDisconnect(int.key)} disabled={disableActions} style={{ padding: "7px 16px", background: "transparent", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", borderRadius: 8, cursor: disableActions ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "border-color 0.15s", opacity: disableActions ? 0.6 : 1 }}>
                             {s.saving ? "Disconnecting…" : "Disconnect"}
                           </button>
                         ) : s.connecting ? (
-                          <button onClick={() => intCancel(int.key)} disabled={s.saving} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 8, cursor: s.saving ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, flexShrink: 0, opacity: s.saving ? 0.6 : 1 }}>
+                          <button onClick={() => intCancel(int.key)} disabled={disableActions} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${T.border}`, color: T.text2, borderRadius: 8, cursor: disableActions ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, flexShrink: 0, opacity: disableActions ? 0.6 : 1 }}>
                             <X style={iconSize(11, 13)} /> Cancel
                           </button>
                         ) : (
-                          <button onClick={() => intOpen(int.key)} style={{ padding: "7px 16px", background: "#7c3aed", border: "1px solid #7c3aed", color: "white", borderRadius: 8, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "filter 0.15s" }}>
+                          <button onClick={() => intOpen(int.key)} disabled={integrationsLoading} style={{ padding: "7px 16px", background: "#7c3aed", border: "1px solid #7c3aed", color: "white", borderRadius: 8, cursor: integrationsLoading ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, flexShrink: 0, transition: "filter 0.15s", opacity: integrationsLoading ? 0.6 : 1 }}>
                             Connect
                           </button>
                         )}

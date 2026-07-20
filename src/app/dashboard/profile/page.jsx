@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { hsl, hsla, calculateMatchScore, Avatar, Lbl } from "../shared";
 import ProjectPage from "../../../components/projectpage";
 import {
@@ -17,11 +16,6 @@ const iconSize = (min, max, vw = 3) => ({
 });
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
-const ENDORSEMENTS = [
-  { skill: "React",      note: "One of the cleanest React codebases I've worked with." },
-  { skill: "TypeScript", note: "Incredibly thorough with types. Made our codebase bulletproof." },
-];
-
 const ACTIVITY_FEED = [
   { a: "Connected with",    t: "Rohan Mehra",      time: "2h ago", hue: 340, Icon: Handshake },
   { a: "New 89% match —",   t: "Sara Chen",         time: "5h ago", hue: 271, Icon: Sparkles  },
@@ -32,6 +26,9 @@ const ACTIVITY_FEED = [
 ];
 
 const PROJECT_STATES = ["Active", "Building", "Archived"];
+
+// Keep in sync with MAX_PROJECTS on the /api/project route.
+const MAX_PROJECTS = 5;
 
 const SKILL_SUGGESTIONS = [
   "React","TypeScript","Python","Node.js","LangChain","Next.js",
@@ -52,6 +49,19 @@ function nameInitials(name = "") {
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0][0].toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// Endorsement rows can come back with `skill` as a plain string, or as a
+// joined/nested object (e.g. `{ name: "React" }` from a foreign-key relation
+// on the endorments table). This normalizes either shape to a display string
+// instead of letting React print "[object Object]".
+function skillLabel(skill) {
+  if (skill == null) return "";
+  if (typeof skill === "string") return skill;
+  if (typeof skill === "object") {
+    return skill.name ?? skill.skill ?? skill.title ?? skill.label ?? "";
+  }
+  return String(skill);
 }
 
 function mapProject(p) {
@@ -101,8 +111,6 @@ export default function ProfileTab({
   setDashPage,
   convos, setActiveConvo,
 }) {
-  const router = useRouter();
-
   const [profileTab,    setProfileTab]    = useState("projects");
   const [openProjectId, setOpenProjectId] = useState(null);
   const [showAddForm,   setShowAddForm]   = useState(false);
@@ -122,6 +130,10 @@ export default function ProfileTab({
   const [connections, setConnections] = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
+
+  const [endorsements,        setEndorsements]        = useState([]);
+  const [endorsementsLoading, setEndorsementsLoading] = useState(true);
+  const [endorsementsError,   setEndorsementsError]   = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -153,14 +165,13 @@ export default function ProfileTab({
           projects:   mapped.length,
         }));
 
-        // Fetch connections from dedicated endpoint
+
         const connRes  = await fetch("/api/connections");
         const connJson = await connRes.json();
         if (connJson?.data) {
           const connected = connJson.data.filter(
             c => c.status === "connected" || c.status === "accepted"
           );
-          setConnections(connected);
         }
 
       } catch (err) {
@@ -169,8 +180,42 @@ export default function ProfileTab({
         setLoading(false);
       }
     }
+
+    async function loadEndorsements() {
+      try {
+        setEndorsementsLoading(true);
+        setEndorsementsError(null);
+
+        const res  = await fetch("/api/endorsements");
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error ?? json.message ?? "Failed to load endorsements");
+
+        setEndorsements(Array.isArray(json.data) ? json.data : []);
+      } catch (err) {
+        setEndorsementsError(err.message);
+      } finally {
+        setEndorsementsLoading(false);
+      }
+    }
+
     load();
+    loadEndorsements();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function retryEndorsements() {
+    try {
+      setEndorsementsLoading(true);
+      setEndorsementsError(null);
+      const res  = await fetch("/api/endorsements");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? json.message ?? "Failed to load endorsements");
+      setEndorsements(Array.isArray(json.data) ? json.data : []);
+    } catch (err) {
+      setEndorsementsError(err.message);
+    } finally {
+      setEndorsementsLoading(false);
+    }
+  }
 
   function validateForm() {
     const e = {};
@@ -185,6 +230,11 @@ export default function ProfileTab({
 
     if (!apiProfile?.id) {
       setSaveError("Your profile hasn't finished loading yet. Please try again in a moment.");
+      return;
+    }
+
+    if (projects.length >= MAX_PROJECTS) {
+      setSaveError(`You can add up to ${MAX_PROJECTS} projects.`);
       return;
     }
 
@@ -265,6 +315,7 @@ export default function ProfileTab({
   const totalStars       = projects.reduce((s, p) => s + (p.stars ?? 0), 0);
   const profileViews     = apiProfile?.profile_views ?? 248;
   const initials         = nameInitials(currentUser?.name);
+  const atProjectLimit   = projects.length >= MAX_PROJECTS;
 
   const Sk = ({ w = "100%", h = 14, r = 8, mb = 0 }) => (
     <div style={{
@@ -335,9 +386,6 @@ export default function ProfileTab({
 
           .form-actions-row { flex-direction: column-reverse; }
           .form-actions-row button { width: 100%; justify-content: center; }
-
-          .conn-actions-row { flex-direction: column; }
-          .conn-actions-row button { width: 100%; }
 
           .profile-tabs-row { gap: 2px !important; }
           .profile-tabs-row button { padding: 7px 11px !important; font-size: 12px !important; }
@@ -546,8 +594,9 @@ export default function ProfileTab({
               whiteSpace:"nowrap", textTransform:"capitalize",
             }}>
               {t}
-              {t==="projects"    && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({projects.length})</span>}
-              {t==="connections" && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({totalConnections})</span>}
+              {t==="projects"     && !loading             && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({projects.length})</span>}
+              {t==="endorsements" && !endorsementsLoading  && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({endorsements.length})</span>}
+              {t==="connections"  && !loading             && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({totalConnections})</span>}
             </button>
           ))}
         </div>
@@ -811,7 +860,7 @@ export default function ProfileTab({
               </div>
             )}
 
-            {!showAddForm && (
+            {!showAddForm && !atProjectLimit && (
               <button onClick={() => setShowAddForm(true)} style={{
                 display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6,
                 padding:"12px", background:"transparent",
@@ -822,41 +871,66 @@ export default function ProfileTab({
                 <Plus style={iconSize(13, 15)} /> Add project
               </button>
             )}
+
+            {!showAddForm && atProjectLimit && (
+              <div style={{ textAlign:"center", padding:"10px 0", color:T?.text3, fontSize:12 }}>
+                You've reached the {MAX_PROJECTS}-project limit.
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── ENDORSEMENTS tab ── */}
+        {/* ── ENDORSEMENTS tab (read-only: fetched, never posted from here) ── */}
         {profileTab === "endorsements" && (
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            {loading
-              ? Array.from({ length:2 }).map((_,i) => (
-                  <div key={i} style={{ padding:16, borderRadius:10, border:`1px solid ${T?.border}`, display:"flex", gap:14 }}>
-                    <Sk w="38px" h={38} r={8} />
-                    <div style={{ flex:1 }}>
-                      <Sk w="50%" h={13} mb={8} />
-                      <Sk w="100%" h={12} mb={4} />
-                      <Sk w="80%"  h={12} />
-                    </div>
+            {endorsementsLoading ? (
+              Array.from({ length:2 }).map((_,i) => (
+                <div key={i} style={{ padding:16, borderRadius:10, border:`1px solid ${T?.border}`, display:"flex", gap:14 }}>
+                  <Sk w="38px" h={38} r={8} />
+                  <div style={{ flex:1 }}>
+                    <Sk w="50%" h={13} mb={8} />
+                    <Sk w="100%" h={12} mb={4} />
+                    <Sk w="80%"  h={12} />
                   </div>
-                ))
-              : ENDORSEMENTS.map((e,i) => (
-                <div key={i} style={{ padding:16, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)", borderRadius:10, border:`1px solid ${T?.border}`, display:"flex", gap:14, alignItems:"flex-start" }}>
+                </div>
+              ))
+            ) : endorsementsError ? (
+              <div style={{
+                display:"flex", alignItems:"center", gap:8, padding:"10px 16px", borderRadius:10,
+                background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)",
+                fontSize:12, color:"#f87171",
+              }}>
+                <AlertTriangle style={iconSize(13, 15)} /> {endorsementsError}
+                <button onClick={retryEndorsements} style={{
+                  marginLeft:"auto", fontSize:11, color:"#f87171",
+                  background:"transparent", border:"none", cursor:"pointer", fontFamily:"'Inter',sans-serif",
+                }}>Retry</button>
+              </div>
+            ) : endorsements.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"32px 0", color:T?.text3, fontSize:13 }}>
+                No endorsements yet — connect with more builders to get skill endorsements.
+              </div>
+            ) : (
+              endorsements.map((e,i) => {
+                const label = skillLabel(e.skill ?? e.skill_name ?? e.skillName);
+                return (
+                <div key={e.id ?? i} style={{ padding:16, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)", borderRadius:10, border:`1px solid ${T?.border}`, display:"flex", gap:14, alignItems:"flex-start" }}>
                   <div style={{ width:38, height:38, borderRadius:8, flexShrink:0, background: dark ? "rgba(124,58,237,.15)" : "rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"#a78bfa", fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>
-                    {e.skill[0]}
+                    {(label || "?")[0]}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
                       <span style={{ fontSize:11, color:T?.text3 }}>endorsed you for</span>
-                      <span style={{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6, background:T?.skillHaveBg, border:`1px solid ${T?.skillHaveBorder}`, color:T?.skillHaveText }}>{e.skill}</span>
+                      <span style={{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6, background:T?.skillHaveBg, border:`1px solid ${T?.skillHaveBorder}`, color:T?.skillHaveText }}>{label}</span>
                     </div>
-                    <p style={{ fontSize:12, color:T?.text2, fontStyle:"italic", lineHeight:1.55 }}>"{e.note}"</p>
+                    {e.note && (
+                      <p style={{ fontSize:12, color:T?.text2, fontStyle:"italic", lineHeight:1.55 }}>"{e.note}"</p>
+                    )}
                   </div>
                 </div>
-              ))
-            }
-            <div style={{ textAlign:"center", padding:"20px", color:T?.text3, fontSize:12 }}>
-              Connect with more builders to get skill endorsements
-            </div>
+                );
+              })
+            )}
           </div>
         )}
 
@@ -900,8 +974,7 @@ export default function ProfileTab({
                     <Sk w="40px" h={40} r={10} />
                     <div style={{ flex:1 }}>
                       <Sk w="55%" h={13} mb={6} />
-                      <Sk w="40%" h={11} mb={6} />
-                      <Sk w="70%" h={11} />
+                      <Sk w="30%" h={11} />
                     </div>
                   </div>
                 ))
@@ -911,138 +984,56 @@ export default function ProfileTab({
                     No connections yet. Start matching to connect with builders!
                   </div>
                 )
-                : <>
-                    {connections.slice(0, 5).map((conn, i) => {
-                      const name       = conn.name    ?? `User #${String(conn.to_user_id ?? conn.from_user_id ?? i).slice(0,8)}`;
-                      const handle     = conn.handle  ?? String(conn.to_user_id ?? conn.from_user_id ?? i).slice(0,8);
-                      const role       = conn.role    ?? conn.status ?? "Builder";
-                      const bio        = conn.bio     ?? null;
-                      const hue        = conn.hue != null
-                        ? conn.hue
-                        : (String(conn.to_user_id ?? conn.from_user_id ?? i)
-                            .split("").reduce((a,c) => a + c.charCodeAt(0), 0)) % 360;
-                      const skillsHave = conn.skillsHave ?? conn.skills_have ?? [];
-                      const skillsNeed = conn.skillsNeed ?? conn.skills_need ?? [];
-                      const match      = conn.match ?? 0;
-                      const connInitials = name.trim().split(/\s+/).filter(Boolean)
-                        .slice(0,2).map(p => p[0].toUpperCase()).join("") || "?";
-                      const otherUserId = conn.to_user_id ?? conn.from_user_id ?? conn.id;
+                : connections.slice(0, 5).map((conn, i) => {
+                    const name = conn.name ?? `User #${String(conn.to_user_id ?? conn.from_user_id ?? i).slice(0,8)}`;
+                    const hue  = conn.hue != null
+                      ? conn.hue
+                      : (String(conn.to_user_id ?? conn.from_user_id ?? i)
+                          .split("").reduce((a,c) => a + c.charCodeAt(0), 0)) % 360;
+                    const connInitials = name.trim().split(/\s+/).filter(Boolean)
+                      .slice(0,2).map(p => p[0].toUpperCase()).join("") || "?";
+                    const connectedAt = conn.connected_at ?? conn.created_at ?? conn.connectedAt ?? null;
+                    const connectedLabel = connectedAt
+                      ? new Date(connectedAt).toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" })
+                      : null;
 
-                      return (
-                        <div key={conn.id ?? i} className="conn-card" style={{
-                          display:"flex", gap:12, alignItems:"flex-start",
-                          padding:"14px 16px", borderRadius:10,
-                          border:`1px solid ${T?.border}`,
-                          background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
+                    return (
+                      <div key={conn.id ?? i} className="conn-card" style={{
+                        display:"flex", gap:12, alignItems:"center",
+                        padding:"12px 14px", borderRadius:10,
+                        border:`1px solid ${T?.border}`,
+                        background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
+                      }}>
+                        {/* Avatar */}
+                        <div style={{
+                          width:40, height:40, borderRadius:10, flexShrink:0,
+                          background:`hsla(${hue},65%,60%,${dark?.15:.1})`,
+                          border:`1px solid hsla(${hue},65%,60%,.3)`,
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          fontSize:14, fontWeight:700,
+                          color:`hsl(${hue},55%,${dark?72:44}%)`,
+                          fontFamily:"'JetBrains Mono',monospace",
+                          position:"relative",
                         }}>
-                          {/* Avatar */}
+                          {connInitials}
                           <div style={{
-                            width:40, height:40, borderRadius:10, flexShrink:0,
-                            background:`hsla(${hue},65%,60%,${dark?.15:.1})`,
-                            border:`1px solid hsla(${hue},65%,60%,.3)`,
-                            display:"flex", alignItems:"center", justifyContent:"center",
-                            fontSize:14, fontWeight:700,
-                            color:`hsl(${hue},55%,${dark?72:44}%)`,
-                            fontFamily:"'JetBrains Mono',monospace",
-                            position:"relative",
-                          }}>
-                            {connInitials}
-                            <div style={{
-                              position:"absolute", bottom:-2, right:-2,
-                              width:11, height:11, borderRadius:"50%",
-                              background:"#22c55e",
-                              border:`2px solid ${dark ? "#0a0a0f" : "#fafafa"}`,
-                            }} />
-                          </div>
+                            position:"absolute", bottom:-2, right:-2,
+                            width:11, height:11, borderRadius:"50%",
+                            background:"#22c55e",
+                            border:`2px solid ${dark ? "#0a0a0f" : "#fafafa"}`,
+                          }} />
+                        </div>
 
-                          {/* Info */}
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3 }}>
-                              <span style={{ fontSize:14, fontWeight:700, color:T?.text }}>{name}</span>
-                              <span style={{ fontSize:11, color:T?.text3 }}>@{handle}</span>
-                              {match > 0 && (
-                                <div style={{
-                                  display:"flex", alignItems:"center", gap:4,
-                                  background:"rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.22)",
-                                  borderRadius:6, padding:"2px 8px",
-                                }}>
-                                  <span style={{ width:4, height:4, borderRadius:"50%", background:"#a78bfa", display:"block" }} />
-                                  <span style={{ fontSize:11, color:"#a78bfa", fontFamily:"'JetBrains Mono',monospace", fontWeight:700 }}>{match}%</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div style={{ fontSize:11, fontWeight:600, color:`hsl(${hue},55%,${dark?65:50}%)`, marginBottom: bio ? 6 : 8 }}>
-                              {role}
-                            </div>
-
-                            {bio && (
-                              <p style={{
-                                fontSize:11, color:T?.text2, lineHeight:1.55, marginBottom:8,
-                                overflow:"hidden", display:"-webkit-box",
-                                WebkitLineClamp:2, WebkitBoxOrient:"vertical",
-                              }}>{bio}</p>
-                            )}
-
-                            {(skillsHave.length > 0 || skillsNeed.length > 0) && (
-                              <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
-                                {skillsHave.slice(0,3).map(s => (
-                                  <span key={s} style={{
-                                    padding:"2px 8px", borderRadius:6, fontSize:10, fontWeight:600, fontFamily:"'JetBrains Mono',monospace",
-                                    background:T?.skillHaveBg, border:`1px solid ${T?.skillHaveBorder}`, color:T?.skillHaveText,
-                                  }}>{s}</span>
-                                ))}
-                                {skillsNeed.slice(0,2).map(s => (
-                                  <span key={s} style={{
-                                    padding:"2px 8px", borderRadius:6, fontSize:10, fontWeight:600, fontFamily:"'JetBrains Mono',monospace",
-                                    background:T?.skillNeedBg, border:`1px solid ${T?.skillNeedBorder}`, color:T?.skillNeedText,
-                                  }}>{s}</span>
-                                ))}
-                              </div>
-                            )}
-
-                            <div className="conn-actions-row" style={{ display:"flex", gap:7 }}>
-                              <button
-                                onClick={() => setDashPage?.("messages")}
-                                style={{
-                                  padding:"6px 14px",
-                                  background:"#7c3aed",
-                                  border:"1px solid #7c3aed", borderRadius:8, color:"#fff",
-                                  cursor:"pointer", fontFamily:"'Inter',sans-serif", fontSize:11, fontWeight:700,
-                                  transition:"filter .15s",
-                                }}>
-                                Message
-                              </button>
-                              <button
-                                onClick={() => router.push(`/discover/profile/${otherUserId}`)}
-                                style={{
-                                  padding:"6px 12px", background:"transparent",
-                                  border:`1px solid ${T?.border}`, color:T?.text2,
-                                  borderRadius:8, cursor:"pointer",
-                                  fontFamily:"'Inter',sans-serif", fontSize:11, fontWeight:600,
-                                }}>
-                                View profile
-                              </button>
-                            </div>
+                        {/* Name + connected date */}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:14, fontWeight:700, color:T?.text }}>{name}</div>
+                          <div style={{ fontSize:11, color:T?.text3, marginTop:2 }}>
+                            {connectedLabel ? `Connected ${connectedLabel}` : "Connected"}
                           </div>
                         </div>
-                      );
-                    })}
-
-                    {connections.length > 5 && (
-                      <button
-                        onClick={() => router.push("/connections")}
-                        style={{
-                          display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6,
-                          padding:"11px", background:"transparent",
-                          border:`2px dashed ${T?.border}`, color:T?.text3,
-                          borderRadius:10, cursor:"pointer", fontFamily:"'Inter',sans-serif",
-                          fontSize:12, fontWeight:600, transition:"border-color .15s,color .15s",
-                        }}>
-                        <span style={{ fontFamily:"'JetBrains Mono',monospace" }}>+{connections.length - 5}</span> more connections <ArrowRight style={iconSize(11, 13)} />
-                      </button>
-                    )}
-                  </>
+                      </div>
+                    );
+                  })
             }
           </div>
         )}

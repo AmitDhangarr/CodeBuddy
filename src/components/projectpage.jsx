@@ -83,6 +83,9 @@ export default function ProjectPage({
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [commitsError, setCommitsError] = useState(null);
 
+
+  console.log(projectId)
+  
   useEffect(() => {
     async function load() {
       try {
@@ -117,7 +120,7 @@ export default function ProjectPage({
   useEffect(() => {
     async function loadEndorsements() {
       try {
-        const res = await fetch(`/api/projects/${projectId}/endorsements`);
+        const res = await fetch(`/api/endorsements`);
         const json = await res.json();
         if (json.success && Array.isArray(json.endorsements)) {
           setEndorsements(json.endorsements);
@@ -207,7 +210,7 @@ export default function ProjectPage({
     };
 
     try {
-      const res = await fetch("/api/endorsements", {
+      const res = await fetch("/api/endorse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -218,6 +221,7 @@ export default function ProjectPage({
         }),
       });
       const json = await res.json();
+      console.log(json);
       if (!json.success) throw new Error(json.message ?? "Failed to submit endorsement");
 
       setEndorsements(prev => [json.endorsement ?? optimistic, ...prev]);

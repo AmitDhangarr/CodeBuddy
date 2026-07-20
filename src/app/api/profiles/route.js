@@ -6,7 +6,7 @@ import { getPayload } from "../../../../service/handletoken.js";
 
 const PROFILE_FIELDS = `
   id, name, handle, role, bio,
-  skills_have, skills_need, looking_for,
+  skills_have, skills_need, looking_for,online,
   locations ( id, city, state ),
   projects ( id, sort_order, stars ),
   connections_from:connections!connections_from_user_id_fkey ( id, to_user_id, status ),

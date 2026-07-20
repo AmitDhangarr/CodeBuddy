@@ -52,66 +52,36 @@ function shapeRow(row, myId) {
   };
 }
 
-export async function POST(request) {
+export async function GET(request) {
   const auth = await getAuthUser();
   if (auth.error) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+    return NextResponse.json(
+      { success: false, error: auth.error },
+      { status: auth.status }
+    );
   }
   const user = auth.user;
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ success: false, error: "Invalid request body." }, { status: 400 });
-  }
+  const { searchParams } = new URL(request.url);
+  const statusFilter = searchParams.get("status");
 
-  const { receiverId, status } = body || {};
-
-  if (!receiverId || typeof receiverId !== "string") {
-    return NextResponse.json({ success: false, error: "receiverId is required." }, { status: 400 });
-  }
-  if (!["accepted", "declined"].includes(status)) {
-    return NextResponse.json(
-      { success: false, error: "Blocking isn't supported by the current schema — only 'accepted' or 'declined'." },
-      { status: 400 }
-    );
-  }
-
-  const { data: existing, error: findErr } = await supabase
+  let query = supabase
     .from("connections")
     .select("*")
-    .or(
-      `and(from_user_id.eq.${user.id},to_user_id.eq.${receiverId}),and(from_user_id.eq.${receiverId},to_user_id.eq.${user.id})`
-    )
-    .maybeSingle();
+    .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`)
+    .order("created_at", { ascending: false });
 
-  if (findErr) {
-    return NextResponse.json({ success: false, error: findErr.message }, { status: 500 });
-  }
-  if (!existing) {
-    return NextResponse.json({ success: false, error: "Connection not found." }, { status: 404 });
+  if (statusFilter && ["accepted", "declined", "pending"].includes(statusFilter)) {
+    query = query.eq("status", statusFilter);
   }
 
-  if (status === "accepted") {
-    if (existing.status !== "pending" || existing.to_user_id !== user.id) {
-      return NextResponse.json(
-        { success: false, error: "No pending request to accept." },
-        { status: 409 }
-      );
-    }
+  const { data, error } = await query;
+
+  if (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 
-  const { data: updated, error: updateErr } = await supabase
-    .from("connections")
-    .update({ status })
-    .eq("id", existing.id)
-    .select()
-    .single();
+  const shaped = (data || []).map((row) => shapeRow(row, user.id));
 
-  if (updateErr) {
-    return NextResponse.json({ success: false, error: updateErr.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true, data: shapeRow(updated, user.id) });
+  return NextResponse.json({ success: true, data: shaped });
 }

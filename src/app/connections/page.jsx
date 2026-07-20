@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useThemeStore } from "../../../store/themeprovider";
 import {
   Handshake, XCircle, Undo2, Unlink, Ban, CheckCircle2, Inbox, Send, Users,
-  Lock, Search, X, Sparkles, Loader2, AlertTriangle, Info, MessageSquare,
+  Lock, Search, X, Sparkles, Loader2, AlertTriangle, Info,
 } from "lucide-react";
 
 const iconSize = (min, max, vw = 3.2) => ({
@@ -127,6 +127,13 @@ const EmptyState = ({ T, Icon, title, sub }) => (
   </div>
 );
 
+const LoadingState = ({ T }) => (
+  <div style={{ textAlign: "center", padding: "80px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+    <Loader2 style={{ ...iconSize(24, 28, 4), color: "#a78bfa", animation: "spin 0.8s linear infinite" }} />
+    <p style={{ fontSize: 13, color: T.text3 }}>Loading your connections...</p>
+  </div>
+);
+
 const ACTION_TO_STATUS = {
   accept: "accepted",
   decline: "declined",
@@ -139,6 +146,7 @@ const ACTION_TO_STATUS = {
 export default function Connections() {
 
   const [connectionErr, setConnectionErr] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [pendingConnections, setPendingConnections] = useState([]);
   const [declinedConnections, setDeclinedConnections] = useState([]);
   const [blockedConnections, setBlockedConnections] = useState([]);
@@ -146,6 +154,8 @@ export default function Connections() {
   const [sentConnections, setSentConnections] = useState([]);
 
   const getConnections = async () => {
+    setIsLoading(true);
+    setConnectionErr(null);
     try {
       const response = await fetch("/api/connections");
       const res = await response.json();
@@ -162,6 +172,8 @@ export default function Connections() {
     } catch (error) {
       console.error("Failed to fetch connections:", error);
       setConnectionErr("Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -286,10 +298,10 @@ export default function Connections() {
     @keyframes spin{to{transform:rotate(360deg)}}
     .conn-card{background:${T.card};border:1px solid ${T.border};border-radius:${RADIUS.card}px;padding:20px;transition:background 0.15s ease,border-color 0.15s ease;animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
     .conn-card:hover{background:${T.cardHover};border-color:${dark ? "rgba(139,92,246,0.22)" : "rgba(139,92,246,0.2)"}}
-    .tab-btn{background:transparent;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:${RADIUS.control}px;transition:filter 0.15s ease,background 0.15s ease;color:${T.text3}}
+    .tab-btn{background:transparent;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:${RADIUS.control}px;transition:filter 0.15s ease,background 0.15s ease;color:${T.text3};white-space:nowrap}
     .tab-btn:hover{color:${T.text2};background:${T.surfaceA}}
     .tab-btn.active{color:#a78bfa;background:${T.tabActive};box-shadow:inset 0 0 0 1px ${T.tabActiveBorder}}
-    .icon-btn{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:7px 13px;border-radius:${RADIUS.control}px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:filter 0.15s ease,border-color 0.15s ease,color 0.15s ease;display:flex;align-items:center;gap:6px;white-space:nowrap}
+    .icon-btn{background:transparent;border:1px solid ${T.border};color:${T.text3};padding:7px 13px;border-radius:${RADIUS.control}px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:filter 0.15s ease,border-color 0.15s ease,color 0.15s ease;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
     .icon-btn:hover{border-color:${T.border2};color:${T.text}}
     .btn-accept{background:#059669;border:1px solid #059669;color:white;padding:8px 16px;border-radius:${RADIUS.control}px;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:filter 0.15s ease}
     .btn-accept:hover{filter:brightness(1.1)}
@@ -297,8 +309,6 @@ export default function Connections() {
     .btn-decline:hover{background:${T.dangerBg};border-color:${T.dangerText}}
     .btn-cancel{background:transparent;border:1px solid ${T.warnBorder};color:${T.warnText};padding:8px 16px;border-radius:${RADIUS.control}px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.15s ease}
     .btn-cancel:hover{background:${T.warnBg}}
-    .btn-message{background:${ACCENT};border:1px solid ${ACCENT};color:white;padding:8px 16px;border-radius:${RADIUS.control}px;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:filter 0.15s ease}
-    .btn-message:hover{filter:brightness(1.1)}
     .btn-unblock{background:transparent;border:1px solid rgba(34,197,94,0.3);color:#4ade80;padding:8px 16px;border-radius:${RADIUS.control}px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.15s ease}
     .btn-unblock:hover{background:rgba(34,197,94,0.08)}
     .search-input{width:100%;background:${T.searchBg};border:1px solid ${T.border2};border-radius:${RADIUS.control}px;padding:10px 14px 10px 38px;font-family:'Inter',sans-serif;font-size:13px;color:${T.text};outline:none;transition:border-color 0.15s ease}
@@ -307,9 +317,20 @@ export default function Connections() {
     .count-badge{background:rgba(124,58,237,0.15);color:#a78bfa;border-radius:${RADIUS.pill}px;padding:1px 7px;font-size:10px;font-weight:700;min-width:18px;text-align:center;font-family:'JetBrains Mono',monospace}
     .match-bar{height:3px;background:${dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"};border-radius:99px;overflow:hidden;margin-bottom:12px}
     .mutual-badge{display:inline-flex;align-items:center;gap:5px;background:${T.surfaceA};border:1px solid ${T.surfaceBorder};border-radius:${RADIUS.pill}px;padding:2px 9px;font-size:10px;color:#a78bfa;font-weight:600;font-family:'JetBrains Mono',monospace}
+    .tabs-wrap{display:flex;gap:4px;margin-bottom:20px;background:${T.bg2};border:1px solid ${T.border};border-radius:${RADIUS.card}px;padding:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .tabs-wrap::-webkit-scrollbar{display:none}
     @media(max-width:600px){
-      .actions-row{flex-wrap:wrap!important}
+      .actions-row{flex-wrap:wrap!important;width:100%!important}
+      .actions-row button{flex:1 1 auto!important;justify-content:center!important;padding:10px 12px!important}
       .conn-meta{flex-direction:column!important;align-items:flex-start!important;gap:8px!important}
+      .conn-card{padding:14px!important}
+      nav > a span{font-size:15px!important}
+      .search-input{padding:10px 14px 10px 36px!important;font-size:14px!important}
+      .tab-btn{padding:8px 12px!important;font-size:12.5px!important}
+    }
+    @media(max-width:400px){
+      .conn-card{padding:12px!important}
+      .actions-row button{font-size:11px!important;padding:9px 10px!important}
     }
   `;
 
@@ -340,7 +361,6 @@ export default function Connections() {
     );
     if (activeTab === "connected") return (
       <div className="actions-row" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button className="btn-message">Message</button>
         <button className="icon-btn" onClick={() => handleAction("remove", user)}>
           <Unlink style={iconSize(12, 13, 2)} />
           Remove
@@ -417,7 +437,7 @@ export default function Connections() {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: T.bg2, border: `1px solid ${T.border}`, borderRadius: RADIUS.card, padding: 5, overflowX: "auto" }}>
+        <div className="tabs-wrap">
           {TABS.map(tab => (
             <button key={tab.key} className={`tab-btn${activeTab === tab.key ? " active" : ""}`} onClick={() => { setActiveTab(tab.key); setSearch(""); }}>
               {tab.label}
@@ -436,92 +456,97 @@ export default function Connections() {
           )}
         </div>
 
-        {filtered.length > 0 && (
-          <div style={{ marginBottom: 14, fontSize: 12, color: T.text3 }}>
-            {filtered.length} {activeTab === "pending" ? "incoming request" : activeTab === "sent" ? "outgoing request" : activeTab}
-            {filtered.length !== 1 ? "s" : ""}
-            {search && ` matching "${search}"`}
-          </div>
-        )}
-
-        {filtered.length === 0 ? (
+        {isLoading ? (
           <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: RADIUS.card }}>
-            <EmptyState T={T} {...(search ? { Icon: Search, title: "No results found", sub: `No ${activeTab} connections match "${search}". Try a different search.` } : EMPTY[activeTab])} />
+            <LoadingState T={T} />
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {filtered.map((user, i) => (
-              <div key={user.id} className="conn-card" style={{ animationDelay: `${i * 0.06}s` }}>
-                <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <div style={{ position: "relative", flexShrink: 0 }}>
-                    <Avatar u={user} size={48} radius={RADIUS.card} dark={dark} />
-                    {activeTab === "connected" && (
-                      <div style={{ position: "absolute", bottom: -2, right: -2, width: 13, height: 13, borderRadius: "50%", background: "#22c55e", border: `2px solid ${T.bg}` }} />
-                    )}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="conn-meta" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 5 }}>
-                      <div>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{user.name}</span>
-                        <span style={{ fontSize: 12, color: T.text3, marginLeft: 7, fontFamily: "'JetBrains Mono',monospace" }}>@{user.handle}</span>
-                      </div>
-                      {user.match > 0 && <MatchBadge val={user.match} />}
-                      {user.mutual > 0 && (
-                        <span className="mutual-badge">
-                          <Users style={iconSize(10, 11, 2)} />
-                          {user.mutual} mutual
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ fontSize: 12, color: hsl(user.hue, 60, dark ? 65 : 50), fontWeight: 600, marginBottom: 6 }}>{user.role}</div>
-
-                    {user.bio && <p style={{ fontSize: 12, color: T.text2, lineHeight: 1.58, marginBottom: 10 }}>{user.bio}</p>}
-
-                    {user.match > 0 && (
-                      <div className="match-bar">
-                        <div style={{ height: "100%", width: `${user.match}%`, background: ACCENT, borderRadius: 99, transition: "width 0.8s ease" }} />
-                      </div>
-                    )}
-
-                    {(user.skillsHave?.length > 0 || user.skillsNeed?.length > 0) && (
-                      <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
-                        {user.skillsHave?.length > 0 && (
-                          <div>
-                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: T.text3, marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Has</div>
-                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                              {user.skillsHave.slice(0, 3).map(s => <Pill key={s} label={s} type="have" dark={dark} />)}
-                            </div>
-                          </div>
-                        )}
-                        {user.skillsNeed?.length > 0 && (
-                          <div>
-                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: T.text3, marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Needs</div>
-                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                              {user.skillsNeed.slice(0, 2).map(s => <Pill key={s} label={s} type="need" dark={dark} />)}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {user.project && (
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: RADIUS.control, padding: "5px 10px", marginBottom: 12 }}>
-                        <Sparkles style={{ ...iconSize(11, 12, 2), color: "#a78bfa" }} />
-                        <span style={{ fontSize: 11, color: dark ? "#b0a8d8" : "#6b5b9e", fontWeight: 500 }}>{user.project}</span>
-                      </div>
-                    )}
-
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                      {renderActions(user)}
-                      <span style={{ fontSize: 11, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>{user.time}</span>
-                    </div>
-                  </div>
-                </div>
+          <>
+            {filtered.length > 0 && (
+              <div style={{ marginBottom: 14, fontSize: 12, color: T.text3 }}>
+                {filtered.length} {activeTab === "pending" ? "incoming request" : activeTab === "sent" ? "outgoing request" : activeTab}
+                {filtered.length !== 1 ? "s" : ""}
+                {search && ` matching "${search}"`}
               </div>
-            ))}
-          </div>
+            )}
+
+            {filtered.length === 0 ? (
+              <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: RADIUS.card }}>
+                <EmptyState T={T} {...(search ? { Icon: Search, title: "No results found", sub: `No ${activeTab} connections match "${search}". Try a different search.` } : EMPTY[activeTab])} />
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {filtered.map((user, i) => (
+                  <div key={user.id} className="conn-card" style={{ animationDelay: `${i * 0.06}s` }}>
+                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                      <div style={{ position: "relative", flexShrink: 0 }}>
+                        <Avatar u={user} size={48} radius={RADIUS.card} dark={dark} />
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="conn-meta" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 5 }}>
+                          <div>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{user.name}</span>
+                            <span style={{ fontSize: 12, color: T.text3, marginLeft: 7, fontFamily: "'JetBrains Mono',monospace" }}>@{user.handle}</span>
+                          </div>
+                          {user.match > 0 && <MatchBadge val={user.match} />}
+                          {user.mutual > 0 && (
+                            <span className="mutual-badge">
+                              <Users style={iconSize(10, 11, 2)} />
+                              {user.mutual} mutual
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ fontSize: 12, color: hsl(user.hue, 60, dark ? 65 : 50), fontWeight: 600, marginBottom: 6 }}>{user.role}</div>
+
+                        {user.bio && <p style={{ fontSize: 12, color: T.text2, lineHeight: 1.58, marginBottom: 10 }}>{user.bio}</p>}
+
+                        {user.match > 0 && (
+                          <div className="match-bar">
+                            <div style={{ height: "100%", width: `${user.match}%`, background: ACCENT, borderRadius: 99, transition: "width 0.8s ease" }} />
+                          </div>
+                        )}
+
+                        {(user.skillsHave?.length > 0 || user.skillsNeed?.length > 0) && (
+                          <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
+                            {user.skillsHave?.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: T.text3, marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Has</div>
+                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                  {user.skillsHave.slice(0, 3).map(s => <Pill key={s} label={s} type="have" dark={dark} />)}
+                                </div>
+                              </div>
+                            )}
+                            {user.skillsNeed?.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", color: T.text3, marginBottom: 5, fontFamily: "'JetBrains Mono',monospace" }}>Needs</div>
+                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                  {user.skillsNeed.slice(0, 2).map(s => <Pill key={s} label={s} type="need" dark={dark} />)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {user.project && (
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: T.aiBg, border: `1px solid ${T.aiBorder}`, borderRadius: RADIUS.control, padding: "5px 10px", marginBottom: 12 }}>
+                            <Sparkles style={{ ...iconSize(11, 12, 2), color: "#a78bfa" }} />
+                            <span style={{ fontSize: 11, color: dark ? "#b0a8d8" : "#6b5b9e", fontWeight: 500 }}>{user.project}</span>
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                          {renderActions(user)}
+                          <span style={{ fontSize: 11, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>{user.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

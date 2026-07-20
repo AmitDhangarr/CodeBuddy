@@ -21,6 +21,18 @@ function nameInitials(name = "") {
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
+// Endorsement rows can come back with `skill` as a plain string, or as a
+// joined/nested object (e.g. `{ name: "React" }`). Normalize to a display
+// string instead of letting React print "[object Object]".
+function skillLabel(skill) {
+  if (skill == null) return "";
+  if (typeof skill === "string") return skill;
+  if (typeof skill === "object") {
+    return skill.name ?? skill.skill ?? skill.title ?? skill.label ?? "";
+  }
+  return String(skill);
+}
+
 function buildStreak(projects = [], connectionCount = 0) {
   const safeCount = Number(connectionCount) || 0;
   const base = (safeCount % 4) + 1;
@@ -39,20 +51,22 @@ function buildWeekStreak(projects = [], connectionCount = 0) {
   }));
 }
 
+// Project mapping — ProfileTab's framework: trust the row shape coming back
+// from the API, apply simple `??` fallbacks, and don't null-guard the row
+// itself (the caller is expected to hand us real project objects).
 function mapProject(p) {
-  if (!p) return null;
   return {
-    id:     p.id ?? p.project_id ?? p._id ?? null,
+    id:     p.id,
     n:      p.name ?? p.title ?? "Untitled Project",
     d:      p.description ?? "",
     tags:   Array.isArray(p.skills_used) ? p.skills_used : (Array.isArray(p.tags) ? p.tags : []),
-    stars:  Number(p.stars) || 0,
-    forks:  Number(p.forks) || 0,
+    stars:  p.stars ?? 0,
+    forks:  p.forks ?? 0,
     status: p.state ?? p.status ?? "Building",
     url:    p.github_url ?? p.url ?? "#",
     branch: p.branch ?? "main",
     img:    p.emoji ?? "🗂",
-    sort:   Number(p.sort_order) || 0,
+    sort:   p.sort_order ?? 0,
   };
 }
 
@@ -134,11 +148,14 @@ export default function OtherProfileTab({
   const [projects,     setProjects]     = useState([]);
   const [connections,  setConnections]  = useState([]);
   const [mutuals,      setMutuals]      = useState([]);
-  const [endorsements, setEndorsements] = useState([]);
   const [streak,       setStreak]       = useState([]);
   const [weekStreak,   setWeekStreak]   = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(null);
+
+  const [endorsements,        setEndorsements]        = useState([]);
+  const [endorsementsLoading, setEndorsementsLoading] = useState(true);
+  const [endorsementsError,   setEndorsementsError]   = useState(null);
 
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [connecting, setConnecting] = useState(false);
@@ -163,7 +180,7 @@ export default function OtherProfileTab({
         setLoading(true);
         setError(null);
 
-        const res  = await fetch(`/api/profile/${viewUserId}`);
+        const res  = await fetch(`/api/projects/${viewUserId}`);
 
         if (!res.ok) {
           throw new Error(`Server error: ${res.status}`);
@@ -179,11 +196,9 @@ export default function OtherProfileTab({
 
         const p = json.profile;
         setProfile(p);
+         
 
-        const mapped = (Array.isArray(p?.projects) ? p.projects : [])
-          .map(mapProject)
-          .filter(Boolean)
-          .sort((a, b) => (a?.sort ?? 0) - (b?.sort ?? 0));
+        const mapped = (p.projects ?? []).map(mapProject).sort((a, b) => a.sort - b.sort);
         setProjects(mapped);
 
         const from    = Array.isArray(p?.connections_from) ? p.connections_from : [];
@@ -194,7 +209,6 @@ export default function OtherProfileTab({
         ];
         setConnections(accepted);
         setMutuals(Array.isArray(p?.mutual_connections) ? p.mutual_connections : []);
-        setEndorsements(Array.isArray(p?.endorsements) ? p.endorsements : []);
         setStreak(buildStreak(mapped, accepted.length));
         setWeekStreak(buildWeekStreak(mapped, accepted.length));
         setConnectionStatus(normalizeConnectionStatus(p?.connection_status ?? p?.connectionStatus));
@@ -208,6 +222,51 @@ export default function OtherProfileTab({
     load();
     return () => { cancelled = true; };
   }, [viewUserId]);
+
+  useEffect(() => {
+    if (!viewUserId) {
+      setEndorsementsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadEndorsements() {
+      try {
+        setEndorsementsLoading(true);
+        setEndorsementsError(null);
+
+        const res  = await fetch(`/api/endorsements?userId=${encodeURIComponent(viewUserId)}`);
+        const json = await res.json();
+        if (!json?.success) throw new Error(json?.error ?? json?.message ?? "Failed to load endorsements");
+
+        if (!cancelled) setEndorsements(Array.isArray(json.data) ? json.data : []);
+      } catch (err) {
+        if (!cancelled) setEndorsementsError(err?.message ?? "Failed to load endorsements");
+      } finally {
+        if (!cancelled) setEndorsementsLoading(false);
+      }
+    }
+
+    loadEndorsements();
+    return () => { cancelled = true; };
+  }, [viewUserId]);
+
+  async function retryEndorsements() {
+    if (!viewUserId) return;
+    try {
+      setEndorsementsLoading(true);
+      setEndorsementsError(null);
+      const res  = await fetch(`/api/endorsements?userId=${encodeURIComponent(viewUserId)}`);
+      const json = await res.json();
+      if (!json?.success) throw new Error(json?.error ?? json?.message ?? "Failed to load endorsements");
+      setEndorsements(Array.isArray(json.data) ? json.data : []);
+    } catch (err) {
+      setEndorsementsError(err?.message ?? "Failed to load endorsements");
+    } finally {
+      setEndorsementsLoading(false);
+    }
+  }
 
   async function handleConnect() {
     if (!viewUserId || connecting) return;
@@ -295,7 +354,7 @@ export default function OtherProfileTab({
   }
 
   const totalConnections = connections.length;
-  const totalStars       = projects.reduce((s, p) => s + (Number(p?.stars) || 0), 0);
+  const totalStars       = projects.reduce((s, p) => s + (p.stars ?? 0), 0);
   const initials         = nameInitials(profile?.name ?? "");
   const matchScore       = !loading && profile && currentUser
     ? (typeof calculateMatchScore === "function" ? calculateMatchScore(currentUser, profile) : null)
@@ -347,7 +406,6 @@ export default function OtherProfileTab({
         .proj-card:hover { border-color:rgba(139,92,246,.3); cursor:pointer; }
         .proj-card { transition:border-color .15s ease; }
         .connect-btn:hover { filter:brightness(1.08); }
-        .endorse-btn:hover { border-color:rgba(124,58,237,.4) !important; }
         .back-btn:hover { color:inherit !important; }
         .conn-card:hover { border-color:${border2} !important; }
         .conn-card { transition: border-color .15s ease; }
@@ -704,8 +762,9 @@ export default function OtherProfileTab({
               whiteSpace:"nowrap", textTransform:"capitalize", flexShrink:0,
             }}>
               {t}
-              {t==="projects"    && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({projects.length})</span>}
-              {t==="connections" && !loading && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({mutuals.length} mutual)</span>}
+              {t==="projects"     && !loading             && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({projects.length})</span>}
+              {t==="endorsements" && !endorsementsLoading  && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({endorsements.length})</span>}
+              {t==="connections"  && !loading             && <span style={{ marginLeft:5, fontSize:10, opacity:.6, fontFamily:"'JetBrains Mono',monospace" }}>({mutuals.length} mutual)</span>}
             </button>
           ))}
         </div>
@@ -729,104 +788,103 @@ export default function OtherProfileTab({
                     No public projects yet.
                   </div>
                 )
-                : projects.map((p, i) => {
-                    const isActive = ["Live","Active"].includes(p?.status ?? "");
-                    const handleSlug = (p?.n ?? "").toLowerCase().replace(/ /g, "-");
-                    const displayUrl = (p?.url && p.url !== "#")
-                      ? p.url.replace("https://", "")
-                      : `github.com/${profile?.handle ?? ""}/${handleSlug}`;
-                    return (
-                      <div
-                        key={p?.id ?? i}
-                        className="proj-card"
-                        onClick={() => p?.id != null && setOpenProjectId(p.id)}
-                        style={{
-                          padding:16,
-                          background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
-                          borderRadius:10, border:`1px solid ${border}`,
-                        }}
-                      >
-                        <div className="proj-card-header" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8, gap:8, flexWrap:"wrap" }}>
-                          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-                            <span style={{ fontSize:22 }}>{p?.img ?? "🗂"}</span>
-                            <div style={{ minWidth:0 }}>
-                              <div style={{ fontSize:14, fontWeight:700, color:text }}>{p?.n ?? "Untitled"}</div>
-                              <div style={{ fontSize:11, color:text3, marginTop:1, wordBreak:"break-all" }}>{displayUrl}</div>
-                            </div>
-                          </div>
-                          <div style={{ display:"flex", gap:6, alignItems:"center", flexShrink:0, flexWrap:"wrap" }}>
-                            <span style={{
-                              fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6,
-                              background: isActive ? "rgba(34,197,94,.1)" : "rgba(245,158,11,.1)",
-                              border:`1px solid ${isActive ? "rgba(34,197,94,.25)" : "rgba(245,158,11,.25)"}`,
-                              color: isActive ? "#4ade80" : "#fbbf24",
-                            }}>{p?.status ?? "Building"}</span>
-                            <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:text3, fontFamily:"'JetBrains Mono',monospace" }}>
-                              <Star style={iconSize(10,12)} /> {p?.stars ?? 0}
-                            </span>
-                            <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:"#a78bfa", fontWeight:600 }}>
-                              View <ArrowRight style={iconSize(10,12)} />
-                            </span>
+                : projects.map((p,i) => (
+                  <div key={p.id ?? i} className="proj-card" onClick={() => setOpenProjectId(p?.id)} style={{
+                    padding:16,
+                    background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)",
+                    borderRadius:10, border:`1px solid ${border}`,
+                  }}>
+                    <div className="proj-card-header" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8, gap:8, flexWrap:"wrap" }}>
+                      <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                        <span style={{ fontSize:22 }}>{p.img}</span>
+                        <div>
+                          <div style={{ fontSize:14, fontWeight:700, color:text }}>{p.n}</div>
+                          <div style={{ fontSize:11, color:text3, marginTop:1, wordBreak:"break-all" }}>
+                            {p.url && p.url !== "#"
+                              ? p.url.replace("https://","")
+                              : `github.com/${profile?.handle}/${p.n.toLowerCase().replace(/ /g,"-")}`
+                            }
                           </div>
                         </div>
-                        {p?.d && <p style={{ fontSize:12, color:text2, lineHeight:1.55, marginBottom:10 }}>{p.d}</p>}
-                        {(p?.tags ?? []).length > 0 && (
-                          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-                            {(p.tags ?? []).map(tag => (
-                              <span key={tag} style={{ padding:"2px 9px", borderRadius:6, fontSize:10, fontWeight:600, fontFamily:"'JetBrains Mono',monospace", background: dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.05)", color:text2 }}>{tag}</span>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                    );
-                  })
+                      <div style={{ display:"flex", gap:6, alignItems:"center", flexShrink:0, flexWrap:"wrap" }}>
+                        <span style={{
+                          fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6,
+                          background: ["Live","Active"].includes(p.status) ? "rgba(34,197,94,.1)" : "rgba(245,158,11,.1)",
+                          border:`1px solid ${["Live","Active"].includes(p.status) ? "rgba(34,197,94,.25)" : "rgba(245,158,11,.25)"}`,
+                          color: ["Live","Active"].includes(p.status) ? "#4ade80" : "#fbbf24",
+                        }}>{p.status}</span>
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:text3 }}>
+                          <Star style={iconSize(10,12)} /> <span style={{ fontFamily:"'JetBrains Mono',monospace" }}>{p.stars}</span>
+                        </span>
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:"#a78bfa", fontWeight:600 }}>
+                          View <ArrowRight style={iconSize(10,12)} />
+                        </span>
+                      </div>
+                    </div>
+                    {p.d && <p style={{ fontSize:12, color:text2, lineHeight:1.55, marginBottom:10 }}>{p.d}</p>}
+                    {p.tags.length > 0 && (
+                      <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                        {p.tags.map(tag => (
+                          <span key={tag} style={{ padding:"2px 9px", borderRadius:6, fontSize:10, fontWeight:600, fontFamily:"'JetBrains Mono',monospace", background: dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.05)", color:text2 }}>{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
             }
           </div>
         )}
 
         {profileTab === "endorsements" && (
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            {loading
-              ? Array.from({ length:2 }).map((_,i) => (
-                  <div key={i} style={{ padding:16, borderRadius:10, border:`1px solid ${border}`, display:"flex", gap:14 }}>
-                    <Sk w="38px" h={38} r={8} />
-                    <div style={{ flex:1 }}>
-                      <Sk w="50%" h={13} mb={8} />
-                      <Sk w="100%" h={12} mb={4} />
-                      <Sk w="80%"  h={12} />
+            {endorsementsLoading ? (
+              Array.from({ length:2 }).map((_,i) => (
+                <div key={i} style={{ padding:16, borderRadius:10, border:`1px solid ${border}`, display:"flex", gap:14 }}>
+                  <Sk w="38px" h={38} r={8} />
+                  <div style={{ flex:1 }}>
+                    <Sk w="50%" h={13} mb={8} />
+                    <Sk w="100%" h={12} mb={4} />
+                    <Sk w="80%"  h={12} />
+                  </div>
+                </div>
+              ))
+            ) : endorsementsError ? (
+              <div style={{
+                display:"flex", alignItems:"center", gap:8, padding:"10px 16px", borderRadius:10,
+                background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)",
+                fontSize:12, color:"#f87171",
+              }}>
+                <AlertTriangle style={iconSize(13,15)} /> {endorsementsError}
+                <button onClick={retryEndorsements} style={{
+                  marginLeft:"auto", fontSize:11, color:"#f87171",
+                  background:"transparent", border:"none", cursor:"pointer", fontFamily:"'Inter',sans-serif",
+                }}>Retry</button>
+              </div>
+            ) : endorsements.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"32px 0", color:text3, fontSize:13 }}>
+                No endorsements yet.
+              </div>
+            ) : (
+              endorsements.map((e, i) => {
+                const label = skillLabel(e?.skill ?? e?.skill_name ?? e?.skillName);
+                return (
+                  <div key={e?.id ?? i} style={{ padding:16, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)", borderRadius:10, border:`1px solid ${border}`, display:"flex", gap:14, alignItems:"flex-start" }}>
+                    <div style={{ width:38, height:38, borderRadius:8, flexShrink:0, background: dark ? "rgba(124,58,237,.15)" : "rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"#a78bfa", fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>
+                      {(label || "?")[0]}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
+                        <span style={{ fontSize:11, color:text3 }}>endorsed for</span>
+                        <span style={{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6, background:skillHaveBg, border:`1px solid ${skillHaveBorder}`, color:skillHaveText }}>{label}</span>
+                      </div>
+                      {e?.note && (
+                        <p style={{ fontSize:12, color:text2, fontStyle:"italic", lineHeight:1.55 }}>"{e.note}"</p>
+                      )}
                     </div>
                   </div>
-                ))
-              : endorsements.length === 0
-                ? <div style={{ textAlign:"center", padding:"20px", color:text3, fontSize:12 }}>No endorsements yet.</div>
-                : endorsements.map((e, i) => {
-                    const skillChar = (e?.skill ?? " ")[0] ?? "?";
-                    return (
-                      <div key={i} style={{ padding:16, background: dark ? "rgba(255,255,255,.02)" : "rgba(0,0,0,.02)", borderRadius:10, border:`1px solid ${border}`, display:"flex", gap:14, alignItems:"flex-start" }}>
-                        <div style={{ width:38, height:38, borderRadius:8, flexShrink:0, background: dark ? "rgba(124,58,237,.15)" : "rgba(124,58,237,.1)", border:"1px solid rgba(124,58,237,.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"#a78bfa", fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>
-                          {skillChar}
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
-                            <span style={{ fontSize:11, color:text3 }}>endorsed for</span>
-                            <span style={{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", padding:"2px 9px", borderRadius:6, background:skillHaveBg, border:`1px solid ${skillHaveBorder}`, color:skillHaveText }}>{e?.skill ?? ""}</span>
-                          </div>
-                          {e?.note && (
-                            <p style={{ fontSize:12, color:text2, fontStyle:"italic", lineHeight:1.55 }}>"{e.note}"</p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-            }
-            {connectionStatus === "accepted" && (
-              <button className="endorse-btn" style={{
-                padding:"10px", background:"transparent", border:`2px dashed ${border}`,
-                color:text3, borderRadius:10, cursor:"pointer", fontFamily:"'Inter',sans-serif",
-                fontSize:13, fontWeight:600, transition:"border-color .15s,color .15s",
-              }}>
-                + Endorse a skill
-              </button>
+                );
+              })
             )}
           </div>
         )}
