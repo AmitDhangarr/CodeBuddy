@@ -21,9 +21,7 @@ function nameInitials(name = "") {
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-// Endorsement rows can come back with `skill` as a plain string, or as a
-// joined/nested object (e.g. `{ name: "React" }`). Normalize to a display
-// string instead of letting React print "[object Object]".
+
 function skillLabel(skill) {
   if (skill == null) return "";
   if (typeof skill === "string") return skill;
@@ -180,23 +178,40 @@ export default function OtherProfileTab({
         setLoading(true);
         setError(null);
 
-        const res  = await fetch(`/api/projects/${viewUserId}`);
-
-        if (!res.ok) {
-          throw new Error(`Server error: ${res.status}`);
+        const profileRes = await fetch(`/api/profile/${viewUserId}`);
+        if (!profileRes.ok) {
+          throw new Error(`Server error: ${profileRes.status}`);
         }
 
-        const json = await res.json();
-
-        if (!json?.success || !json?.profile) {
-          throw new Error(json?.message ?? "Failed to load profile");
+        const profileJson = await profileRes.json();
+        if (!profileJson?.success || !profileJson?.profile) {
+          throw new Error(profileJson?.message ?? "Failed to load profile");
         }
 
         if (cancelled) return;
 
-        const p = json.profile;
+        // Best-effort backfill for fields the new endpoint doesn't return yet.
+        let legacyExtras = {};
+        try {
+          const legacyRes  = await fetch(`/api/projects/${viewUserId}`);
+          const legacyJson = await legacyRes.json();
+          if (legacyJson?.success && legacyJson?.profile) {
+            const lp = legacyJson.profile;
+            legacyExtras = {
+              mutual_connections:  lp.mutual_connections,
+              activity_feed:       lp.activity_feed,
+              availability:        lp.availability,
+              open_to_collaborate: lp.open_to_collaborate,
+            };
+          }
+        } catch {
+          // Non-fatal: mutuals/activity/availability sections render empty.
+        }
+
+        if (cancelled) return;
+
+        const p = { ...profileJson.profile, ...legacyExtras };
         setProfile(p);
-         
 
         const mapped = (p.projects ?? []).map(mapProject).sort((a, b) => a.sort - b.sort);
         setProjects(mapped);
@@ -236,7 +251,7 @@ export default function OtherProfileTab({
         setEndorsementsLoading(true);
         setEndorsementsError(null);
 
-        const res  = await fetch(`/api/endorsements?userId=${encodeURIComponent(viewUserId)}`);
+        const res  = await fetch(`/api/endorsements?endorsed_id={${viewUserId}`);
         const json = await res.json();
         if (!json?.success) throw new Error(json?.error ?? json?.message ?? "Failed to load endorsements");
 
@@ -257,7 +272,7 @@ export default function OtherProfileTab({
     try {
       setEndorsementsLoading(true);
       setEndorsementsError(null);
-      const res  = await fetch(`/api/endorsements?userId=${encodeURIComponent(viewUserId)}`);
+      const res  = await fetch(`/api/endorsements?endorsed_id=${encodeURIComponent(viewUserId)}`);
       const json = await res.json();
       if (!json?.success) throw new Error(json?.error ?? json?.message ?? "Failed to load endorsements");
       setEndorsements(Array.isArray(json.data) ? json.data : []);

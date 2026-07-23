@@ -3,16 +3,16 @@ import { supabase } from "../../../../lib/supabaseClient";
 
 export async function GET(request, { params }) {
   try {
-    const  id  = params;
-    
-    if (!id) {
+    const payload = await params;
+
+    if (!payload.id) {
       return NextResponse.json({ success: false, error: "Project id is required." }, { status: 400 });
     }
 
     const { data: project, error } = await supabase
       .from("projects")
       .select("*")
-      .eq("id", id)
+      .eq("id", payload.id)
       .maybeSingle();
 
     if (error) {

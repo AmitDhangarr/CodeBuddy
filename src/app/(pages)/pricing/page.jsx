@@ -781,6 +781,29 @@ function StepSuccess({ plan, yearly, payData, onClose, T }) {
   yearly ? next.setFullYear(next.getFullYear() + 1) : next.setMonth(next.getMonth() + 1)
   const txId = useRef(genTxId()).current
 
+  // ─── Mock purchase: fire the receipt email once when this screen mounts ───
+  // No real payment/gateway call anywhere in this flow — this is the only
+  // network request StepSuccess makes, and it only sends a confirmation email.
+  const emailFired = useRef(false)
+  useEffect(() => {
+    if (emailFired.current) return
+    emailFired.current = true
+
+    fetch("/api/plan-purchased", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        planName: plan.name,
+        billingCycle: yearly ? "Yearly" : "Monthly",
+        amount: `₹${payData.total} / ${yearly ? "year" : "month"}`,
+        paymentMethod: payData.methodLabel,
+        transactionId: `#${txId}`,
+        date: now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+      }),
+    }).catch((err) => console.error("Failed to trigger purchase email:", err))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const rows = [
     { label: "Transaction ID", val: `#${txId}` },
     { label: "Date & time", val: now.toLocaleString("en-IN") },
@@ -1064,17 +1087,6 @@ export default function PricingPage() {
         <div style={{ position: "absolute", top: "-18%", left: "-8%", width: 650, height: 650, borderRadius: "50%", background: dark ? "radial-gradient(circle,hsla(259,70%,35%,0.09) 0%,transparent 65%)" : "radial-gradient(circle,hsla(259,70%,80%,0.1) 0%,transparent 65%)" }} />
         <div style={{ position: "absolute", bottom: "-12%", right: "-8%", width: 550, height: 550, borderRadius: "50%", background: dark ? "radial-gradient(circle,hsla(280,60%,30%,0.06) 0%,transparent 65%)" : "radial-gradient(circle,hsla(280,60%,70%,0.06) 0%,transparent 65%)" }} />
       </div>
-
-      {/* Nav */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 100, padding: "0 clamp(16px,5vw,32px)", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", background: T.navBg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${T.border}`, transition: "background .2s, border-color .2s" }}>
-         <Link href="/"> <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Logo />
-          <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: "clamp(14px,4vw,17px)", color: T.text, letterSpacing: "-.2px" }}>CodeBuddy</span>
-        </div></Link>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <ThemeToggle dark={dark} toggleDark={toggleDark} T={T} />
-        </div>
-      </nav>
 
       <div style={{ position: "relative", zIndex: 1 }}>
 

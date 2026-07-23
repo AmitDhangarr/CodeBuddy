@@ -52,11 +52,32 @@ function initialsOf(name = "") {
   return name.trim().split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 }
 
-const MOCK_ENDORSEMENTS = [
-  { name: "Rohan Mehra", handle: "rohanm", hue: 340, skill: "React", note: "Excellent architecture choices, very clean separation of concerns." },
-  { name: "Sara Chen", handle: "sarachen", hue: 271, skill: "LangChain", note: "One of the most thoughtful AI integrations I've seen in a side project." },
-  { name: "Dev Kapoor", handle: "devk", hue: 38, skill: "TypeScript", note: "The typing here is clever — really inspired my own work." },
-];
+// Mirrors the hue derivation used server-side in /api/endorse (hashToHue),
+// so the "Endorsing as" avatar in the modal matches the color the
+// endorsement will render with once it comes back from the API.
+function hashToHue(str = "") {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return Math.abs(hash) % 360;
+}
+
+// The GET /api/endorsements route only does `select("*")` on the raw
+// endorsements table — it returns endorser_id/endorsed_id, not a joined
+// profile (name/handle). Until that route joins `profiles`, we can't show
+// who an existing endorsement is from, so we fall back to a clearly-labeled
+// placeholder instead of guessing. Endorsements submitted in this session
+// still show the real name/handle, because POST /api/endorse does return
+// the enriched endorser profile.
+function mapRawEndorsement(e) {
+  return {
+    id: e.id,
+    name: e.endorser_name ?? "Unknown builder",
+    handle: e.endorser_handle ?? null,
+    hue: hashToHue(e.endorser_handle ?? e.endorser_id ?? String(e.id ?? "")),
+    skill: e.skill,
+    note: e.description ?? "",
+  };
+}
 
 export default function ProjectPage({
   projectId,
@@ -72,7 +93,9 @@ export default function ProjectPage({
   const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState("overview");
 
-  const [endorsements, setEndorsements] = useState(MOCK_ENDORSEMENTS);
+  const [endorsements, setEndorsements] = useState([]);
+  const [endorsementsLoading, setEndorsementsLoading] = useState(false);
+  const [endorsementsError, setEndorsementsError] = useState(null);
   const [showEndorseModal, setShowEndorseModal] = useState(false);
   const [endorseSkill, setEndorseSkill] = useState("");
   const [endorseNote, setEndorseNote] = useState("");
@@ -83,9 +106,6 @@ export default function ProjectPage({
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [commitsError, setCommitsError] = useState(null);
 
-
-  console.log(projectId)
-  
   useEffect(() => {
     async function load() {
       try {
@@ -96,7 +116,7 @@ export default function ProjectPage({
         const json = await res.json();
 
         if (!json.success || !json.project) {
-          throw new Error(json.message ?? "Project not found");
+          throw new Error(json.message ?? json.error ?? "Project not found");
         }
         setProject(json.project);
 
@@ -117,18 +137,63 @@ export default function ProjectPage({
     load();
   }, [projectId]);
 
+  // GET /api/endorsements is keyed off `endorsed_id` (the project owner's
+  // profile id), not `project_id` — and it isn't filtered by project either,
+  // it returns every endorsement that user has ever received. So we resolve
+  // the owner id from the loaded project, fetch, then filter down to this
+  // project client-side.
   useEffect(() => {
-    async function loadEndorsements() {
-      try {
-        const res = await fetch(`/api/endorsements`);
-        const json = await res.json();
-        if (json.success && Array.isArray(json.endorsements)) {
-          setEndorsements(json.endorsements);
-        }
-      } catch { }
+    if (!project) {
+      setEndorsements([]);
+      return;
     }
+
+    const ownerId =
+      project.profile_id ??
+      project.profileId ??
+      project.profile?.id ??
+      project.user_id ??
+      project.owner_id ??
+      null;
+
+    if (!ownerId) {
+      setEndorsements([]);
+      setEndorsementsError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadEndorsements() {
+      setEndorsementsLoading(true);
+      setEndorsementsError(null);
+      try {
+        const res = await fetch(`/api/endorsements?endorsed_id=${encodeURIComponent(ownerId)}`);
+        const json = await res.json();
+
+        if (!json.success || !Array.isArray(json.data)) {
+          if (!cancelled) {
+            setEndorsements([]);
+            setEndorsementsError(json.error ? String(json.error) : null);
+          }
+          return;
+        }
+
+        const forThisProject = json.data.filter(e => e.project_id === projectId);
+        if (!cancelled) setEndorsements(forThisProject.map(mapRawEndorsement));
+      } catch (err) {
+        if (!cancelled) {
+          setEndorsements([]);
+          setEndorsementsError(err.message ?? "Failed to load endorsements");
+        }
+      } finally {
+        if (!cancelled) setEndorsementsLoading(false);
+      }
+    }
+
     loadEndorsements();
-  }, [projectId]);
+    return () => { cancelled = true; };
+  }, [project, projectId]);
 
   const fetchCommits = useCallback(async (githubUrl, branch) => {
     const parsed = parseGitHubRepo(githubUrl);
@@ -173,10 +238,36 @@ export default function ProjectPage({
   const skillOptions = p ? (p.skills_used ?? p.tags ?? []) : [];
 
   const alreadyEndorsedSkills = endorsements
-    .filter(e => e.handle === (currentUser?.handle ?? "you"))
+    .filter(e => e.handle && e.handle === (currentUser?.handle ?? "you"))
     .map(e => e.skill);
 
-  const canEndorse = isConnected && !isOwnProject && skillOptions.length > 0;
+  // currentUser.id is the field /api/endorse actually trusts server-side
+  // (it re-derives the endorser from the session cookie), but we still
+  // surface + send it from here so the modal can show "who this is from"
+  // and the payload is self-describing / easier to debug.
+  const currentUserId = currentUser?.id ?? null;
+  const currentUserHue = hashToHue(currentUser?.handle ?? currentUser?.id ?? "you");
+
+  // Project owner id, resolved the same way the endorsements-fetch effect
+  // resolves it — kept in one place so the button's visibility and the
+  // submit-time guard can never disagree.
+  const projectOwnerId =
+    p?.profile_id ??
+    p?.profileId ??
+    p?.profile?.id ??
+    p?.user_id ??
+    p?.owner_id ??
+    null;
+
+  const isSelfEndorse = Boolean(
+    currentUserId && projectOwnerId && currentUserId === projectOwnerId
+  );
+
+  const canEndorse =
+    isConnected &&
+    !isOwnProject &&
+    !isSelfEndorse &&
+    skillOptions.length > 0;
 
   function openEndorseModal() {
     setEndorseError(null);
@@ -198,32 +289,66 @@ export default function ProjectPage({
 
   async function handleSubmitEndorsement() {
     if (!endorseSkill || endorsing) return;
+
+    // Guard against endorsing yourself before hitting the API — the route
+    // rejects this with a 400 ("You can't endorse yourself"), but we can
+    // short-circuit with a clearer message client-side too.
+    const toUserId = projectOwnerId;
+    if (!toUserId) {
+      setEndorseError("Couldn't find the project owner to endorse.");
+      return;
+    }
+    if (!currentUserId) {
+      setEndorseError("You must be logged in to endorse this project.");
+      return;
+    }
+    if (currentUserId === toUserId) {
+      setEndorseError("You can't endorse yourself.");
+      return;
+    }
+
     setEndorsing(true);
     setEndorseError(null);
 
     const optimistic = {
       name: currentUser?.name ?? "You",
       handle: currentUser?.handle ?? "you",
-      hue: 220,
+      hue: currentUserHue,
       skill: endorseSkill,
       note: endorseNote.trim(),
     };
 
     try {
+      // POST /api/endorse authenticates via the session cookie server-side
+      // and ignores any client-supplied identity, but to_user_id/project_id/
+      // skill/note are exactly what it reads off the body.
       const res = await fetch("/api/endorse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to_user_id: p?.user_id ?? p?.owner_id,
+          to_user_id: toUserId,
           project_id: projectId,
           skill: endorseSkill,
           note: endorseNote.trim(),
         }),
       });
-      const json = await res.json();
-      console.log(json);
-      if (!json.success) throw new Error(json.message ?? "Failed to submit endorsement");
 
+      const json = await res.json();
+
+      // /api/endorse returns `{ success: false, error: "..." }` on failure
+      // (401 unauthenticated, 400 missing fields / self-endorse, 404 profile
+      // not found, 500 db error) — read `error`, not `message`, and give a
+      // friendlier message for the auth case specifically.
+      if (!res.ok || !json.success) {
+        if (res.status === 401) {
+          throw new Error("Please log in to endorse this project.");
+        }
+        throw new Error(json.error ?? "Failed to submit endorsement");
+      }
+
+      // json.endorsement already comes back in the shape the UI needs
+      // (name, handle, hue, skill, note) since the route joins the
+      // endorser's own profile before responding.
       setEndorsements(prev => [json.endorsement ?? optimistic, ...prev]);
       setShowEndorseModal(false);
       setActiveSection("endorsements");
@@ -420,7 +545,7 @@ export default function ProjectPage({
                     <Handshake style={iconSize(13, 14, 2)} /> Endorse
                   </button>
                 )}
-                {!isConnected && !isOwnProject && skillOptions.length > 0 && (
+                {!isConnected && !isOwnProject && !isSelfEndorse && skillOptions.length > 0 && (
                   <span style={{ marginLeft: "auto", fontSize: 11, color: T.text3 }}>
                     Connect to endorse skills
                   </span>
@@ -634,51 +759,82 @@ export default function ProjectPage({
                 </div>
               )}
 
-              {endorsements.length === 0 ? (
+              {endorsementsLoading && (
+                <>
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div key={i} style={{ display: "flex", gap: 14, padding: "14px 16px", borderRadius: RADIUS.card, border: `1px solid ${T.border}` }}>
+                      <Sk w="38px" h={38} r={RADIUS.card} />
+                      <div style={{ flex: 1 }}>
+                        <Sk w="40%" h={13} mb={6} />
+                        <Sk w="70%" h={11} />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {!endorsementsLoading && endorsementsError && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "10px 16px", borderRadius: RADIUS.control,
+                  background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                  fontSize: 12, color: "#f87171",
+                }}>
+                  <AlertTriangle style={iconSize(13, 14, 2)} /> Couldn't load endorsements — {endorsementsError}
+                </div>
+              )}
+
+              {!endorsementsLoading && !endorsementsError && endorsements.length === 0 && (
                 <div style={{ textAlign: "center", padding: "28px 0", color: T.text3, fontSize: 13 }}>
                   No endorsements yet. Be the first!
                 </div>
-              ) : (
-                endorsements.map((e, i) => (
-                  <div key={i} style={{
-                    display: "flex", gap: 14, alignItems: "flex-start",
-                    padding: "14px 16px", borderRadius: RADIUS.card,
-                    background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
-                    border: `1px solid ${T.border}`,
+              )}
+
+              {!endorsementsLoading && endorsements.map((e, i) => (
+                <div key={e.id ?? i} style={{
+                  display: "flex", gap: 14, alignItems: "flex-start",
+                  padding: "14px 16px", borderRadius: RADIUS.card,
+                  background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+                  border: `1px solid ${T.border}`,
+                }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: RADIUS.card, flexShrink: 0,
+                    background: hsla(e.hue, 65, 60, dark ? 0.15 : 0.1),
+                    border: `1px solid ${hsla(e.hue, 65, 60, 0.3)}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace",
+                    color: `hsl(${e.hue},55%,${dark ? 75 : 45}%)`,
                   }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: RADIUS.card, flexShrink: 0,
-                      background: hsla(e.hue, 65, 60, dark ? 0.15 : 0.1),
-                      border: `1px solid ${hsla(e.hue, 65, 60, 0.3)}`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace",
-                      color: `hsl(${e.hue},55%,${dark ? 75 : 45}%)`,
-                    }}>
-                      {initialsOf(e.name)}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{e.name}</span>
-                        <span style={{ fontSize: 11, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>@{e.handle}</span>
-                        {e.skill && (
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: RADIUS.pill,
-                            background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.3)",
-                            color: "#c4b5fd", marginLeft: "auto",
-                          }}>
-                            {e.skill}
-                          </span>
-                        )}
-                      </div>
-                      {e.note && (
-                        <p style={{ fontSize: 12, color: T.text2, fontStyle: "italic", lineHeight: 1.6, margin: 0 }}>
-                          "{e.note}"
-                        </p>
+                    {initialsOf(e.name)}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{e.name}</span>
+                      <span style={{ fontSize: 11, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>
+                        {e.handle ? `@${e.handle}` : "handle unavailable"}
+                      </span>
+                      {e.skill && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: RADIUS.pill,
+                          background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.3)",
+                          color: "#c4b5fd", marginLeft: "auto",
+                        }}>
+                          {e.skill}
+                        </span>
                       )}
                     </div>
+                    {e.note ? (
+                      <p style={{ fontSize: 12, color: T.text2, fontStyle: "italic", lineHeight: 1.6, margin: 0 }}>
+                        "{e.note}"
+                      </p>
+                    ) : (
+                      <p style={{ fontSize: 12, color: T.text3, fontStyle: "italic", lineHeight: 1.6, margin: 0 }}>
+                        No note left.
+                      </p>
+                    )}
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           )}
 
@@ -860,6 +1016,38 @@ export default function ProjectPage({
               <p style={{ fontSize: 12, color: T.text3, margin: 0, lineHeight: 1.5 }}>
                 Based on <strong style={{ color: T.text2 }}>{p?.name}</strong>, vouch for a skill they used.
               </p>
+
+              {/* "Endorsing as" — surfaces the current user (from the
+                  currentUser prop) so it's clear whose identity/userid
+                  will be embedded in the request below. */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 12px", borderRadius: RADIUS.card,
+                background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                border: `1px solid ${T.border}`,
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: RADIUS.control, flexShrink: 0,
+                  background: hsla(currentUserHue, 65, 60, dark ? 0.15 : 0.1),
+                  border: `1px solid ${hsla(currentUserHue, 65, 60, 0.3)}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace",
+                  color: `hsl(${currentUserHue},55%,${dark ? 75 : 45}%)`,
+                }}>
+                  {initialsOf(currentUser?.name ?? "You")}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: T.text3, textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "'JetBrains Mono',monospace" }}>
+                    Endorsing as
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    {currentUser?.name ?? "You"}
+                    <span style={{ fontSize: 11, fontWeight: 500, color: T.text3, fontFamily: "'JetBrains Mono',monospace" }}>
+                      @{currentUser?.handle ?? "you"}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: ".06em", display: "block", marginBottom: 6, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>

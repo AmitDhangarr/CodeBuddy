@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabaseClient";
 import bcrypt from "bcryptjs";
+import { sendEmailAction } from "../../actions/email";
+import AccountCreationEmail from "../../../components/email_templates/account_creation";
+import { render } from "@react-email/components";
+
 import {
   validateEmail,
   validatePassword,
@@ -129,7 +133,6 @@ export async function POST(request) {
       });
 
     if (locationError) {
-      // Profile was created — clean it up so we don't leave orphaned data
       await supabase.from("profiles").delete().eq("id", profileId);
       return NextResponse.json(
         { success: false, error: "Failed to save location. Please try again." },
@@ -137,7 +140,6 @@ export async function POST(request) {
       );
     }
 
-    // ── 7. Insert projects ─────────────────────────────────────
     const projectRows = safeProjects.map((project, i) => ({
       profile_id:  profileId,
       sort_order:  i,
@@ -155,15 +157,16 @@ export async function POST(request) {
       .insert(projectRows);
 
     if (projectsError) {
-      // Clean up profile + location
       await supabase.from("profiles").delete().eq("id", profileId);
       return NextResponse.json(
         { success: false, error: "Failed to save projects. Please try again." },
         { status: 400 }
       );
     }
+    const account_creation_template = await render(<AccountCreationEmail username={handle} email={email}/>)
 
-    // ── 8. All good ────────────────────────────────────────────
+    sendEmailAction(email,account_creation_template,`Welcome to CodeBuddy, ${handle}! 🚀`);
+
     return NextResponse.json(
       { success: true, message: "Account created successfully.", profileId },
       { status: 201 }

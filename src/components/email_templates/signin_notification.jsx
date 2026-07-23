@@ -11,24 +11,25 @@ import {
   Text,
   Row,
   Column,
+  Button,
 } from "@react-email/components";
 import * as React from "react";
 
 /**
- * AccountCreatedNotification Props:
- * @param {string} username - The user's display name
- * @param {string} email    - The email address associated with the account
+ * LoginNotification Component
+ * @param {string} email     - The user's email address
+ * @param {string} loginTime - Formatted timestamp of the login event
  */
-export default function AccountCreatedNotification({
-  username,
-  email,
+export default function LoginNotification({
+  email = "user@example.com",
+  loginTime = "July 23, 2026 at 09:33 PM IST",
 }) {
   const currentYear = new Date().getFullYear();
 
   return (
     <Html>
       <Head />
-      <Preview>Account created successfully for {email}</Preview>
+      <Preview>New login detected on your CodeBuddy account</Preview>
       <Body style={main}>
         {/* Header */}
         <Section style={header}>
@@ -38,28 +39,45 @@ export default function AccountCreatedNotification({
         <Container style={container}>
           {/* Hero */}
           <Section style={heroBand}>
-            <Text style={heroEyebrow}>ACCOUNT CREATED</Text>
-            <Heading style={heroHeading}>Welcome, {username}!</Heading>
+            <Text style={heroEyebrow}>SECURITY ALERT</Text>
+            <Heading style={heroHeading}>New Login Detected</Heading>
             <Text style={heroSub}>
-              Your CodeBuddy account has been successfully created and is ready to use.
+              Hi {email}, we noticed a new login to your CodeBuddy account.
             </Text>
           </Section>
 
-          {/* Account Info Card */}
+          {/* Login Details Card */}
           <Section style={detailsSection}>
-            <Text style={detailsTitle}>ACCOUNT SUMMARY</Text>
+            <Text style={detailsTitle}>SESSION DETAILS</Text>
+
             <Row style={detailRow}>
-              <Column style={detailLabel}>Username</Column>
-              <Column style={detailValue}>{username}</Column>
-            </Row>
-            <Row style={detailRow}>
-              <Column style={detailLabel}>Registered Email</Column>
+              <Column style={detailLabel}>Account Email</Column>
               <Column style={detailValue}>{email}</Column>
             </Row>
+
             <Row style={detailRow}>
-              <Column style={detailLabel}>Status</Column>
-              <Column style={statusValue}>Active ✅</Column>
+              <Column style={detailLabel}>Time</Column>
+              <Column style={detailValue}>{loginTime}</Column>
             </Row>
+          </Section>
+
+          <Hr style={divider} />
+
+          {/* Security Action */}
+          <Section style={actionSection}>
+            <Text style={actionTitle}>WAS THIS YOU?</Text>
+            <Text style={actionText}>
+              If you just logged into your account, you can safely ignore this email.
+            </Text>
+            <Text style={actionWarningText}>
+              If this wasn't you, someone else may have gained access to your account. Please secure your account immediately.
+            </Text>
+            <Button
+              href="https://codebuddy.amitdhangar.in/"
+              style={actionButton}
+            >
+              Secure My Account
+            </Button>
           </Section>
 
           <Hr style={divider} />
@@ -70,16 +88,16 @@ export default function AccountCreatedNotification({
               © {currentYear} CodeBuddy Inc. · All rights reserved.
             </Text>
             <Text style={footerText}>
-              <Link href="https://codebuddy.dev/privacy" style={footerLink}>
+              <Link href="https://codebuddy.amitdhangar.in/privacy" style={footerLink}>
                 Privacy Policy
               </Link>
               {" · "}
-              <Link href="https://codebuddy.dev/terms" style={footerLink}>
+              <Link href="https://codebuddy.amitdhangar.in/terms" style={footerLink}>
                 Terms
               </Link>
             </Text>
             <Text style={footerNote}>
-              This email confirms that a CodeBuddy account was registered with {email}. If you did not perform this action, please contact support immediately.
+              This is an automated security notification regarding your CodeBuddy account.
             </Text>
           </Section>
         </Container>
@@ -183,12 +201,47 @@ const detailLabel = {
 const detailValue = {
   color: "#E0E0E0",
   fontSize: "13px",
+  fontWeight: "500",
 };
 
-const statusValue = {
-  color: "#00E676",
+const actionSection = {
+  padding: "32px 40px",
+  backgroundColor: "#111111",
+};
+
+const actionTitle = {
+  color: "#FFFFFF",
+  fontSize: "11px",
+  fontWeight: "800",
+  letterSpacing: "3px",
+  margin: "0 0 12px",
+};
+
+const actionText = {
+  color: "#888888",
   fontSize: "13px",
-  fontWeight: "600",
+  lineHeight: "1.5",
+  margin: "0 0 12px",
+};
+
+const actionWarningText = {
+  color: "#FF4D00",
+  fontSize: "13px",
+  lineHeight: "1.5",
+  fontWeight: "500",
+  margin: "0 0 20px",
+};
+
+const actionButton = {
+  backgroundColor: "#FF4D00",
+  borderRadius: "6px",
+  color: "#FFFFFF",
+  fontSize: "13px",
+  fontWeight: "700",
+  textDecoration: "none",
+  textAlign: "center",
+  display: "inline-block",
+  padding: "12px 24px",
 };
 
 const footerSection = {

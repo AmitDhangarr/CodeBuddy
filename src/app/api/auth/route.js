@@ -2,6 +2,10 @@ import { createToken } from "../../../../service/handletoken.js";
 import { supabase } from "../../../lib/supabaseClient.js";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers.js";
+import { render } from "@react-email/components";
+import { sendEmailAction } from "../../actions/email.jsx";
+import LoginNotification from "../../../components/email_templates/signin_notification.jsx";
+import { headers } from "next/headers.js";
 
 export async function POST(request) {
   try {
@@ -11,11 +15,10 @@ export async function POST(request) {
     if (!email || !password) {
       return Response.json(
         { success: false, message: "Email and password are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // ── 2. Look up user by email ──────────────────────────────────────────
     const { data, error } = await supabase
       .from("profiles")
       .select("password")
@@ -23,26 +26,22 @@ export async function POST(request) {
       .single();
 
     if (error || !data) {
-      // Don't reveal whether the email exists or not
       return Response.json(
         { success: false, message: "Invalid login credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    // ── 3. Verify password ────────────────────────────────────────────────
     const isMatched = await bcrypt.compare(password, data.password);
 
     if (!isMatched) {
       return Response.json(
         { success: false, message: "Invalid login credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    // ── 4. Set cookie and return success ──────────────────────────────────
-   // signin route — must have await now
-  const token = await createToken({ email });
+    const token = await createToken({ email });
     const setCookie = await cookies();
 
     setCookie.set("token", token, {
@@ -52,13 +51,33 @@ export async function POST(request) {
       sameSite: "lax",
     });
 
-    return Response.json({ success: true }, { status: 200 });
+    const loginTime =
+      new Date().toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }) + " IST";
 
+    const account_login_template = await render(
+      <LoginNotification email={email} loginTime={loginTime} />,
+    );
+
+    sendEmailAction(
+      email,
+      account_login_template,
+      `New login detected on your CodeBuddy account`,
+    );
+
+    return Response.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Auth error:", error);
     return Response.json(
       { success: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
